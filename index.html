@@ -120,6 +120,8 @@ textarea{min-height:120px;resize:vertical;margin:12px 0}
 @media (min-width:700px){.sheet{border-radius:16px}}
 .sheet h3{margin:0 0 6px;font:600 21px var(--display)}
 .sheet p{margin:6px 0 12px;color:var(--dim);font-size:14px}
+.sheet ol.steps{margin:0 0 14px;padding-left:22px;font-size:14px;line-height:1.45;display:flex;flex-direction:column;gap:6px}
+.sheet p.tip{margin:12px 0 4px;font-size:13px;border-left:3px solid var(--accent);padding-left:10px}
 .sheet .stack{display:flex;flex-direction:column;gap:8px}
 .sheet .stack button{text-align:left}
 .sheet label.f{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
@@ -403,10 +405,31 @@ $('#sPost').onclick=()=>{ const ids=visible().filter(p=>selected.has(p.id)).map(
 
 /* ---------- import: device ---------- */
 $('#btnImport').onclick=async()=>{
-  const v=await actions('Import photos',[['Google Photos','google','primary'],['This device (camera roll / files)','device']]);
+  const v=await actions('Import photos',[['Google Photos','google','primary'],['Shared with me (Google Photos)','shared'],['This device (camera roll / files)','device']]);
   if(v==='device') $('#fileIn').click();
   if(v==='google') startGoogleImport();
+  if(v==='shared') sharedImport();
 };
+/* Google no longer lets apps read shared albums (since March 2025), and its picker shows only your own library.
+   So: save the shared photos to your library in Google Photos, then pick them here. */
+async function sharedImport(){
+  const v=await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Photos shared with you'}),
+      el('p',{textContent:'Google only lets Peggy see photos in your own library, so save the shared ones there first. It only takes a few taps.'}));
+    const ol=el('ol',{className:'steps',innerHTML:
+      '<li>Tap <b>Open shared photos</b> below.</li>'+
+      '<li>Open the shared album or the person\'s photos, then press and hold to select the ones you want.</li>'+
+      '<li>Tap <b>Save</b> (the cloud with a down arrow).</li>'+
+      '<li>Come back to Peggy and tap <b>Pick them now</b>. In the picker, search the album name or scroll to the date they were taken.</li>'});
+    const open=el('a',{className:'big',href:'https://photos.google.com/sharing',target:'_blank',rel:'noopener',textContent:'Open shared photos',title:'Opens your shared albums and conversations in Google Photos'});
+    const pick=el('button',{className:'primary',textContent:'Pick them now',style:'width:100%;margin-top:8px',title:'Opens the Google Photos picker to bring the saved photos into Peggy'});
+    pick.onclick=()=>close('pick');
+    const tip=el('p',{className:'tip',innerHTML:'<b>Tip for a partner\'s photos:</b> in Google Photos, open <b>Sharing</b>, tap your partner, then ⋮ → <b>Partner sharing settings</b>, and turn on saving their photos to your library. New ones then land in your library automatically.'});
+    const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:4px'}); c.onclick=()=>close(null);
+    sh.append(ol, open, pick, tip, c);
+  });
+  if(v==='pick') startGoogleImport();
+}
 $('#fileIn').onchange=async e=>{
   const files=[...e.target.files]; e.target.value=''; if(!files.length) return;
   await importBlobs(files.map(f=>({blob:f, name:f.name, created:f.lastModified||Date.now(), src:'device'})));
