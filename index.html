@@ -127,6 +127,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .progress div{height:100%;background:var(--accent);width:0;transition:width .2s}
 
 #btnTv{position:relative;padding:10px}
+.kiss{font-size:.8em;margin-left:5px;vertical-align:2px}
 .tl{display:none;font-weight:700;font-size:15px}
 @media (min-width:700px){ .tl{display:inline} #btnWords,#btnTv,#btnSettings{display:inline-flex;align-items:center;gap:6px;padding:8px 12px} }
 .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
@@ -748,7 +749,7 @@ addTips(document);
 /* ---------- boot ---------- */
 (async function boot(){
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-  $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy</span>';
+  $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>';
   db=await openDB();
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });

@@ -29,6 +29,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 .bfly.flutter .wing{animation:flap 1.8s ease-in-out infinite}
 @keyframes flap{0%,70%,100%{transform:scaleX(1)}80%{transform:scaleX(.45)}90%{transform:scaleX(.9)}}
 /* butterflies drifting behind the home screen */
+.kiss{font-size:.75em;margin-left:.6vw}
 #drift{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
 #drift .bfly{position:absolute;opacity:.28;animation:drift linear infinite}
 #drift .bfly .wing{animation:flap 1.4s ease-in-out infinite}
@@ -679,7 +680,7 @@ function onWords(c, m){
 /* ================= boot ================= */
 (async function boot(){
   showCode();
-  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy';
+  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy<span class="kiss" aria-hidden="true">😘</span>';
   $('#wWordmark').innerHTML=butterfly({size:60,flutter:true,a:'#F06A9B',b:'#A98BF0'})+'Words';
   const drift=$('#drift');
   [[18,'34s','0s',3.2],[30,'46s','-17s',2.4],[62,'40s','-30s',4]].forEach(([top,dur,delay,w])=>{
