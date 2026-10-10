@@ -57,6 +57,24 @@ header{position:sticky;top:0;z-index:5;background:var(--headerbg);backdrop-filte
 main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 4px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px}
 @media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+.dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
+.dayh:first-child{padding-top:2px}
+.dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
+.dayh button{min-height:32px;padding:4px 12px;font-size:13px;border-radius:999px}
+.evs{display:flex;flex-direction:column;gap:12px}
+.ev{background:var(--panel2);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.ev h4{margin:0;font:600 18px var(--display)}
+.ev .meta{color:var(--dim);font-size:13px;font-weight:700}
+.ev .thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.ev .thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+.ev .acts{display:flex;gap:6px;flex-wrap:wrap}
+.ev .acts button{flex:1;min-width:90px;background:var(--panel)}
+.ev .acts button.fb{background:var(--accent)}
+.parts{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 2px}
+.parts button{min-height:34px;padding:4px 12px;border-radius:999px;font-size:13px}
+.parts button.on{background:var(--text);color:var(--bg)}
+.parts button.done{color:var(--dim);text-decoration:line-through}
+.pthumb.other{opacity:.35}
 .cell{position:relative;aspect-ratio:1;background:var(--panel2);border-radius:10px;overflow:hidden;cursor:pointer}
 .cell img{width:100%;height:100%;object-fit:cover;display:block}
 .badges{position:absolute;left:5px;bottom:4px;display:flex;gap:4px;font-size:13px;text-shadow:0 1px 3px #000}
@@ -311,6 +329,7 @@ body.selecting-mode .bnav{display:none}
     <span style="width:64px"></span>
   </div>
   <div class="postbody">
+    <div class="parts hidden" id="postParts"></div>
     <div class="strip" id="postStrip"></div>
     <textarea id="caption" placeholder="Write a caption…"></textarea>
     <div class="card" id="aiCard">
@@ -375,6 +394,7 @@ function renderChips(){
   add('fav','★ Favorites',photos.filter(p=>p.fav).length);
   add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
   add('posted','Posted',photos.filter(p=>p.postedAt).length);
+  const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
   for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, a.name, photos.filter(p=>p.albums.includes(a.id)).length);
   const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
   if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted'].includes(view)) view='all';
@@ -382,7 +402,12 @@ function renderChips(){
 function renderGrid(){
   const grid=$('#grid'), list=visible();
   grid.classList.toggle('selecting', selecting);
-  grid.replaceChildren(...list.map(p=>{
+  const byDay=new Map(); for(const p of list){ const k=dayKey(p.created); byDay.set(k,(byDay.get(k)||0)+1); }
+  const showDays = list.length>8 && byDay.size>1;
+  let lastDay='';
+  grid.replaceChildren(...list.flatMap(p=>{
+    const out=[], k=dayKey(p.created);
+    if(showDays && k!==lastDay){ lastDay=k; out.push(dayHeader(k, list.filter(x=>dayKey(x.created)===k), byDay.get(k))); }
     const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':''),title:(selecting?'Select ':'Edit ')+p.name+(p.fav?' · Favorite':'')+(p.postedAt?' · Posted':'')});
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
     const bd=el('div',{className:'badges'});
@@ -392,9 +417,10 @@ function renderGrid(){
     fv.setAttribute('aria-pressed',!!p.fav);
     fv.onclick=async e=>{ e.stopPropagation(); p.fav=!p.fav; await dbPut('photos',p); toast(p.fav?'Added to Favorites':'Removed from Favorites'); renderAll(); };
     c.append(bd, el('div',{className:'check'}), fv);
-    c.onclick=()=>{ if(selecting){ selected.has(p.id)?selected.delete(p.id):selected.add(p.id); c.classList.toggle('sel'); updateSelbar(); } else openEditor(p); };
-    return c;
+    c.onclick=()=>{ if(selecting){ selected.has(p.id)?selected.delete(p.id):selected.add(p.id); c.classList.toggle('sel'); updateSelbar(); renderDayButtons(); } else openEditor(p); };
+    out.push(c); return out;
   }));
+  renderDayButtons();
   const empty=$('#empty');
   if(list.length){ empty.classList.add('hidden'); }
   else {
@@ -404,6 +430,58 @@ function renderGrid(){
       : [Object.assign(el('div',{className:'trail'}),{innerHTML:butterfly({size:30})+butterfly({size:40})+butterfly({size:64,flutter:true})}), el('h2',{textContent:'Welcome to Peggy'}), el('p',{textContent:'Tap ＋ to bring in photos from Google Photos or this phone. Then make them pretty and share them on Facebook.'})]));
   }
 }
+/* ---------- days and events ---------- */
+const dayKey = t => { const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+function dayLabel(t){ const d=new Date(t), now=new Date(), y=new Date(now); y.setDate(now.getDate()-1);
+  if(dayKey(t)===dayKey(now)) return 'Today'; if(dayKey(t)===dayKey(y)) return 'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric', ...(d.getFullYear()!==now.getFullYear()?{year:'numeric'}:{})}); }
+function dayHeader(k, ps, n){
+  const h=el('div',{className:'dayh'}), t=el('span',{textContent:dayLabel(ps[0].created)}); t.append(el('span',{className:'n',textContent:n}));
+  const b=el('button',{title:'Select every photo from this day'}); b.dataset.day=k; b._ids=ps.map(p=>p.id);
+  b.onclick=()=>{ if(!selecting){ selecting=true; selected.clear(); }
+    const all=b._ids.every(id=>selected.has(id)); b._ids.forEach(id=>all?selected.delete(id):selected.add(id)); renderGrid(); updateSelbar(); };
+  h.append(t,b); return h;
+}
+function renderDayButtons(){ document.querySelectorAll('.dayh button').forEach(b=>{ const all=selecting && b._ids.every(id=>selected.has(id)); b.textContent=all?'Unselect day':'Select day'; }); }
+// An event is a run of photos with no gap longer than 20 hours, so a whole weekend stays together.
+function findEvents(){
+  const l=photos.slice().sort((a,b)=>a.created-b.created), evs=[]; let cur=null;
+  for(const p of l){ if(!cur || p.created-cur.end>20*3600e3){ cur={start:p.created,end:p.created,ps:[]}; evs.push(cur); } cur.ps.push(p); cur.end=p.created; }
+  return evs.filter(e=>e.ps.length>=3).reverse();
+}
+function eventName(e){
+  const a=new Date(e.start), b=new Date(e.end), now=new Date(), yr=d=>d.getFullYear()!==now.getFullYear()?', '+d.getFullYear():'';
+  const wd=d=>d.toLocaleDateString(undefined,{weekday:'short'}), md=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  if(dayKey(e.start)===dayKey(e.end)) return `${a.toLocaleDateString(undefined,{weekday:'long'})}, ${md(a)}${yr(a)}`;
+  const sameMonth=a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear();
+  return `${wd(a)}–${wd(b)}, ${md(a)}–${sameMonth?b.getDate():md(b)}${yr(b)}`;
+}
+function openEvents(){
+  const evs=findEvents();
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'📅 Events'}), el('p',{textContent:evs.length?'Your photos grouped by when they were taken. A weekend away stays together as one event.':'Events show up once you have a few photos taken around the same time.'}));
+    const box=el('div',{className:'evs'});
+    for(const e of evs){
+      const posted=e.ps.filter(p=>p.postedAt).length, ids=e.ps.map(p=>p.id);
+      const card=el('div',{className:'ev'}), name=eventName(e);
+      card.append(el('h4',{textContent:name}), el('div',{className:'meta',textContent:`${e.ps.length} photos`+(posted?` · ${posted} posted`:'')+(e.ps.length>POST_PART?` · posts in ${Math.ceil(e.ps.length/POST_PART)} parts`:'')}));
+      const th=el('div',{className:'thumbs'}); pickSpread(e.ps,5).forEach(p=>th.append(el('img',{src:urlFor(p),alt:'',loading:'lazy'}))); card.append(th);
+      const sel=el('button',{textContent:'Select all',title:'Select every photo from this event'});
+      sel.onclick=()=>{ close(); view='all'; selecting=true; selected.clear(); ids.forEach(id=>selected.add(id)); renderAll(); document.querySelector('.cell.sel')?.scrollIntoView({block:'center'}); };
+      const alb=el('button',{textContent:'Make album',title:'Put this event’s photos in a new album'});
+      alb.onclick=async()=>{ const n=(prompt('Album name', name)||'').trim(); if(!n) return;
+        const a={id:uid(), name:n, created:Date.now()}; albums.push(a); await dbPut('albums',a);
+        for(const p of e.ps){ if(!p.albums.includes(a.id)){ p.albums.push(a.id); await dbPut('photos',p); } }
+        close(); view=a.id; selecting=false; selected.clear(); renderAll(); toast(`Album “${n}” made with ${e.ps.length} photos`); };
+      const post=el('button',{className:'fb',textContent:posted&&posted<e.ps.length?'Post the rest':'Post all',title:'Share this event’s photos to Facebook'});
+      post.onclick=()=>{ close(); const todo=posted&&posted<e.ps.length?e.ps.filter(p=>!p.postedAt):e.ps; openPost(todo.map(p=>p.id)); };
+      card.append(el('div',{className:'acts'},sel,alb,post)); box.append(card);
+    }
+    const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:10px'}); c.onclick=()=>close();
+    sh.append(box,c);
+  });
+}
+const pickSpread=(l,n)=>l.length<=n?l:Array.from({length:n},(_,i)=>l[Math.round(i*(l.length-1)/(n-1))]);
 function updateSelbar(){
   $('#selbar').classList.toggle('hidden', !selecting); document.body.classList.toggle('selecting-mode', selecting);
   $('#btnSelect').textContent = selecting ? 'Done' : 'Select';
@@ -511,7 +589,8 @@ async function sharedImport(){
 }
 $('#fileIn').onchange=async e=>{
   const files=[...e.target.files]; e.target.value=''; if(!files.length) return;
-  await importBlobs(files.map(f=>({blob:f, name:f.name, created:f.lastModified||Date.now(), src:'device'})));
+  const list=[]; for(const f of files) list.push({blob:f, name:f.name, created:(await photoTaken(f))||f.lastModified||Date.now(), src:'device'});
+  await importBlobs(list);
 };
 async function importBlobs(list, prog){
   askPersist(); let n=0, fail=0;
@@ -840,37 +919,57 @@ $('#edSave').onclick=async()=>{
 };
 
 /* ---------- post ---------- */
+// Big posts go out in parts: the iPhone share sheet and Facebook cope best with up to 20 photos at a time.
+const POST_PART=20;
 let post=null;
+const partsOf = () => { const out=[]; for(let i=0;i<post.ids.length;i+=POST_PART) out.push(post.ids.slice(i,i+POST_PART)); return out; };
+const curPart = () => partsOf()[post.part]||[];
 async function openPost(ids, plain){
   if(!ids.length) return;
-  post={ids:[...ids], files:new Map(), plain:!!plain};
+  post={ids:[...ids], files:new Map(), plain:!!plain, part:0, done:new Set()};
   $('#post').classList.remove('hidden'); document.body.style.overflow='hidden';
   $('#caption').classList.toggle('hidden', post.plain);
   $('#postHint').classList.toggle('hidden', post.plain);
   $('#aiCard').classList.toggle('hidden', post.plain); $('#privCard').classList.toggle('hidden', post.plain); $('#aiOut').replaceChildren(); $('#aiGo').textContent='✨ Suggest captions'; renderAudience();
   $('#caption').value=localStorage.getItem('peggy.caption')||'';
-  renderStrip(); setShare();
-  const mine=post;
-  for(const id of ids){
+  renderStrip(); setShare(); preparePart();
+}
+async function preparePart(){
+  const mine=post, want=curPart();
+  for(const [id] of post.files) if(!want.includes(id)) post.files.delete(id);      // keep memory low on big events
+  for(const id of want){
+    if(post!==mine) return; if(post.files.has(id)) continue;
     const p=photos.find(x=>x.id===id);
     try{ const img=await loadImage(p.blob); const b=await toBlob(render(img, p.edits||DEF, 2048),'image/jpeg',.9);
          const base=(p.name||'photo').replace(/\.[^.]+$/,'').replace(/[^\w\- ]+/g,'_')||'photo';
-         if(post!==mine) return; post.files.set(id, new File([b], base+'.jpg', {type:'image/jpeg', lastModified:Date.now()})); }
+         if(post!==mine) return; if(curPart().includes(id)) post.files.set(id, new File([b], base+'.jpg', {type:'image/jpeg', lastModified:Date.now()})); }
     catch(e){ console.error(e); toast('Could not prepare '+p.name); post.ids=post.ids.filter(x=>x!==id); renderStrip(); }
     setShare();
   }
 }
 function setShare(){
-  const b=$('#shareBtn'), n=post.ids.length, ready=post.ids.every(id=>post.files.has(id));
+  const b=$('#shareBtn'), ids=curPart(), n=ids.length, ready=ids.every(id=>post.files.has(id)), np=partsOf().length;
+  const have=ids.filter(id=>post.files.has(id)).length;
   b.disabled=!ready||!n;
-  b.textContent = !n ? 'No photos selected' : !ready ? `Preparing ${post.files.size} of ${n}…` : post.plain ? `Share ${n} photo${n>1?'s':''}…` : `Share ${n} photo${n>1?'s':''} to Facebook`;
+  const what = np>1 ? `part ${post.part+1} of ${np} (${n} photos)` : `${n} photo${n>1?'s':''}`;
+  b.textContent = !n ? 'No photos selected' : !ready ? `Preparing ${have} of ${n}…` : post.plain ? `Share ${what}…` : `Share ${what} to Facebook`;
+}
+function renderParts(){
+  const box=$('#postParts'), ps=partsOf();
+  if(post.part>=ps.length) post.part=Math.max(0,ps.length-1);
+  box.classList.toggle('hidden', ps.length<2);
+  box.replaceChildren(...(ps.length<2?[]:[el('span',{className:'hint',style:'width:100%',textContent:`${post.ids.length} photos is a lot for one post, so they go out in ${ps.length} parts of up to ${POST_PART}.`}),
+    ...ps.map((ids,i)=>{ const a=i*POST_PART+1, z=a+ids.length-1;
+      const b=el('button',{textContent:`${post.done.has(i)?'✓ ':''}Part ${i+1} · ${a}–${z}`,className:(i===post.part?'on':'')+(post.done.has(i)?' done':''),title:`Work on photos ${a} to ${z}`});
+      b.onclick=()=>{ post.part=i; renderStrip(); setShare(); preparePart(); }; return b; })]));
 }
 function renderStrip(){
-  const s=$('#postStrip');
+  renderParts();
+  const s=$('#postStrip'), cur=new Set(curPart());
   s.replaceChildren(...post.ids.map((id,i)=>{ const p=photos.find(x=>x.id===id);
-    const left=el('button',{textContent:'◀',disabled:i===0,title:'Move earlier in the post'}); left.onclick=()=>{ [post.ids[i-1],post.ids[i]]=[post.ids[i],post.ids[i-1]]; renderStrip(); };
-    const rm=el('button',{textContent:'✕',title:'Leave this photo out of the post'}); rm.onclick=()=>{ post.ids.splice(i,1); renderStrip(); setShare(); };
-    return el('div',{className:'pthumb'}, el('img',{src:urlFor(p),alt:''}), el('span',{className:'ord',textContent:i+1}), el('div',{className:'acts'},left,rm));
+    const left=el('button',{textContent:'◀',disabled:i===0,title:'Move earlier in the post'}); left.onclick=()=>{ [post.ids[i-1],post.ids[i]]=[post.ids[i],post.ids[i-1]]; renderStrip(); setShare(); preparePart(); };
+    const rm=el('button',{textContent:'✕',title:'Leave this photo out of the post'}); rm.onclick=()=>{ post.ids.splice(i,1); post.files.delete(id); renderStrip(); setShare(); preparePart(); };
+    return el('div',{className:'pthumb'+(cur.has(id)?'':' other')}, el('img',{src:urlFor(p),alt:'',loading:'lazy'}), el('span',{className:'ord',textContent:i+1}), el('div',{className:'acts'},left,rm));
   }));
 }
 $('#caption').oninput=e=>localStorage.setItem('peggy.caption',e.target.value);
@@ -909,13 +1008,15 @@ renderAudience();
 $('#postBack').onclick=()=>{ $('#post').classList.add('hidden'); document.body.style.overflow=''; post=null; };
 $('#shareBtn').onclick=()=>{
   // Everything here must start synchronously inside the tap, or iOS blocks the share sheet.
-  const files=post.ids.map(id=>post.files.get(id)), cap=$('#caption').value.trim(), ids=[...post.ids], plain=post.plain;
+  const ids=curPart(), files=ids.map(id=>post.files.get(id)), cap=$('#caption').value.trim(), plain=post.plain, mine=post, part=post.part;
   if(cap && !plain && navigator.clipboard) navigator.clipboard.writeText(cap).catch(()=>{});
   const data={files};
   if(navigator.canShare && navigator.canShare(data)){
     navigator.share(data).then(async()=>{
-      if(plain){ toast('Shared'); return; }
+      if(plain){ markPartDone(mine, part); if(!nextPart(mine)) toast('Shared'); return; }
       for(const id of ids){ const p=photos.find(x=>x.id===id); if(p){ p.postedAt=Date.now(); await dbPut('photos',p); } }
+      markPartDone(mine, part);
+      if(nextPart(mine)){ renderAll(); toast(`Part ${part+1} posted ✓ Tap Share for part ${mine.part+1}.`, 5000); return; }
       localStorage.removeItem('peggy.caption'); $('#postBack').click(); selecting=false; selected.clear(); renderAll(); toast('Marked as posted ✓');
     }).catch(err=>{ if(err.name!=='AbortError') toast('Share failed: '+err.message, 5000); });
   } else {
@@ -923,6 +1024,12 @@ $('#shareBtn').onclick=()=>{
     toast('This browser can\'t open the share sheet, so the photos were downloaded instead.', 5000);
   }
 };
+function markPartDone(p, part){ p.done.add(part); }
+// Moves to the next part that hasn't gone out yet. Returns false when every part is done.
+function nextPart(p){
+  if(post!==p) return false; const n=partsOf().length; for(let i=0;i<n;i++) if(!p.done.has(i)){ p.part=i; renderStrip(); setShare(); preparePart(); return true; }
+  return false;
+}
 
 
 /* ---------- TV (Fire Stick) link ---------- */

@@ -106,5 +106,28 @@ async function downscale(blob, max){
   if(Math.max(img.naturalWidth,img.naturalHeight)<=max && /jpe?g/i.test(blob.type)) return blob;
   return toBlob(render(img, DEF, max), 'image/jpeg', .92);
 }
+// When a JPEG was taken, from its EXIF data (DateTimeOriginal), or null.
+async function photoTaken(blob){
+  try{
+    const b=new DataView(await blob.slice(0, 262144).arrayBuffer());
+    if(b.getUint16(0)!==0xFFD8) return null;
+    let o=2;
+    while(o+4<b.byteLength){
+      const m=b.getUint16(o), len=b.getUint16(o+2);
+      if(m===0xFFE1 && b.getUint32(o+4)===0x45786966){            // "Exif"
+        const t=o+10, le=b.getUint16(t)===0x4949, u16=x=>b.getUint16(t+x,le), u32=x=>b.getUint32(t+x,le);
+        const str=(off,n)=>{ let r=''; for(let i=0;i<n-1;i++) r+=String.fromCharCode(b.getUint8(t+off+i)); return r; };
+        const find=(ifd,tag)=>{ const n=u16(ifd); for(let i=0;i<n;i++){ const e=ifd+2+i*12; if(u16(e)===tag) return e; } return 0; };
+        const ifd0=u32(4); let when='';
+        const ex=find(ifd0,0x8769); if(ex){ const sub=u32(ex+8), e=find(sub,0x9003)||find(sub,0x9004); if(e) when=str(u32(e+8),20); }
+        if(!when){ const e=find(ifd0,0x0132); if(e) when=str(u32(e+8),20); }
+        const m2=when.match(/^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/);
+        return m2 ? new Date(+m2[1], m2[2]-1, +m2[3], +m2[4], +m2[5], +m2[6]).getTime() : null;
+      }
+      if((m&0xFF00)!==0xFF00) break; o+=2+len;
+    }
+  }catch(_){}
+  return null;
+}
 const PEER_PREFIX='peggy-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';
