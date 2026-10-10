@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PhotoPost">
+<meta name="theme-color" content="#111214">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<title>PhotoPost</title>
+<style>
+:root{
+  --bg:#111214; --panel:#1b1d21; --panel2:#24272c; --line:#2f3238;
+  --text:#f2f2f3; --dim:#9a9ca3; --accent:#3b82f6; --accent2:#1877f2;
+  --star:#fbbf24; --ok:#22c55e; --danger:#ef4444;
+  --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom);
+  --sl:env(safe-area-inset-left); --sr:env(safe-area-inset-right);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:var(--panel2);border:0;border-radius:10px;padding:10px 14px;min-height:44px;cursor:pointer}
+button:disabled{opacity:.45}
+button.primary{background:var(--accent);color:#fff;font-weight:600}
+button.fb{background:var(--accent2);color:#fff;font-weight:600}
+button.danger{color:var(--danger)}
+button.ghost{background:transparent}
+input,textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.hidden{display:none!important}
+
+/* header */
+header{position:sticky;top:0;z-index:5;background:rgba(17,18,20,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:calc(var(--st) + 8px) calc(var(--sr) + 12px) 8px calc(var(--sl) + 12px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:8px}
+.bar h1{font-size:22px;margin:0;flex:1;letter-spacing:-.3px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-top:10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border-radius:999px;padding:6px 14px;min-height:34px;font-size:14px;background:var(--panel2);color:var(--dim)}
+.chip.on{background:var(--text);color:var(--bg);font-weight:600}
+.chip .n{opacity:.6;margin-left:4px}
+
+/* grid */
+main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 4px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px}
+@media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+.cell{position:relative;aspect-ratio:1;background:var(--panel);border-radius:6px;overflow:hidden;cursor:pointer}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.badges{position:absolute;left:5px;bottom:4px;display:flex;gap:4px;font-size:13px;text-shadow:0 1px 3px #000}
+.badges .star{color:var(--star)} .badges .posted{color:var(--ok)}
+.check{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);display:none}
+.selecting .check{display:block}
+.cell.sel .check{background:var(--accent);border-color:var(--accent)}
+.cell.sel .check::after{content:"✓";color:#fff;font-size:15px;font-weight:700;display:block;text-align:center;line-height:20px}
+.cell.sel img{opacity:.75}
+.empty{text-align:center;color:var(--dim);padding:60px 24px}
+.empty h2{color:var(--text);font-size:20px}
+
+/* bottom selection bar */
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--panel);border-top:1px solid var(--line);
+  padding:10px calc(var(--sr) + 10px) calc(var(--sb) + 10px) calc(var(--sl) + 10px);display:flex;gap:8px;align-items:center;overflow-x:auto}
+.selbar .count{flex:1;min-width:70px;color:var(--dim);font-size:14px}
+
+/* overlays */
+.overlay{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
+.ohead{display:flex;align-items:center;gap:8px;padding:calc(var(--st) + 8px) calc(var(--sr) + 10px) 8px calc(var(--sl) + 10px);border-bottom:1px solid var(--line)}
+.ohead .t{flex:1;text-align:center;font-weight:600}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:none;background:#000}
+.stage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+.tools{background:var(--panel);padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 10px) calc(var(--sl) + 12px)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{flex:1;min-height:38px;padding:6px}
+.tabs button.on{background:var(--text);color:var(--bg);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row button{flex:1 1 auto;min-width:64px;font-size:14px}
+.row button.on{outline:2px solid var(--accent)}
+.slider{display:grid;grid-template-columns:96px 1fr 40px;align-items:center;gap:10px;margin:6px 0;font-size:14px}
+.slider span:last-child{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+.slider label{cursor:pointer}
+input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--accent);height:32px}
+.presets{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.preset{flex:none;width:76px;text-align:center;font-size:12px;color:var(--dim);cursor:pointer}
+.preset canvas,.preset .ph{width:76px;height:76px;border-radius:8px;object-fit:cover;display:block;background:var(--panel2);margin-bottom:4px}
+.preset.on{color:var(--text);font-weight:600}
+.preset.on canvas{outline:2px solid var(--accent);outline-offset:2px}
+
+/* post */
+.postbody{flex:1;overflow:auto;padding:14px calc(var(--sr) + 14px) calc(var(--sb) + 20px) calc(var(--sl) + 14px);max-width:720px;width:100%;margin:0 auto}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.pthumb{flex:none;position:relative;width:96px}
+.pthumb img{width:96px;height:96px;object-fit:cover;border-radius:8px;display:block}
+.pthumb .ord{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.65);border-radius:6px;padding:0 6px;font-size:12px}
+.pthumb .acts{display:flex;gap:4px;margin-top:4px}
+.pthumb .acts button{flex:1;min-height:30px;padding:2px;font-size:13px}
+.hint{color:var(--dim);font-size:14px}
+textarea{min-height:120px;resize:vertical;margin:12px 0}
+
+/* sheet / dialog */
+.scrim{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){.scrim{align-items:center}}
+.sheet{background:var(--panel);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 16px calc(var(--sb) + 16px);max-height:88vh;overflow:auto}
+@media (min-width:700px){.sheet{border-radius:16px}}
+.sheet h3{margin:0 0 6px;font-size:18px}
+.sheet p{margin:6px 0 12px;color:var(--dim);font-size:14px}
+.sheet .stack{display:flex;flex-direction:column;gap:8px}
+.sheet .stack button{text-align:left}
+.sheet label.f{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
+.sheet code{font-size:12px;background:var(--bg);padding:2px 6px;border-radius:6px;word-break:break-all}
+a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;border-radius:10px;padding:13px}
+.progress{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:12px 0}
+.progress div{height:100%;background:var(--accent);width:0;transition:width .2s}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 90px);z-index:40;background:#fff;color:#111;
+  padding:10px 16px;border-radius:12px;font-size:14px;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.4);text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <h1>PhotoPost</h1>
+    <button id="btnImport" class="primary">＋ Import</button>
+    <button id="btnSelect">Select</button>
+    <button id="btnSettings" class="ghost" aria-label="Settings">⚙︎</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main id="main">
+  <div class="grid" id="grid"></div>
+  <div class="empty hidden" id="empty"></div>
+</main>
+
+<div class="selbar hidden" id="selbar">
+  <span class="count" id="selCount">0 selected</span>
+  <button id="sAll">All</button>
+  <button id="sFav">★</button>
+  <button id="sAlbum">Album</button>
+  <button id="sMore">More</button>
+  <button id="sPost" class="fb">Post</button>
+</div>
+
+<!-- Editor -->
+<div class="overlay hidden" id="editor">
+  <div class="ohead">
+    <button id="edCancel" class="ghost">Cancel</button>
+    <span class="t" id="edTitle">Edit</span>
+    <button id="edSave" class="primary">Save</button>
+  </div>
+  <div class="stage" id="edStage"></div>
+  <div class="tools">
+    <div class="tabs">
+      <button data-tab="crop" class="on">Crop</button>
+      <button data-tab="adjust">Adjust</button>
+      <button data-tab="filters">Filters</button>
+    </div>
+    <div data-panel="crop">
+      <div class="row" id="aspects"></div>
+      <div class="slider"><label>Zoom</label><input type="range" id="zoom" min="1" max="3" step="0.01" value="1"><span id="zoomV">1.0×</span></div>
+      <div class="row">
+        <button id="rotL">⟲ Rotate</button>
+        <button id="rotR">⟳ Rotate</button>
+        <button id="flip">⇋ Flip</button>
+        <button id="edReset" class="danger">Revert</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">Drag the photo to reposition the crop.</p>
+    </div>
+    <div data-panel="adjust" class="hidden" id="sliders"></div>
+    <div data-panel="filters" class="hidden"><div class="presets" id="presets"></div></div>
+  </div>
+</div>
+
+<!-- Post -->
+<div class="overlay hidden" id="post">
+  <div class="ohead">
+    <button id="postBack" class="ghost">‹ Back</button>
+    <span class="t">Post to Facebook</span>
+    <span style="width:64px"></span>
+  </div>
+  <div class="postbody">
+    <div class="strip" id="postStrip"></div>
+    <textarea id="caption" placeholder="Write a caption…"></textarea>
+    <button id="shareBtn" class="fb" style="width:100%" disabled>Preparing photos…</button>
+    <p class="hint" id="postHint">Tapping Share copies your caption, then opens the share sheet. Choose <b>Facebook</b>, then long-press the text box and tap <b>Paste</b> to add the caption.</p>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="image/*" multiple hidden>
+
+<script>
+'use strict';
+/* ---------- config ---------- */
+const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
+const cfg = {
+  get clientId(){ return (localStorage.getItem('pp.clientId')||'').trim(); },
+  get relay(){ return (localStorage.getItem('pp.relay')||'').trim().replace(/\/+$/,''); },
+};
+const DEF = {rot:0, flip:false, aspect:'orig', zoom:1, panX:0, panY:0, bright:0, contrast:0, sat:0, warmth:0, preset:'none'};
+const ASPECTS = [['orig','Original'],['1','Square'],['0.8','Portrait 4:5'],['1.7778','Wide 16:9'],['0.5625','Story 9:16']];
+const PRESETS = {
+  none:{name:'Original'}, vivid:{name:'Vivid',sat:35,contrast:15}, warm:{name:'Warm',warmth:35,sat:10,bright:4},
+  cool:{name:'Cool',warmth:-35,contrast:5}, punch:{name:'Punch',contrast:30,sat:20,bright:-4},
+  fade:{name:'Fade',contrast:-25,bright:10,sat:-25}, bw:{name:'B&W',sat:-100,contrast:15}, noir:{name:'Noir',sat:-100,contrast:45,bright:-6},
+};
+const SLIDERS = [['bright','Brightness'],['contrast','Contrast'],['sat','Saturation'],['warmth','Warmth']];
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const el = (tag, props={}, ...kids) => { const e=document.createElement(tag); Object.assign(e, props); for(const k of kids) e.append(k); return e; };
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+let toastT;
+function toast(msg, ms=3200){ document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=el('div',{className:'toast',textContent:msg}); document.body.append(t); clearTimeout(toastT); toastT=setTimeout(()=>t.remove(), ms); }
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+
+/* ---------- IndexedDB ---------- */
+let db;
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('photopost',1);
+  r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('photos',{keyPath:'id'}); d.createObjectStore('albums',{keyPath:'id'}); };
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function tx(store, mode, fn){ return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); let out;
+  if(r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
+const dbAll = s => tx(s,'readonly',st=>st.getAll());
+const dbPut = (s,v) => tx(s,'readwrite',st=>st.put(v));
+const dbDel = (s,k) => tx(s,'readwrite',st=>st.delete(k));
+
+/* ---------- state ---------- */
+let photos=[], albums=[], view='all', selecting=false;
+const selected = new Set();
+const thumbURL = new Map();
+function urlFor(p){ if(!thumbURL.has(p.id)) thumbURL.set(p.id, URL.createObjectURL(p.thumb)); return thumbURL.get(p.id); }
+function dropURL(id){ const u=thumbURL.get(id); if(u){ URL.revokeObjectURL(u); thumbURL.delete(id); } }
+
+/* ---------- image pipeline ---------- */
+function loadImage(blob){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(blob); const i=new Image();
+  i.onload=()=>{ res(i); setTimeout(()=>URL.revokeObjectURL(u), 1000); }; i.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('Could not read image')); }; i.src=u; }); }
+function toBlob(c, type='image/jpeg', q=.9){ return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Export failed')), type, q)); }
+
+function adjust(ctx, w, h, e){
+  const p = PRESETS[e.preset] || {};
+  const B=(e.bright||0)+(p.bright||0), C=clamp((e.contrast||0)+(p.contrast||0),-100,100),
+        S=clamp((e.sat||0)+(p.sat||0),-100,100), W=(e.warmth||0)+(p.warmth||0);
+  if(!B && !C && !S && !W) return;
+  const d = ctx.getImageData(0,0,w,h), a = d.data;
+  const b = B*1.28, c = C*1.28, f = (259*(c+255))/(255*(259-c)), s = 1+S/100, wr = W*.6, wg = W*.1, wb = -W*.6;
+  for(let i=0;i<a.length;i+=4){
+    let r=f*(a[i]+b-128)+128, g=f*(a[i+1]+b-128)+128, bl=f*(a[i+2]+b-128)+128;
+    const y=.299*r+.587*g+.114*bl;
+    a[i]=y+(r-y)*s+wr; a[i+1]=y+(g-y)*s+wg; a[i+2]=y+(bl-y)*s+wb;
+  }
+  ctx.putImageData(d,0,0);
+}
+
+function render(img, e, maxDim){
+  const iw=img.naturalWidth, ih=img.naturalHeight, rot=((e.rot%360)+360)%360;
+  const sw = rot%180 ? ih : iw, sh = rot%180 ? iw : ih;
+  const A = e.aspect==='orig' ? sw/sh : parseFloat(e.aspect);
+  let cw, ch; if(sw/sh > A){ ch=sh; cw=sh*A; } else { cw=sw; ch=sw/A; }
+  cw/=e.zoom; ch/=e.zoom;
+  const cx = sw/2 + e.panX*(sw-cw)/2, cy = sh/2 + e.panY*(sh-ch)/2;
+  const k = Math.min(1, maxDim/Math.max(cw,ch));
+  const W=Math.max(1,Math.round(cw*k)), H=Math.max(1,Math.round(ch*k));
+  const c = document.createElement('canvas'); c.width=W; c.height=H;
+  const x = c.getContext('2d',{willReadFrequently:true});
+  x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+  x.scale(k,k); x.translate(-(cx-cw/2), -(cy-ch/2)); x.translate(sw/2, sh/2);
+  x.rotate(rot*Math.PI/180); if(e.flip) x.scale(-1,1);
+  x.drawImage(img, -iw/2, -ih/2);
+  x.setTransform(1,0,0,1,0,0);
+  adjust(x, W, H, e);
+  c._geom = {sw, sh, cw, ch};
+  return c;
+}
+async function makeThumb(blob, edits){ const img=await loadImage(blob); return toBlob(render(img, edits||DEF, 480), 'image/jpeg', .82); }
+function edited(p){ const e=p.edits; if(!e) return false; return Object.keys(DEF).some(k=>e[k]!==DEF[k]); }
+
+/* ---------- grid / chips ---------- */
+function visible(){
+  let l = photos;
+  if(view==='fav') l=l.filter(p=>p.fav);
+  else if(view==='todo') l=l.filter(p=>!p.postedAt);
+  else if(view==='posted') l=l.filter(p=>p.postedAt);
+  else if(view!=='all') l=l.filter(p=>p.albums.includes(view));
+  return l.slice().sort((a,b)=>b.created-a.created);
+}
+function renderChips(){
+  const box=$('#chips'); box.replaceChildren();
+  const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':'')},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
+    b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b); };
+  add('all','All',photos.length);
+  add('fav','★ Favorites',photos.filter(p=>p.fav).length);
+  add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
+  add('posted','Posted',photos.filter(p=>p.postedAt).length);
+  for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, a.name, photos.filter(p=>p.albums.includes(a.id)).length);
+  const nb=el('button',{className:'chip',textContent:'＋ Album'}); nb.onclick=()=>newAlbum(); box.append(nb);
+  if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted'].includes(view)) view='all';
+}
+function renderGrid(){
+  const grid=$('#grid'), list=visible();
+  grid.classList.toggle('selecting', selecting);
+  grid.replaceChildren(...list.map(p=>{
+    const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':'')});
+    c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
+    const bd=el('div',{className:'badges'});
+    if(p.fav) bd.append(el('span',{className:'star',textContent:'★'}));
+    if(edited(p)) bd.append(el('span',{textContent:'✎'}));
+    if(p.postedAt) bd.append(el('span',{className:'posted',textContent:'✓'}));
+    c.append(bd, el('div',{className:'check'}));
+    c.onclick=()=>{ if(selecting){ selected.has(p.id)?selected.delete(p.id):selected.add(p.id); c.classList.toggle('sel'); updateSelbar(); } else openEditor(p); };
+    return c;
+  }));
+  const empty=$('#empty');
+  if(list.length){ empty.classList.add('hidden'); }
+  else {
+    empty.classList.remove('hidden');
+    empty.replaceChildren(...(photos.length
+      ? [el('h2',{textContent:'Nothing here yet'}), el('p',{textContent:'Select photos in All and use Album or ★ to fill this view.'})]
+      : [el('h2',{textContent:'Welcome to PhotoPost'}), el('p',{textContent:'Tap ＋ Import to bring in photos from Google Photos or this device. Then edit, organize, and post them to Facebook.'})]));
+  }
+}
+function updateSelbar(){
+  $('#selbar').classList.toggle('hidden', !selecting);
+  $('#btnSelect').textContent = selecting ? 'Done' : 'Select';
+  const n=selected.size; $('#selCount').textContent = n+' selected';
+  for(const id of ['#sFav','#sAlbum','#sMore','#sPost']) $(id).disabled = !n;
+  $('#sAll').textContent = n && n===visible().length ? 'None' : 'All';
+}
+function renderAll(){ renderChips(); renderGrid(); updateSelbar(); }
+
+/* ---------- sheets ---------- */
+function sheet(build){ return new Promise(resolve=>{
+  const scrim=el('div',{className:'scrim'}), sh=el('div',{className:'sheet'}); scrim.append(sh);
+  const close=v=>{ scrim.remove(); resolve(v); };
+  scrim.onclick=e=>{ if(e.target===scrim) close(null); };
+  build(sh, close); document.body.append(scrim);
+}); }
+function actions(title, items, text){ return sheet((sh,close)=>{
+  sh.append(el('h3',{textContent:title})); if(text) sh.append(el('p',{textContent:text}));
+  const st=el('div',{className:'stack'});
+  for(const [label,val,cls] of items){ const b=el('button',{textContent:label,className:cls||''}); b.onclick=()=>close(val); st.append(b); }
+  const c=el('button',{textContent:'Cancel',className:'ghost'}); c.onclick=()=>close(null); st.append(c); sh.append(st);
+}); }
+
+/* ---------- albums ---------- */
+async function newAlbum(withSelected){
+  const name=(prompt('Album name')||'').trim(); if(!name) return null;
+  const a={id:uid(), name, created:Date.now()}; albums.push(a); await dbPut('albums',a);
+  if(withSelected) await addToAlbum(a.id); else { view=a.id; renderAll(); }
+  return a;
+}
+async function addToAlbum(aid){
+  for(const p of photos) if(selected.has(p.id) && !p.albums.includes(aid)){ p.albums.push(aid); await dbPut('photos',p); }
+  toast(`Added ${selected.size} to ${albums.find(a=>a.id===aid).name}`); renderAll();
+}
+async function albumMenu(aid){
+  const a=albums.find(x=>x.id===aid);
+  const v=await actions(a.name,[['Rename','rename'],['Delete album (keeps photos)','del','danger']]);
+  if(v==='rename'){ const n=(prompt('Album name',a.name)||'').trim(); if(n){ a.name=n; await dbPut('albums',a); renderAll(); } }
+  if(v==='del' && confirm(`Delete album “${a.name}”? Photos stay in your library.`)){
+    albums=albums.filter(x=>x.id!==aid); await dbDel('albums',aid);
+    for(const p of photos) if(p.albums.includes(aid)){ p.albums=p.albums.filter(x=>x!==aid); await dbPut('photos',p); }
+    view='all'; renderAll();
+  }
+}
+
+/* ---------- selection actions ---------- */
+$('#btnSelect').onclick=()=>{ selecting=!selecting; selected.clear(); renderGrid(); updateSelbar(); };
+$('#sAll').onclick=()=>{ const l=visible(); if(selected.size===l.length) selected.clear(); else l.forEach(p=>selected.add(p.id)); renderGrid(); updateSelbar(); };
+$('#sFav').onclick=async()=>{
+  const sel=photos.filter(p=>selected.has(p.id)), on=!sel.every(p=>p.fav);
+  for(const p of sel){ p.fav=on; await dbPut('photos',p); } toast(on?'Added to Favorites':'Removed from Favorites'); renderAll();
+};
+$('#sAlbum').onclick=async()=>{
+  const items=albums.map(a=>[a.name,a.id]); items.push(['＋ New album…','new']);
+  const v=await actions(`Add ${selected.size} to album`, items); if(!v) return;
+  if(v==='new') await newAlbum(true); else await addToAlbum(v);
+};
+$('#sMore').onclick=async()=>{
+  const inAlbum=albums.find(a=>a.id===view), items=[];
+  if(inAlbum) items.push([`Remove from “${inAlbum.name}”`,'unalbum']);
+  items.push(['Mark as posted','posted'],['Mark as not posted','unposted'],['Save to device / share…','share'],['Delete from PhotoPost','delete','danger']);
+  const v=await actions(`${selected.size} selected`, items); if(!v) return;
+  const sel=photos.filter(p=>selected.has(p.id));
+  if(v==='unalbum'){ for(const p of sel){ p.albums=p.albums.filter(x=>x!==view); await dbPut('photos',p); } }
+  if(v==='posted'||v==='unposted'){ for(const p of sel){ p.postedAt = v==='posted' ? Date.now() : null; await dbPut('photos',p); } }
+  if(v==='share'){ openPost([...selected], true); return; }
+  if(v==='delete'){
+    if(!confirm(`Delete ${sel.length} photo(s) from PhotoPost? This doesn't touch Google Photos.`)) return;
+    for(const p of sel){ await dbDel('photos',p.id); dropURL(p.id); } photos=photos.filter(p=>!selected.has(p.id)); selected.clear();
+  }
+  renderAll();
+};
+$('#sPost').onclick=()=>{ const ids=visible().filter(p=>selected.has(p.id)).map(p=>p.id); openPost(ids); };
+
+/* ---------- import: device ---------- */
+$('#btnImport').onclick=async()=>{
+  const v=await actions('Import photos',[['Google Photos','google','primary'],['This device (camera roll / files)','device']]);
+  if(v==='device') $('#fileIn').click();
+  if(v==='google') startGoogleImport();
+};
+$('#fileIn').onchange=async e=>{
+  const files=[...e.target.files]; e.target.value=''; if(!files.length) return;
+  await importBlobs(files.map(f=>({blob:f, name:f.name, created:f.lastModified||Date.now(), src:'device'})));
+};
+async function importBlobs(list, prog){
+  askPersist(); let n=0, fail=0;
+  for(const it of list){
+    try{
+      const thumb=await makeThumb(it.blob);
+      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb,
+        edits:null, fav:false, albums: albums.some(a=>a.id===view)?[view]:[], postedAt:null};
+      await dbPut('photos',p); photos.push(p); n++;
+    }catch(err){ console.error(err); fail++; }
+    prog && prog(n+fail, list.length);
+  }
+  renderAll(); toast(`Imported ${n} photo${n===1?'':'s'}`+(fail?` · ${fail} failed`:''));
+}
+let persistAsked=false;
+function askPersist(){ if(!persistAsked && navigator.storage && navigator.storage.persist){ persistAsked=true; navigator.storage.persist().catch(()=>{}); } }
+
+/* ---------- import: Google Photos Picker API ---------- */
+const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/,'');
+function getToken(){ try{ const t=JSON.parse(localStorage.getItem('pp.token')||'null'); return t && t.exp>Date.now() ? t.v : null; }catch{ return null; } }
+function signIn(after){
+  const state=uid(); localStorage.setItem('pp.state',state); localStorage.setItem('pp.after',after||'');
+  location.href='https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({
+    client_id:cfg.clientId, redirect_uri:redirectUri(), response_type:'token', scope:SCOPE, state, include_granted_scopes:'true' });
+}
+function handleRedirect(){
+  if(!location.hash.includes('access_token=') && !location.hash.includes('error=')) return null;
+  const h=new URLSearchParams(location.hash.slice(1)); history.replaceState(null,'',location.pathname+location.search);
+  if(h.get('error')){ toast('Google sign-in was cancelled ('+h.get('error')+')'); return null; }
+  if(h.get('state')!==localStorage.getItem('pp.state')){ toast('Sign-in check failed, please try again.'); return null; }
+  localStorage.setItem('pp.token', JSON.stringify({v:h.get('access_token'), exp:Date.now()+(parseInt(h.get('expires_in')||'3600',10)-120)*1000}));
+  const after=localStorage.getItem('pp.after'); localStorage.removeItem('pp.after'); return after;
+}
+async function api(method, path, body){
+  const t=getToken(); if(!t){ const e=new Error('signed out'); e.status=401; throw e; }
+  const r=await fetch(cfg.relay+'/picker'+path,{method, headers:{Authorization:'Bearer '+t, ...(body?{'Content-Type':'application/json'}:{})}, body:body?JSON.stringify(body):undefined});
+  if(!r.ok){ let msg=r.status+''; try{ msg=(await r.json()).error?.message||msg; }catch{} const e=new Error(msg); e.status=r.status; throw e; }
+  return r.status===204 ? {} : r.json();
+}
+const secs = s => parseFloat(String(s||'').replace('s',''))||0;
+const pending = () => { try{ return JSON.parse(localStorage.getItem('pp.session')||'null'); }catch{ return null; } };
+function needsSetup(){
+  if(cfg.clientId && cfg.relay) return false;
+  openSettings('Google Photos import needs a one-time setup: paste your Google OAuth Client ID and your relay URL (see the README).'); return true;
+}
+async function startGoogleImport(){
+  if(needsSetup()) return;
+  if(!getToken()) return signIn('import');
+  try{
+    const s=await api('POST','/v1/sessions',{});
+    localStorage.setItem('pp.session', JSON.stringify({id:s.id, uri:s.pickerUri,
+      interval:Math.max(2,secs(s.pollingConfig?.pollInterval)||4), until:Date.now()+(secs(s.pollingConfig?.timeoutIn)||1800)*1000}));
+    showWaiting(); poll();
+  }catch(e){ if(e.status===401) return signIn('import'); toast('Could not start Google Photos: '+e.message, 6000); }
+}
+let waitClose=null, pollT=null;
+function showWaiting(){
+  const s=pending(); if(!s || waitClose) return;
+  sheet((sh,close)=>{
+    waitClose=v=>{ waitClose=null; close(v); };
+    sh.append(el('h3',{textContent:'Pick photos in Google Photos'}),
+      el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to PhotoPost. They\'ll import automatically.'}));
+    const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos'});
+    const status=el('p',{id:'pickStatus',textContent:'Waiting for your selection…'});
+    const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:8px'});
+    cancel.onclick=()=>{ clearTimeout(pollT); api('DELETE','/v1/sessions/'+s.id).catch(()=>{}); localStorage.removeItem('pp.session'); waitClose(null); };
+    sh.append(a, status, cancel);
+  });
+}
+async function poll(){
+  clearTimeout(pollT); const s=pending(); if(!s) return;
+  if(Date.now()>s.until){ localStorage.removeItem('pp.session'); waitClose&&waitClose(); return toast('The Google Photos picker timed out. Try Import again.'); }
+  try{
+    const r=await api('GET','/v1/sessions/'+s.id);
+    if(r.mediaItemsSet){ waitClose&&waitClose(); return downloadPicked(s.id); }
+  }catch(e){
+    if(e.status===401){ waitClose&&waitClose(); toast('Google sign-in expired — tap Import to continue.'); localStorage.removeItem('pp.token'); return; }
+    if(e.status===404){ localStorage.removeItem('pp.session'); waitClose&&waitClose(); return toast('That picker session ended. Tap Import to try again.'); }
+  }
+  pollT=setTimeout(poll, s.interval*1000);
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && pending() && getToken()) poll(); });
+
+async function downloadPicked(sessionId){
+  let prog;
+  sheet((sh,close)=>{ const bar=el('div'), st=el('p',{textContent:'Getting your selection…'});
+    sh.append(el('h3',{textContent:'Importing from Google Photos'}), st, el('div',{className:'progress'},bar));
+    prog={ set:(d,n)=>{ bar.style.width=(n?100*d/n:0)+'%'; st.textContent=`${d} of ${n}`; }, close }; });
+  try{
+    let items=[], pageToken;
+    do{ const q=new URLSearchParams({sessionId, pageSize:'100'}); if(pageToken) q.set('pageToken',pageToken);
+        const r=await api('GET','/v1/mediaItems?'+q); items.push(...(r.mediaItems||[])); pageToken=r.nextPageToken; }while(pageToken);
+    const have=new Set(photos.map(p=>p.gid).filter(Boolean));
+    const vids=items.filter(i=>i.type!=='PHOTO').length, dup=items.filter(i=>i.type==='PHOTO' && have.has(i.id)).length;
+    items=items.filter(i=>i.type==='PHOTO' && !have.has(i.id));
+    const t=getToken(), got=[], total=items.length; let done=0; prog.set(0,total);
+    const worker=async()=>{ while(items.length){ const it=items.shift();
+      try{ const r=await fetch(cfg.relay+'/media?u='+encodeURIComponent(it.mediaFile.baseUrl+'=w2560-h2560'),{headers:{Authorization:'Bearer '+t}});
+           if(!r.ok) throw new Error(r.status);
+           got.push({blob:await r.blob(), name:it.mediaFile.filename, created:Date.parse(it.createTime)||Date.now(), src:'google', gid:it.id});
+      }catch(e){ console.error('download',e); }
+      prog.set(++done, total); } };
+    await Promise.all([worker(),worker(),worker()]);
+    prog.close();
+    await importBlobs(got);
+    const notes=[]; if(vids) notes.push(`${vids} video${vids>1?'s':''} skipped`); if(dup) notes.push(`${dup} already here`);
+    if(total-got.length) notes.push(`${total-got.length} failed to download`);
+    if(notes.length) setTimeout(()=>toast(notes.join(' · '),5000),3300);
+  }catch(e){ prog&&prog.close(); toast('Import failed: '+e.message, 6000); }
+  finally{ api('DELETE','/v1/sessions/'+sessionId).catch(()=>{}); localStorage.removeItem('pp.session'); }
+}
+
+/* ---------- settings ---------- */
+$('#btnSettings').onclick=()=>openSettings();
+async function openSettings(note){
+  let usage=''; try{ const e=await navigator.storage.estimate(); usage=`${(e.usage/1048576).toFixed(0)} MB used on this device`; }catch{}
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Settings'}));
+    if(note) sh.append(el('p',{textContent:note}));
+    const cid=el('input',{value:cfg.clientId,placeholder:'1234…apps.googleusercontent.com',autocapitalize:'off',autocorrect:'off',spellcheck:false});
+    const rel=el('input',{value:cfg.relay,placeholder:'https://photopost-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
+    sh.append(el('label',{className:'f',textContent:'Google OAuth Client ID'}),cid, el('label',{className:'f',textContent:'Relay URL (Cloudflare Worker)'}),rel);
+    const info=el('p'); info.append('Register these in Google Cloud → Credentials:', el('br'),'JavaScript origin: ', el('code',{textContent:location.origin}), el('br'),'Redirect URI: ', el('code',{textContent:redirectUri()}));
+    sh.append(info);
+    if(usage) sh.append(el('p',{textContent:usage}));
+    const st=el('div',{className:'stack'});
+    const save=el('button',{className:'primary',textContent:'Save'});
+    save.onclick=()=>{ localStorage.setItem('pp.clientId',cid.value.trim()); localStorage.setItem('pp.relay',rel.value.trim()); close(); toast('Saved'); };
+    const out=el('button',{textContent:'Sign out of Google'}); out.onclick=()=>{ localStorage.removeItem('pp.token'); toast('Signed out'); };
+    const wipe=el('button',{className:'danger',textContent:'Delete all PhotoPost data'});
+    wipe.onclick=async()=>{ if(!confirm('Delete every photo and album stored in PhotoPost on this device? Google Photos is not affected.')) return;
+      for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id);
+      photos=[]; albums=[]; view='all'; close(); renderAll(); };
+    const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
+    st.append(save,out,wipe,c); sh.append(st);
+  });
+}
+
+/* ---------- editor ---------- */
+let ed=null, raf=0;
+async function openEditor(p){
+  try{
+    const img=await loadImage(p.blob);
+    ed={p, img, e:{...DEF, ...(p.edits||{})}, dirty:false};
+    $('#edTitle').textContent=p.name; $('#editor').classList.remove('hidden'); document.body.style.overflow='hidden';
+    selTab('crop'); syncControls(); draw(); buildPresets();
+  }catch(err){ toast(err.message); }
+}
+function closeEditor(){ $('#editor').classList.add('hidden'); document.body.style.overflow=''; ed=null; $('#edStage').replaceChildren(); $('#presets').replaceChildren(); }
+function draw(){
+  cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(()=>{ if(!ed) return; const st=$('#edStage'), r=st.getBoundingClientRect();
+    const max=Math.round(Math.max(r.width,r.height)*Math.min(devicePixelRatio||1,2));
+    const c=render(ed.img, ed.e, Math.max(400, Math.min(max, 1600)));
+    c.style.width='auto'; c.style.height='auto'; st.replaceChildren(c); ed.c=c; });
+}
+function change(k,v){ ed.e[k]=v; ed.dirty=true; syncControls(); draw(); }
+function selTab(t){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
+  document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('hidden', p.dataset.panel!==t));
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>selTab(b.dataset.tab));
+(function buildStatic(){
+  const as=$('#aspects');
+  for(const [v,l] of ASPECTS){ const b=el('button',{textContent:l}); b.dataset.aspect=v; b.onclick=()=>{ ed.e.panX=0; ed.e.panY=0; change('aspect',v); }; as.append(b); }
+  const sl=$('#sliders');
+  for(const [k,l] of SLIDERS){
+    const lab=el('label',{textContent:l,title:'Tap to reset'}), r=el('input',{type:'range',min:-100,max:100,step:1,value:0,id:'sl-'+k}), v=el('span',{id:'sv-'+k,textContent:'0'});
+    r.oninput=()=>change(k, +r.value); lab.onclick=()=>change(k,0);
+    sl.append(el('div',{className:'slider'},lab,r,v));
+  }
+})();
+function syncControls(){
+  if(!ed) return; const e=ed.e;
+  document.querySelectorAll('#aspects button').forEach(b=>b.classList.toggle('on', b.dataset.aspect===e.aspect));
+  $('#zoom').value=e.zoom; $('#zoomV').textContent=(+e.zoom).toFixed(1)+'×';
+  $('#flip').classList.toggle('on', !!e.flip);
+  for(const [k] of SLIDERS){ $('#sl-'+k).value=e[k]; $('#sv-'+k).textContent=(e[k]>0?'+':'')+e[k]; }
+  document.querySelectorAll('.preset').forEach(p=>p.classList.toggle('on', p.dataset.preset===e.preset));
+}
+async function buildPresets(){
+  const box=$('#presets'); box.replaceChildren(); if(!ed) return;
+  const base={...DEF, rot:ed.e.rot, flip:ed.e.flip};
+  const small=render(ed.img, base, 160); const si=new Image(); si.src=small.toDataURL('image/jpeg',.85); await si.decode().catch(()=>{});
+  for(const [k,p] of Object.entries(PRESETS)){
+    if(!ed) return;
+    const c=render(si,{...DEF, aspect:'1', preset:k},152);
+    const d=el('div',{className:'preset'},c,el('div',{textContent:p.name})); d.dataset.preset=k;
+    d.onclick=()=>change('preset',k); box.append(d);
+    await sleep(0);
+  }
+  syncControls();
+}
+$('#zoom').oninput=e=>change('zoom', +e.target.value);
+$('#rotL').onclick=()=>{ change('rot', ed.e.rot-90); buildPresets(); };
+$('#rotR').onclick=()=>{ change('rot', ed.e.rot+90); buildPresets(); };
+$('#flip').onclick=()=>{ change('flip', !ed.e.flip); buildPresets(); };
+$('#edReset').onclick=()=>{ ed.e={...DEF}; ed.dirty=true; syncControls(); draw(); buildPresets(); };
+$('#edCancel').onclick=()=>{ if(ed && ed.dirty && !confirm('Discard your changes?')) return; closeEditor(); };
+$('#edSave').onclick=async()=>{
+  if(!ed) return; const p=ed.p, e={...ed.e};
+  $('#edSave').disabled=true;
+  try{ p.edits=e; p.thumb=await makeThumb(p.blob, e); await dbPut('photos',p); dropURL(p.id); closeEditor(); renderAll(); }
+  catch(err){ toast('Save failed: '+err.message); }
+  finally{ $('#edSave').disabled=false; }
+};
+(function pan(){
+  const st=$('#edStage'); let s=null;
+  st.addEventListener('pointerdown',e=>{ if(!ed||!ed.c) return; s={x:e.clientX,y:e.clientY,px:ed.e.panX,py:ed.e.panY}; st.setPointerCapture(e.pointerId); });
+  st.addEventListener('pointermove',e=>{ if(!s||!ed||!ed.c) return; const g=ed.c._geom, r=ed.c.getBoundingClientRect();
+    const sx=g.cw/r.width, sy=g.ch/r.height;
+    const nx = g.sw>g.cw+.5 ? clamp(s.px-(e.clientX-s.x)*sx/((g.sw-g.cw)/2),-1,1) : 0;
+    const ny = g.sh>g.ch+.5 ? clamp(s.py-(e.clientY-s.y)*sy/((g.sh-g.ch)/2),-1,1) : 0;
+    if(nx!==ed.e.panX || ny!==ed.e.panY){ ed.e.panX=nx; ed.e.panY=ny; ed.dirty=true; draw(); } });
+  const end=()=>{ s=null; }; st.addEventListener('pointerup',end); st.addEventListener('pointercancel',end);
+})();
+
+/* ---------- post ---------- */
+let post=null;
+async function openPost(ids, plain){
+  if(!ids.length) return;
+  post={ids:[...ids], files:new Map(), plain:!!plain};
+  $('#post').classList.remove('hidden'); document.body.style.overflow='hidden';
+  $('#caption').classList.toggle('hidden', post.plain);
+  $('#postHint').classList.toggle('hidden', post.plain);
+  $('#caption').value=localStorage.getItem('pp.caption')||'';
+  renderStrip(); setShare();
+  const mine=post;
+  for(const id of ids){
+    const p=photos.find(x=>x.id===id);
+    try{ const img=await loadImage(p.blob); const b=await toBlob(render(img, p.edits||DEF, 2048),'image/jpeg',.9);
+         const base=(p.name||'photo').replace(/\.[^.]+$/,'').replace(/[^\w\- ]+/g,'_')||'photo';
+         if(post!==mine) return; post.files.set(id, new File([b], base+'.jpg', {type:'image/jpeg', lastModified:Date.now()})); }
+    catch(e){ console.error(e); toast('Could not prepare '+p.name); post.ids=post.ids.filter(x=>x!==id); renderStrip(); }
+    setShare();
+  }
+}
+function setShare(){
+  const b=$('#shareBtn'), n=post.ids.length, ready=post.ids.every(id=>post.files.has(id));
+  b.disabled=!ready||!n;
+  b.textContent = !n ? 'No photos selected' : !ready ? `Preparing ${post.files.size} of ${n}…` : post.plain ? `Share ${n} photo${n>1?'s':''}…` : `Share ${n} photo${n>1?'s':''} to Facebook`;
+}
+function renderStrip(){
+  const s=$('#postStrip');
+  s.replaceChildren(...post.ids.map((id,i)=>{ const p=photos.find(x=>x.id===id);
+    const left=el('button',{textContent:'◀',disabled:i===0}); left.onclick=()=>{ [post.ids[i-1],post.ids[i]]=[post.ids[i],post.ids[i-1]]; renderStrip(); };
+    const rm=el('button',{textContent:'✕'}); rm.onclick=()=>{ post.ids.splice(i,1); renderStrip(); setShare(); };
+    return el('div',{className:'pthumb'}, el('img',{src:urlFor(p),alt:''}), el('span',{className:'ord',textContent:i+1}), el('div',{className:'acts'},left,rm));
+  }));
+}
+$('#caption').oninput=e=>localStorage.setItem('pp.caption',e.target.value);
+$('#postBack').onclick=()=>{ $('#post').classList.add('hidden'); document.body.style.overflow=''; post=null; };
+$('#shareBtn').onclick=()=>{
+  // Everything here must start synchronously inside the tap, or iOS blocks the share sheet.
+  const files=post.ids.map(id=>post.files.get(id)), cap=$('#caption').value.trim(), ids=[...post.ids], plain=post.plain;
+  if(cap && !plain && navigator.clipboard) navigator.clipboard.writeText(cap).catch(()=>{});
+  const data={files};
+  if(navigator.canShare && navigator.canShare(data)){
+    navigator.share(data).then(async()=>{
+      if(plain){ toast('Shared'); return; }
+      for(const id of ids){ const p=photos.find(x=>x.id===id); if(p){ p.postedAt=Date.now(); await dbPut('photos',p); } }
+      localStorage.removeItem('pp.caption'); $('#postBack').click(); selecting=false; selected.clear(); renderAll(); toast('Marked as posted ✓');
+    }).catch(err=>{ if(err.name!=='AbortError') toast('Share failed: '+err.message, 5000); });
+  } else {
+    for(const f of files){ const a=el('a',{href:URL.createObjectURL(f),download:f.name}); document.body.append(a); a.click(); a.remove(); }
+    toast('This browser can\'t open the share sheet, so the photos were downloaded instead.', 5000);
+  }
+};
+
+/* ---------- boot ---------- */
+(async function boot(){
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  db=await openDB();
+  [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
+  photos.forEach(p=>{ p.albums=p.albums||[]; });
+  renderAll();
+  const after=handleRedirect();
+  if(after==='import') startGoogleImport();
+  else if(pending()){ if(getToken()){ showWaiting(); poll(); } else localStorage.removeItem('pp.session'); }
+})();
+</script>
+</body>
+</html>

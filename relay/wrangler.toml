@@ -1,0 +1,7 @@
+name = "photopost-relay"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Where the PhotoPost app is hosted. Add more, comma-separated, e.g. a local test server.
+ALLOWED_ORIGINS = "https://mboadway1.github.io"
