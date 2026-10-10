@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Peggy TV</title>
+<style>
+:root{--bg:#0e0f12;--panel:#1a1c21;--panel2:#262930;--line:#33363d;--text:#f3f3f5;--dim:#9a9ca4;--accent:#3b82f6;--star:#fbbf24;--ok:#22c55e;--danger:#ef4444}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Roboto,"Amazon Ember",system-ui,sans-serif;overflow:hidden;cursor:none}
+.hidden{display:none!important}
+.f{transition:transform .12s, box-shadow .12s}
+.focus{outline:none;box-shadow:0 0 0 .3vw #fff, 0 0 2vw rgba(255,255,255,.35)!important;transform:scale(1.05);z-index:2;position:relative}
+button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;border-radius:.8vw;padding:.9vw 1.6vw;font-size:1.5vw;white-space:nowrap}
+.btn.on{background:var(--text);color:var(--bg);font-weight:700}
+.btn.danger{color:var(--danger)}
+.btn.primary{background:var(--accent);color:#fff;font-weight:700}
+
+/* home */
+#home{position:absolute;inset:0;display:flex;flex-direction:column;padding:2.5vh 3vw 0}
+.top{display:flex;align-items:center;gap:2vw}
+.top h1{font-size:3vw;margin:0;flex:1;letter-spacing:-.05vw}
+.status{font-size:1.3vw;color:var(--dim);display:flex;align-items:center;gap:.6vw}
+.status i{width:.8vw;height:.8vw;border-radius:50%;background:#666;display:inline-block}
+.status.live i{background:var(--ok)}
+.codechip{font-size:1.3vw;color:var(--dim)} .codechip b{color:var(--text);letter-spacing:.2vw;font-size:1.6vw}
+.navrow{display:flex;gap:1vw;padding:2vh .5vw 2vh;overflow-x:hidden;flex:none}
+.navrow .btn{font-size:1.35vw;padding:.7vw 1.4vw;border-radius:5vw}
+.navrow .btn .n{opacity:.6;margin-left:.4vw}
+#gridWrap{flex:1;overflow:hidden;padding:1vw .5vw 4vh}
+#grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.2vw}
+.cell{position:relative;aspect-ratio:1;border-radius:.8vw;overflow:hidden;background:var(--panel)}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.badges{position:absolute;left:.6vw;bottom:.4vw;font-size:1.4vw;text-shadow:0 .1vw .3vw #000;display:flex;gap:.4vw}
+.badges .star{color:var(--star)}
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;gap:5vw}
+.welcome h2{font-size:3vw;margin:0 0 1.5vh}
+.welcome p{font-size:1.6vw;color:var(--dim);max-width:45vw;line-height:1.5}
+.welcome .big{font-size:7vw;font-weight:800;letter-spacing:1.2vw;color:var(--text);margin:1vh 0}
+.qr{width:16vw;height:16vw;background:#fff;padding:1vw;border-radius:1vw}
+.qr svg{width:100%;height:100%}
+
+/* layers */
+.layer{position:absolute;inset:0;background:var(--bg);z-index:10}
+.stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+.stageImg canvas,.stageImg img{max-width:100%;max-height:100%}
+.vbar{position:absolute;left:0;right:0;bottom:0;padding:3vh 3vw 4vh;display:flex;gap:1.2vw;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.vinfo{position:absolute;left:3vw;top:3vh;font-size:1.3vw;color:#ddd;text-shadow:0 .1vw .4vw #000;background:rgba(0,0,0,.35);padding:.5vw 1vw;border-radius:.6vw}
+.hint{position:absolute;right:3vw;top:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.45);padding:.5vw 1vw;border-radius:.6vw}
+
+/* slideshow */
+#show .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;background:#000}
+#show .slot.on{opacity:1}
+#show .slot canvas{max-width:100%;max-height:100%}
+#show .slot.motion canvas{animation:kb var(--dur,8s) linear forwards}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.07)}}
+#showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
+#showInfo{position:absolute;right:3vw;bottom:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
+#showInfo.on{opacity:1}
+
+/* editor */
+#editor{display:flex}
+#edStage{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center;padding:2vw}
+#edStage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 .1vw rgba(255,255,255,.2)}
+#edPanel{width:30vw;background:var(--panel);padding:2.5vh 1.6vw;display:flex;flex-direction:column;gap:.9vh;overflow:hidden}
+#edPanel h3{margin:0 0 1vh;font-size:1.8vw}
+.erow{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border-radius:.7vw;padding:.8vw 1.2vw;font-size:1.35vw}
+.erow .v{color:var(--dim)} .erow .v::before{content:"◀  "} .erow .v::after{content:"  ▶"}
+.erow.act{justify-content:center}
+.ebtns{display:flex;gap:.8vw}.ebtns .erow{flex:1}
+#reframeHint{position:absolute;left:50%;bottom:3vh;transform:translateX(-50%);font-size:1.4vw;background:rgba(0,0,0,.7);padding:.6vw 1.4vw;border-radius:.7vw}
+
+/* dialog */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:20;display:flex;align-items:center;justify-content:center}
+.dlg{background:var(--panel);border-radius:1.2vw;padding:3vh 2.5vw;min-width:34vw;max-width:60vw;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;gap:1vh}
+.dlg h3{margin:0;font-size:2vw}
+.dlg p{margin:0 0 1vh;font-size:1.4vw;color:var(--dim);line-height:1.45}
+.dlg .list{display:flex;flex-direction:column;gap:.8vh;overflow:hidden}
+.dlg .btn{text-align:left}
+.dlg input{font:inherit;font-size:1.6vw;padding:.9vw 1.2vw;border-radius:.7vw;border:.15vw solid var(--line);background:var(--bg);color:var(--text)}
+.toast{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);z-index:40;background:#fff;color:#111;padding:1vw 2vw;border-radius:1vw;font-size:1.5vw;box-shadow:0 .5vw 2vw rgba(0,0,0,.5)}
+</style>
+</head>
+<body>
+
+<div id="home">
+  <div class="top">
+    <h1>Peggy</h1>
+    <span class="status" id="status"><i></i><span id="statusText">Starting…</span></span>
+    <span class="codechip">Phone code <b id="codeSm">····</b></span>
+  </div>
+  <div class="navrow" id="nav"></div>
+  <div id="gridWrap"><div id="grid"></div></div>
+  <div class="welcome hidden" id="welcome">
+    <div>
+      <h2>Welcome to Peggy on TV</h2>
+      <p>Open <b>Peggy</b> on your iPhone or iPad, tap <b>📺</b>, and enter this code:</p>
+      <div class="big" id="codeBig">····</div>
+      <p>Then select photos and choose <b>Show on TV</b> for a slideshow, or <b>Copy to TV</b> to keep them here with their albums and edits.</p>
+    </div>
+    <div class="qr" id="qr"></div>
+  </div>
+</div>
+
+<div id="viewer" class="layer hidden">
+  <div class="stageImg" id="vStage"></div>
+  <div class="vinfo" id="vInfo"></div>
+  <div class="hint" id="vHint">◀ ▶ browse · OK for options</div>
+  <div class="vbar hidden" id="vBar"></div>
+</div>
+
+<div id="show" class="layer hidden">
+  <div class="slot" id="slotA"></div><div class="slot" id="slotB"></div>
+  <div id="showMsg" class="hidden"></div>
+  <div id="showInfo"></div>
+</div>
+
+<div id="editor" class="layer hidden">
+  <div id="edStage"></div>
+  <div id="edPanel"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="core.js"></script>
+<script>
+'use strict';
+const PHONE_URL = new URL('./', location.href).href;
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(_){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(_){} } };
+const settings = {
+  get interval(){ return +store.get('peggy.tv.interval', 8); }, set interval(v){ store.set('peggy.tv.interval', v); },
+  get shuffle(){ return store.get('peggy.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('peggy.tv.shuffle', v?'1':'0'); },
+  get motion(){ return store.get('peggy.tv.motion','1')==='1'; }, set motion(v){ store.set('peggy.tv.motion', v?'1':'0'); },
+};
+const INTERVALS=[5,8,12,20,30,60];
+
+/* ================= remote-control focus ================= */
+// Every layer is a "scope". Arrow keys move the white focus ring between .f elements
+// in the top scope; OK clicks; Back closes the top scope (the app shell exits on the home screen).
+const scopes=[];
+let cur=null;
+function topScope(){ return scopes[scopes.length-1]; }
+function focusables(){ const root=topScope().root; return [...root.querySelectorAll('.f')].filter(e=>e.offsetParent!==null || e===document.activeElement); }
+function focusEl(e){
+  if(!e) return;
+  if(cur && cur!==e){ cur.classList.remove('focus'); if(cur.tagName==='INPUT') cur.blur(); }
+  cur=e; e.classList.add('focus'); topScope().last=e;
+  e.scrollIntoView({block:'nearest', inline:'nearest'});
+  if(e.tagName==='INPUT') e.focus();
+}
+function move(dir){
+  const items=focusables(); if(!items.length) return;
+  if(!cur || !items.includes(cur)) return focusEl(items[0]);
+  const a=cur.getBoundingClientRect(), ax=a.left+a.width/2, ay=a.top+a.height/2;
+  let best=null, bs=Infinity;
+  for(const e of items){ if(e===cur) continue;
+    const b=e.getBoundingClientRect(), bx=b.left+b.width/2, by=b.top+b.height/2;
+    let p, s;
+    if(dir==='left'){ p=ax-bx; s=Math.abs(by-ay); } else if(dir==='right'){ p=bx-ax; s=Math.abs(by-ay); }
+    else if(dir==='up'){ p=ay-by; s=Math.abs(bx-ax); } else { p=by-ay; s=Math.abs(bx-ax); }
+    if(p<=2) continue;
+    const sc=p+s*2.2; if(sc<bs){ bs=sc; best=e; } }
+  if(best) focusEl(best);
+}
+function pushScope(root, opts={}){
+  if(cur){ cur.classList.remove('focus'); }
+  const sc={root, ...opts}; scopes.push(sc); cur=null;
+  const first=opts.focus || focusables()[0]; if(first) focusEl(first);
+  return sc;
+}
+function popScope(){
+  const sc=scopes.pop(); if(cur) cur.classList.remove('focus'); cur=null;
+  sc && sc.onclose && sc.onclose();
+  const t=topScope(); if(t){ const l=t.last && t.root.contains(t.last) ? t.last : focusables()[0]; if(l) focusEl(l); }
+}
+function refocus(){ const t=topScope(); const items=focusables(); if(cur && items.includes(cur)) return focusEl(cur); if(t.last && items.includes(t.last)) return focusEl(t.last); if(items[0]) focusEl(items[0]); }
+
+const KEYMAP={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Enter:'ok',' ':'ok',Escape:'back',Backspace:'back',
+  MediaPlayPause:'play',MediaPlay:'play',MediaPause:'play',MediaFastForward:'ff',MediaTrackNext:'ff',MediaRewind:'rew',MediaTrackPrevious:'rew',ContextMenu:'menu'};
+function handleKey(k){
+  const sc=topScope();
+  if(k==='back') return window.peggyBack();
+  if(sc.onkey && sc.onkey(k)) return true;
+  if(cur && cur._lr && (k==='left'||k==='right')){ cur._lr(k==='left'?-1:1); return true; }
+  if(k==='left'||k==='right'||k==='up'||k==='down'){ move(k); return true; }
+  if(k==='ok' && cur){ cur.click(); return true; }
+  return false;
+}
+function goBack(){ if(scopes.length>1){ popScope(); return true; } return false; }
+document.addEventListener('keydown',e=>{
+  const k=KEYMAP[e.key]; if(!k) return;
+  if(cur && cur.tagName==='INPUT' && (k==='left'||k==='right')) return; // let the text box move its cursor
+  if(cur && cur.tagName==='INPUT' && k==='back' && e.key==='Backspace') return;
+  if(k==='back' && e.key!=='Escape') return; // real Back comes from the app shell via peggyBack()
+  e.preventDefault(); handleKey(k);
+});
+// Called by the Fire TV app shell. Return true if the page handled it.
+window.peggyBack=()=>goBack();
+window.peggyKey=k=>{ handleKey(k); return true; };
+
+/* ================= dialogs ================= */
+function dialog(build){ return new Promise(resolve=>{
+  const scrim=el('div',{className:'scrim'}), d=el('div',{className:'dlg'}); scrim.append(d); document.body.append(scrim);
+  let done=false; const close=v=>{ if(done) return; done=true; resolve(v); };
+  build(d, v=>{ close(v); if(topScope().root===scrim) popScope(); });
+  pushScope(scrim,{onclose:()=>{ scrim.remove(); close(null); }});
+}); }
+function menu(title, items, text){ return dialog((d,close)=>{
+  d.append(el('h3',{textContent:title})); if(text) d.append(el('p',{textContent:text}));
+  const l=el('div',{className:'list'});
+  for(const [label,val,cls] of items){ const b=el('div',{className:'btn f '+(cls||''),textContent:label}); b.onclick=()=>close(val); l.append(b); }
+  d.append(l);
+}); }
+const confirmTV=(title,text,yes='Delete')=>menu(title,[[yes,true,'danger'],['Cancel',false]],text);
+function askText(title, value=''){ return dialog((d,close)=>{
+  d.append(el('h3',{textContent:title}));
+  const i=el('input',{className:'f',value,autocapitalize:'words'}); const ok=el('div',{className:'btn f primary',textContent:'Save'}); const c=el('div',{className:'btn f',textContent:'Cancel'});
+  i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); focusEl(ok); } });
+  ok.onclick=()=>close(i.value.trim()||null); c.onclick=()=>close(null);
+  d.append(el('p',{textContent:'Press OK on the box to type with the on-screen keyboard.'}), i, el('div',{className:'list'},ok,c));
+}); }
+
+/* ================= library ================= */
+let photos=[], albums=[], view='all';
+const thumbURL=new Map();
+function urlFor(p){ if(!thumbURL.has(p.id)) thumbURL.set(p.id, URL.createObjectURL(p.thumb)); return thumbURL.get(p.id); }
+function dropURL(id){ const u=thumbURL.get(id); if(u){ URL.revokeObjectURL(u); thumbURL.delete(id); } }
+function visible(){
+  let l=photos;
+  if(view==='fav') l=l.filter(p=>p.fav); else if(view!=='all') l=l.filter(p=>p.albums.includes(view));
+  return l.slice().sort((a,b)=>b.created-a.created);
+}
+function renderHome(){
+  if(!albums.some(a=>a.id===view) && view!=='all' && view!=='fav') view='all';
+  const nav=$('#nav'); nav.replaceChildren();
+  const add=(label,fn,cls,n)=>{ const b=el('div',{className:'btn f '+(cls||''),textContent:label}); if(n!=null) b.append(el('span',{className:'n',textContent:n})); b.onclick=fn; nav.append(b); return b; };
+  const list=visible();
+  if(photos.length) add('▶ Slideshow',()=>startSlideshow(list.map(p=>({p})),0),'primary');
+  if(photos.length){
+    add('All',()=>setView('all'),view==='all'?'on':'',photos.length);
+    add('★ Favorites',()=>setView('fav'),view==='fav'?'on':'',photos.filter(p=>p.fav).length);
+    for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
+      add(a.name,()=> view===a.id ? albumOptions(a) : setView(a.id), view===a.id?'on':'', photos.filter(p=>p.albums.includes(a.id)).length);
+  }
+  add('📱 Connect phone',showConnect);
+  add('⚙ Settings',openSettings);
+  const keepPid = cur && cur._pid; const grid=$('#grid');
+  grid.replaceChildren(...list.map((p,i)=>{ const c=el('div',{className:'cell f'}); c._pid=p.id;
+    c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
+    const bd=el('div',{className:'badges'}); if(p.fav) bd.append(el('span',{className:'star',textContent:'★'})); if(edited(p)) bd.append(el('span',{textContent:'✎'}));
+    c.append(bd); c.onclick=()=>openViewer(list, i); return c; }));
+  $('#welcome').classList.toggle('hidden', photos.length>0);
+  $('#gridWrap').classList.toggle('hidden', photos.length===0);
+  if(topScope() && topScope().root===$('#home')){ const same=keepPid && [...grid.children].find(c=>c._pid===keepPid); same ? focusEl(same) : refocus(); }
+}
+function setView(v){ view=v; renderHome(); const on=$('#nav .on'); if(on) focusEl(on); }
+async function albumOptions(a){
+  const v=await menu(a.name,[['▶ Slideshow of this album','show'],['Rename','rename'],['Delete album (keeps photos)','del','danger']]);
+  if(v==='show') startSlideshow(visible().map(p=>({p})),0);
+  if(v==='rename'){ const n=await askText('Rename album',a.name); if(n){ a.name=n; await dbPut('albums',a); renderHome(); } }
+  if(v==='del' && await confirmTV(`Delete “${a.name}”?`,'The photos stay on the TV.')){
+    albums=albums.filter(x=>x.id!==a.id); await dbDel('albums',a.id);
+    for(const p of photos) if(p.albums.includes(a.id)){ p.albums=p.albums.filter(x=>x!==a.id); await dbPut('photos',p); }
+    view='all'; renderHome();
+  }
+}
+async function albumByName(name){
+  let a=albums.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(!a){ a={id:uid(), name, created:Date.now()}; albums.push(a); await dbPut('albums',a); }
+  return a;
+}
+
+/* ================= viewer ================= */
+let vw=null;
+function openViewer(list, i){
+  const L=$('#viewer'); L.classList.remove('hidden'); $('#vBar').classList.add('hidden');
+  vw={list, i, tok:0};
+  pushScope(L,{ onkey:viewerKey, onclose:()=>{ L.classList.add('hidden'); $('#vStage').replaceChildren(); vw=null; renderHome(); } });
+  showViewerImage();
+}
+async function showViewerImage(){
+  const t=++vw.tok, p=vw.list[vw.i];
+  $('#vInfo').textContent=`${vw.i+1} / ${vw.list.length}${p.fav?'  ★':''}  ·  ${p.name}`;
+  try{ const c=await renderFor(p, 1920); if(vw && t===vw.tok) $('#vStage').replaceChildren(c); }catch(e){ toast('Could not show this photo'); }
+}
+function viewerKey(k){
+  const bar=$('#vBar'), open=!bar.classList.contains('hidden');
+  if(open){
+    if(k==='up'){ closeBar(); return true; }
+    return false;
+  }
+  if(k==='left'||k==='rew'){ vw.i=(vw.i-1+vw.list.length)%vw.list.length; showViewerImage(); return true; }
+  if(k==='right'||k==='ff'){ vw.i=(vw.i+1)%vw.list.length; showViewerImage(); return true; }
+  if(k==='play'){ startSlideshow(vw.list.map(p=>({p})), vw.i); return true; }
+  if(k==='ok'||k==='down'||k==='menu'){ openBar(); return true; }
+  return true;
+}
+function closeBar(){ $('#vBar').classList.add('hidden'); $('#vHint').classList.remove('hidden'); if(cur){ cur.classList.remove('focus'); cur=null; } }
+function openBar(){
+  const p=vw.list[vw.i], bar=$('#vBar'); bar.replaceChildren();
+  const b=(t,fn,cls)=>{ const x=el('div',{className:'btn f '+(cls||''),textContent:t}); x.onclick=fn; bar.append(x); return x; };
+  const first=b('▶ Slideshow from here',()=>startSlideshow(vw.list.map(p=>({p})), vw.i),'primary');
+  b(p.fav?'★ Unfavorite':'☆ Favorite',async()=>{ p.fav=!p.fav; await dbPut('photos',p); closeBar(); showViewerImage(); });
+  b('✎ Edit',()=>{ closeBar(); openEditor(p); });
+  b('▦ Albums',()=>{ closeBar(); chooseAlbums(p); });
+  b('🗑 Delete',async()=>{ closeBar(); if(await confirmTV('Delete this photo from the TV?','It stays on your phone and in Google Photos.')){
+      await dbDel('photos',p.id); dropURL(p.id); photos=photos.filter(x=>x.id!==p.id); vw.list.splice(vw.i,1);
+      if(!vw.list.length) return popScope(); vw.i=Math.min(vw.i, vw.list.length-1); showViewerImage(); } },'danger');
+  bar.classList.remove('hidden'); $('#vHint').classList.add('hidden'); focusEl(first);
+}
+async function chooseAlbums(p){
+  for(;;){
+    const items=albums.slice().sort((x,y)=>x.name.localeCompare(y.name)).map(a=>[(p.albums.includes(a.id)?'✓  ':'     ')+a.name, a.id]);
+    items.push(['＋ New album…','new'],['Done','done']);
+    const v=await menu('Albums for this photo', items, 'Select an album to add or remove this photo.');
+    if(!v || v==='done') return;
+    if(v==='new'){ const n=await askText('New album name'); if(n){ const a=await albumByName(n); if(!p.albums.includes(a.id)) p.albums.push(a.id); } }
+    else p.albums = p.albums.includes(v) ? p.albums.filter(x=>x!==v) : [...p.albums, v];
+    await dbPut('photos',p);
+  }
+}
+
+/* ================= rendering ================= */
+async function renderFor(item, max){
+  const img=await loadImage(item.blob);
+  return render(img, item.edits||DEF, max);
+}
+
+/* ================= slideshow ================= */
+let ss=null;
+function startSlideshow(items, start, live){
+  if(!items.length && !live) return;
+  while(scopes.length>1 && topScope().root!==$('#show')) popScope();
+  if(ss) stopSlideshow(true);
+  const L=$('#show'); L.classList.remove('hidden');
+  let order=items.map((_,i)=>i);
+  if(settings.shuffle){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } order=[start, ...order.filter(i=>i!==start)]; start=0; }
+  else { order=[...order.slice(start), ...order.slice(0,start)]; start=0; }
+  ss={items, order, pos:-1, paused:false, timer:null, slot:0, tok:0, live:!!live};
+  pushScope(L,{ onkey:slideKey, onclose:()=>stopSlideshow() });
+  ssGo(1);
+}
+function stopSlideshow(silent){
+  if(!ss) return; clearTimeout(ss.timer); ss=null;
+  const L=$('#show'); L.classList.add('hidden'); for(const s of ['#slotA','#slotB']){ $(s).replaceChildren(); $(s).classList.remove('on'); }
+  $('#showMsg').classList.add('hidden');
+  if(!silent) renderHome();
+}
+async function ssGo(step){
+  if(!ss) return; clearTimeout(ss.timer);
+  const n=ss.order.length; if(!n){ return; }
+  ss.pos=(ss.pos+step+n)%n;
+  const t=++ss.tok, item=ss.items[ss.order[ss.pos]], src=item.p||item;
+  let c; try{ c=await renderFor(src, 1920); }catch(e){ c=null; }
+  if(!ss || t!==ss.tok) return;
+  if(c){
+    const next=ss.slot?$('#slotA'):$('#slotB'), prev=ss.slot?$('#slotB'):$('#slotA'); ss.slot^=1;
+    next.style.setProperty('--dur',(settings.interval+2)+'s');
+    next.classList.toggle('motion', settings.motion && !ss.paused);
+    next.replaceChildren(c); void next.offsetWidth; next.classList.add('on'); prev.classList.remove('on');
+    setTimeout(()=>{ if(!prev.classList.contains('on')) prev.replaceChildren(); },1400);
+  }
+  ssInfo();
+  if(!ss.paused) ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000);
+}
+function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove('hidden'); clearTimeout(m._t); if(ms) m._t=setTimeout(()=>m.classList.add('hidden'),ms); }
+function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); clearTimeout(i._t); i._t=setTimeout(()=>i.classList.remove('on'),2500); }
+function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clearTimeout(ss.timer);
+  if(ss.paused) ssMsg('❚❚ Paused',1500); else { ssMsg('▶ Playing',1200); ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000); } ssInfo(); }
+function slideKey(k){
+  if(k==='left'||k==='rew'){ ssGo(-1); return true; }
+  if(k==='right'||k==='ff'){ ssGo(1); return true; }
+  if(k==='ok'||k==='play'){ ssPause(); return true; }
+  if(k==='up'||k==='down'||k==='menu'){ ssInfo(); return true; }
+  return true;
+}
+
+/* ================= editor (remote control) ================= */
+let te=null;
+async function openEditor(p){
+  const img=await loadImage(p.blob).catch(()=>null); if(!img) return toast('Could not open this photo');
+  te={p, img, e:{...DEF, ...(p.edits||{})}, reframe:false, raf:0};
+  const L=$('#editor'); L.classList.remove('hidden'); buildEdPanel();
+  pushScope(L,{ onkey:edKey, onclose:()=>{ L.classList.add('hidden'); $('#edStage').replaceChildren(); te=null; if(vw) showViewerImage(); } });
+  edDraw();
+}
+function edDraw(){ cancelAnimationFrame(te.raf); te.raf=requestAnimationFrame(()=>{ if(!te) return;
+  const c=render(te.img, te.e, 1280); $('#edStage').replaceChildren(c);
+  if(te.reframe) $('#edStage').append(el('div',{id:'reframeHint',textContent:'Arrows move the crop · OK when done'})); }); }
+function buildEdPanel(){
+  const P=$('#edPanel'); P.replaceChildren(el('h3',{textContent:'Edit photo'}));
+  const act=(label,fn)=>{ const r=el('div',{className:'erow act f',textContent:label}); r.onclick=fn; return r; };
+  const val=(label,get,step)=>{ const v=el('span',{className:'v'}), r=el('div',{className:'erow f'},el('span',{textContent:label}),v);
+    const upd=()=>{ v.textContent=get(); }; r._lr=d=>{ step(d); upd(); edDraw(); }; r._upd=upd; upd(); return r; };
+  const e=()=>te.e;
+  const cyc=(arr,cur,d)=>arr[(arr.indexOf(cur)+d+arr.length)%arr.length];
+  P.append(el('div',{className:'ebtns'}, act('⟲ Rotate',()=>{ e().rot-=90; edDraw(); }), act('⟳ Rotate',()=>{ e().rot+=90; edDraw(); }), act('⇋ Flip',()=>{ e().flip=!e().flip; edDraw(); })));
+  P.append(val('Shape',()=>ASPECTS.find(a=>a[0]===e().aspect)[1], d=>{ e().aspect=cyc(ASPECTS.map(a=>a[0]),e().aspect,d); e().panX=e().panY=0; }));
+  P.append(val('Zoom',()=>(+e().zoom).toFixed(1)+'×', d=>{ e().zoom=clamp(Math.round((e().zoom+d*.1)*10)/10,1,3); }));
+  const rf=act('✥ Reframe crop',()=>{ te.reframe=true; edDraw(); }); P.append(rf);
+  P.append(val('Filter',()=>PRESETS[e().preset].name, d=>{ e().preset=cyc(Object.keys(PRESETS),e().preset,d); }));
+  for(const [k,l] of SLIDERS) P.append(val(l,()=>(e()[k]>0?'+':'')+e()[k], d=>{ e()[k]=clamp(e()[k]+d*5,-100,100); }));
+  P.append(el('div',{className:'ebtns'}, act('Save',edSave), act('Revert',()=>{ te.e={...DEF}; P.querySelectorAll('.erow').forEach(r=>r._upd&&r._upd()); edDraw(); }), act('Cancel',()=>popScope())));
+}
+function edKey(k){
+  if(!te.reframe) return false;
+  const s=.1;
+  if(k==='left') te.e.panX=clamp(te.e.panX-s,-1,1); else if(k==='right') te.e.panX=clamp(te.e.panX+s,-1,1);
+  else if(k==='up') te.e.panY=clamp(te.e.panY-s,-1,1); else if(k==='down') te.e.panY=clamp(te.e.panY+s,-1,1);
+  else if(k==='ok'){ te.reframe=false; }
+  edDraw(); return true;
+}
+async function edSave(){
+  const p=te.p; p.edits={...te.e}; p.thumb=await makeThumb(p.blob, p.edits); await dbPut('photos',p); dropURL(p.id);
+  toast('Saved'); popScope();
+}
+// Back while reframing just leaves reframe mode
+const _goBack=goBack;
+window.peggyBack=()=>{ if(te && te.reframe){ te.reframe=false; edDraw(); return true; }
+  if(vw && topScope().root===$('#viewer') && !$('#vBar').classList.contains('hidden')){ closeBar(); return true; }
+  return _goBack(); };
+
+/* ================= settings / connect ================= */
+async function openSettings(){
+  await dialog(async(d,close)=>{
+    d.append(el('h3',{textContent:'Settings'}));
+    const row=(label,get,lr)=>{ const v=el('span',{className:'v'}), r=el('div',{className:'erow f'},el('span',{textContent:label}),v); const u=()=>v.textContent=get(); r._lr=x=>{ lr(x); u(); }; u(); return r; };
+    d.append(row('Slideshow speed',()=>settings.interval+' seconds', x=>{ const i=INTERVALS.indexOf(settings.interval); settings.interval=INTERVALS[clamp((i<0?1:i)+x,0,INTERVALS.length-1)]; }));
+    d.append(row('Order',()=>settings.shuffle?'Shuffle':'Newest first', ()=>{ settings.shuffle=!settings.shuffle; }));
+    d.append(row('Gentle zoom',()=>settings.motion?'On':'Off', ()=>{ settings.motion=!settings.motion; }));
+    let used=''; try{ const e=await navigator.storage.estimate(); used=`${photos.length} photos · ${(e.usage/1048576).toFixed(0)} MB on this TV`; }catch(_){ used=`${photos.length} photos on this TV`; }
+    d.append(el('p',{textContent:used}));
+    const wipe=el('div',{className:'btn f danger',textContent:'Delete all photos from the TV'});
+    wipe.onclick=async()=>{ if(await confirmTV('Delete everything on the TV?','Photos on your phone and in Google Photos are not affected.','Delete all')){
+      for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id); photos=[]; albums=[]; view='all'; close(); renderHome(); } };
+    const reload=el('div',{className:'btn f',textContent:'Reload Peggy'}); reload.onclick=()=>location.reload();
+    const done=el('div',{className:'btn f primary',textContent:'Done'}); done.onclick=()=>close();
+    d.append(el('div',{className:'list'},done,wipe,reload));
+    refocus();
+  });
+  renderHome();
+}
+function showConnect(){
+  menu('Connect your phone',[['Done',null]],`In Peggy on your iPhone or iPad, tap 📺 and enter code ${code}. Or scan the QR code on the home screen with the Camera to open Peggy in Safari, already paired.`);
+}
+
+/* ================= phone link (PeerJS) ================= */
+const newCode=()=>Array.from({length:4},()=>CODE_ALPH[Math.floor(Math.random()*CODE_ALPH.length)]).join('');
+let code=store.get('peggy.tv.code',''); if(!/^[A-Z0-9]{4}$/.test(code)){ code=newCode(); store.set('peggy.tv.code',code); }
+let peer=null; const conns=new Set();
+function setStatus(t,live){ $('#statusText').textContent=t; $('#status').classList.toggle('live',!!live); }
+function showCode(){
+  $('#codeSm').textContent=code; $('#codeBig').textContent=code;
+  if(typeof qrcode!=='undefined'){ const q=qrcode(0,'M'); q.addData(PHONE_URL+'?tv='+code); q.make(); $('#qr').innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true}); }
+  else $('#qr').classList.add('hidden');
+}
+function startPeer(){
+  if(typeof Peer==='undefined'){ // offline: the library and slideshow still work; keep trying to load the phone link
+    setStatus('Offline · phone link unavailable',false);
+    const s=el('script',{src:'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'}); s.onload=()=>startPeer(); s.onerror=()=>{ s.remove(); setTimeout(startPeer,30000); }; document.head.append(s); return; }
+  setStatus('Connecting…',false);
+  peer=new Peer(PEER_PREFIX+code);
+  peer.on('open',()=>setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0));
+  peer.on('connection',c=>{
+    c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Peggy TV', count:photos.length}); });
+    c.on('data',m=>onData(c,m));
+    c.on('close',()=>{ conns.delete(c); setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0); });
+    c.on('error',()=>{});
+  });
+  peer.on('disconnected',()=>{ setStatus('Reconnecting…',false); setTimeout(()=>{ try{ if(peer && !peer.destroyed) peer.reconnect(); }catch(_){} },3000); });
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){ setStatus('Code in use · retrying',false); peer.destroy(); setTimeout(startPeer,8000); }
+    else if(['network','server-error','socket-error','socket-closed'].includes(e.type)){ setStatus('No internet · retrying',false); setTimeout(()=>{ try{ if(peer.disconnected && !peer.destroyed) peer.reconnect(); }catch(_){} },5000); }
+  });
+}
+const toBlobFrom = d => d instanceof Blob ? d : new Blob([d],{type:'image/jpeg'});
+let incoming=null;
+async function onData(c, m){
+  if(!m || typeof m!=='object') return;
+  try{
+    if(m.t==='show-start'){
+      startSlideshow([],0,true); ssMsg('Receiving photos from your phone…');
+    }
+    else if(m.t==='show-item'){
+      if(ss && ss.live){ ss.items.push({blob:toBlobFrom(m.data), name:m.name}); ss.order.push(ss.items.length-1);
+        if(ss.items.length===1){ $('#showMsg').classList.add('hidden'); ss.pos=-1; ssGo(1); } }
+      c.send({t:'ack', i:m.i});
+    }
+    else if(m.t==='ctl'){
+      if(!ss) return;
+      if(m.a==='next') ssGo(1); else if(m.a==='prev') ssGo(-1); else if(m.a==='pause') ssPause(); else if(m.a==='stop'){ while(scopes.length>1) popScope(); }
+    }
+    else if(m.t==='copy-start'){ incoming={n:m.n, done:0, added:0, updated:0}; toast(`Receiving ${m.n} photo${m.n>1?'s':''} from your phone…`, 4000); }
+    else if(m.t==='copy-item'){
+      const r=await saveFromPhone(m); if(incoming){ incoming.done++; incoming[r]++; if(incoming.done%5===0 && incoming.done<incoming.n) toast(`Receiving ${incoming.done} of ${incoming.n}…`,2500); }
+      c.send({t:'ack', i:m.i});
+    }
+    else if(m.t==='copy-end'){
+      const r=incoming||{added:0,updated:0}; incoming=null; renderHome();
+      toast(`Added ${r.added} photo${r.added===1?'':'s'} from your phone`+(r.updated?` · ${r.updated} updated`:''), 4000);
+      c.send({t:'copied', added:r.added, updated:r.updated});
+    }
+  }catch(err){ console.error(err); if(m && m.i!=null) c.send({t:'ack', i:m.i, error:String(err.message||err)}); }
+}
+async function saveFromPhone(m){
+  const ids=[]; for(const n of (m.albums||[])) ids.push((await albumByName(n)).id);
+  let p=photos.find(x=>x.pid===m.pid);
+  if(p){
+    p.edits=m.edits||null; p.fav=!!m.fav||p.fav; p.albums=[...new Set([...p.albums, ...ids])];
+    p.thumb=await makeThumb(p.blob, p.edits); dropURL(p.id); await dbPut('photos',p); return 'updated';
+  }
+  const blob=toBlobFrom(m.data);
+  p={id:uid(), src:'phone', pid:m.pid, name:m.name||'photo', created:m.created||Date.now(), added:Date.now(), blob,
+     thumb:await makeThumb(blob, m.edits), edits:m.edits||null, fav:!!m.fav, albums:ids, postedAt:null};
+  await dbPut('photos',p); photos.push(p); return 'added';
+}
+
+/* ================= boot ================= */
+(async function boot(){
+  showCode();
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(_){}
+  db=await openDB();
+  [photos, albums]=await Promise.all([dbAll('photos'), dbAll('albums')]);
+  photos.forEach(p=>{ p.albums=p.albums||[]; });
+  pushScope($('#home'));
+  renderHome();
+  startPeer();
+})();
+</script>
+</body>
+</html>

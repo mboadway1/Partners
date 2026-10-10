@@ -1,0 +1,35 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.peggy.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.peggy.tv'
+        minSdk 22
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Fixed key so new builds install over old ones without uninstalling.
+    signingConfigs {
+        debug {
+            storeFile file('peggy.keystore')
+            storePassword 'peggytv'
+            keyAlias 'peggytv'
+            keyPassword 'peggytv'
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.debug }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

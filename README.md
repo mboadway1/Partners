@@ -1,6 +1,6 @@
 # Peggy
 
-Organize and edit photos from Google Photos, then post them to Facebook — from an iPhone or iPad.
+Organize and edit photos from Google Photos, post them to Facebook from an iPhone or iPad, and enjoy them on the TV with Peggy for Fire TV.
 
 Peggy is a web app you add to your home screen. It runs entirely on your device: photos you import are stored in the app's private storage on that iPhone/iPad, and nothing is uploaded anywhere except Facebook, when you choose to post.
 
@@ -9,6 +9,7 @@ Peggy is a web app you add to your home screen. It runs entirely on your device:
 - **Import** from Google Photos (Google's own picker opens; you choose the photos) or from the device's camera roll.
 - **Organize** with albums, ★ favorites, and automatic *Not posted* / *Posted* views. Select many at once to tag, move, or delete.
 - **Edit** non-destructively: crop to Facebook-friendly shapes (Square, Portrait 4:5, Wide 16:9, Story 9:16), zoom and drag to reframe, rotate, flip, brightness, contrast, saturation, warmth, and eight filters. *Revert* always gets the original back.
+- **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Peggy on Fire TV](#peggy-on-fire-tv).
 - **Post** one or many photos, in the order you choose. Peggy copies your caption, opens the iOS share sheet, you tap **Facebook**, paste the caption, and post. Posted photos get a ✓.
 
 ## Two limits worth knowing
@@ -77,6 +78,45 @@ Do step 3 on each device you use. Each device keeps its own library.
 
 ---
 
+### 5. Install Peggy on the Fire TV (optional)
+
+Same as your Words and Photos apps: Downloader and developer mode are already set up.
+
+1. Every push that changes the TV app builds it automatically (**Actions → Build APK**) and publishes
+   `https://github.com/mboadway1/Peggy/releases/download/latest/Peggy.apk`
+2. Make a TinyURL for that address.
+3. On the Fire TV, open **Downloader**, enter the TinyURL, then **Install → Done → Delete**. **Peggy** appears in your apps.
+
+The TV app loads its screen from GitHub Pages each time, so updates arrive without reinstalling.
+
+---
+
+## Peggy on Fire TV
+
+**Pair once.** Peggy on the TV shows a 4-letter code. In Peggy on the iPhone/iPad, tap **📺** and enter it. The phone remembers the TV and reconnects whenever you send photos. (The TV's QR code opens Peggy in Safari already paired. That's handy for a quick show, but Safari keeps a separate library from the home-screen app.)
+
+**From the phone:** Select photos → **📺 TV**:
+- **Show on TV now** — an instant slideshow of the edited photos; the phone becomes a remote (⏮ ⏯ ⏭ ⏹). Nothing is saved on the TV.
+- **Copy to TV** — saves the photos in the TV's library with their albums, favorites, and edits. Copying the same photo again updates it instead of making a duplicate.
+
+**On the TV, with the remote:**
+
+| Button | Does |
+|---|---|
+| ◀ ▶ ▲ ▼ / OK | Move and select |
+| Back | Close what's open; on the home screen, exit Peggy |
+| ⏯ Play/Pause | Start a slideshow from the photo you're viewing, or pause one |
+| ⏪ ⏩ | Previous / next photo |
+
+- **Home:** ▶ Slideshow, filters for All, ★ Favorites and each album (select an album twice for rename, delete, or album slideshow), 📱 Connect phone, ⚙ Settings.
+- **Photo:** ◀ ▶ to browse; OK for Slideshow from here, Favorite, Edit, Albums, Delete.
+- **Edit:** rotate, flip, shape, zoom, *Reframe crop* (arrows move the crop), filter, brightness, contrast, saturation, warmth. Use ◀ ▶ on a setting to change it, then **Save**.
+- **Settings:** slideshow speed (5–60 s), Newest first or Shuffle, gentle zoom on/off, storage used, delete everything on the TV.
+
+Importing from Google Photos happens on the phone, because Google doesn't allow its sign-in inside TV apps. Import there, then **Copy to TV**. Photos copied to the TV stay viewable even if the Wi-Fi drops; the phone link reconnects on its own.
+
+---
+
 ## Everyday use
 
 | To… | Do this |
@@ -98,9 +138,12 @@ Do step 3 on each device you use. Each device keeps its own library.
 ## Files
 
 ```
-index.html      the whole app (UI, editor, storage, Google + share logic)
+index.html      the phone/tablet app (UI, editor, storage, Google + share + TV logic)
+tv.html         the Fire TV screen (library, slideshow, remote-control editor)
+core.js         shared photo editing engine and storage used by both
 sw.js           lets the app open offline
 manifest.json   home-screen app settings
 icon-*.png      app icons
 relay/          Cloudflare Worker relay (worker.js + wrangler.toml)
+app/            Fire TV app shell (Android, com.peggy.tv); built by .github/workflows/build.yml
 ```

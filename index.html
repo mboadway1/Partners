@@ -112,6 +112,12 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .progress{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:12px 0}
 .progress div{height:100%;background:var(--accent);width:0;transition:width .2s}
 
+#btnTv{position:relative;padding:10px}
+.tvdot{position:absolute;right:6px;top:8px;width:9px;height:9px;border-radius:50%;background:transparent}
+.tvdot.on{background:var(--ok)} .tvdot.wait{background:var(--star)}
+.remote{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.remote button{font-size:22px}
+.codein{font-size:32px;text-align:center;letter-spacing:12px;text-transform:uppercase;font-weight:700}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 90px);z-index:40;background:#fff;color:#111;
   padding:10px 16px;border-radius:12px;font-size:14px;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.4);text-align:center}
 </style>
@@ -123,6 +129,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
     <h1>Peggy</h1>
     <button id="btnImport" class="primary">＋ Import</button>
     <button id="btnSelect">Select</button>
+    <button id="btnTv" class="ghost" aria-label="TV">📺<span class="tvdot" id="tvDot"></span></button>
     <button id="btnSettings" class="ghost" aria-label="Settings">⚙︎</button>
   </div>
   <div class="chips" id="chips"></div>
@@ -139,6 +146,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
   <button id="sFav">★</button>
   <button id="sAlbum">Album</button>
   <button id="sMore">More</button>
+  <button id="sTv" class="hidden">📺 TV</button>
   <button id="sPost" class="fb">Post</button>
 </div>
 
@@ -189,6 +197,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 
 <input type="file" id="fileIn" accept="image/*" multiple hidden>
 
+<script src="core.js"></script>
 <script>
 'use strict';
 /* ---------- config ---------- */
@@ -197,34 +206,7 @@ const cfg = {
   get clientId(){ return (localStorage.getItem('peggy.clientId')||'').trim(); },
   get relay(){ return (localStorage.getItem('peggy.relay')||'').trim().replace(/\/+$/,''); },
 };
-const DEF = {rot:0, flip:false, aspect:'orig', zoom:1, panX:0, panY:0, bright:0, contrast:0, sat:0, warmth:0, preset:'none'};
-const ASPECTS = [['orig','Original'],['1','Square'],['0.8','Portrait 4:5'],['1.7778','Wide 16:9'],['0.5625','Story 9:16']];
-const PRESETS = {
-  none:{name:'Original'}, vivid:{name:'Vivid',sat:35,contrast:15}, warm:{name:'Warm',warmth:35,sat:10,bright:4},
-  cool:{name:'Cool',warmth:-35,contrast:5}, punch:{name:'Punch',contrast:30,sat:20,bright:-4},
-  fade:{name:'Fade',contrast:-25,bright:10,sat:-25}, bw:{name:'B&W',sat:-100,contrast:15}, noir:{name:'Noir',sat:-100,contrast:45,bright:-6},
-};
-const SLIDERS = [['bright','Brightness'],['contrast','Contrast'],['sat','Saturation'],['warmth','Warmth']];
 
-/* ---------- helpers ---------- */
-const $ = s => document.querySelector(s);
-const el = (tag, props={}, ...kids) => { const e=document.createElement(tag); Object.assign(e, props); for(const k of kids) e.append(k); return e; };
-const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
-const sleep = ms => new Promise(r=>setTimeout(r,ms));
-let toastT;
-function toast(msg, ms=3200){ document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=el('div',{className:'toast',textContent:msg}); document.body.append(t); clearTimeout(toastT); toastT=setTimeout(()=>t.remove(), ms); }
-const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
-
-/* ---------- IndexedDB ---------- */
-let db;
-function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('peggy',1);
-  r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('photos',{keyPath:'id'}); d.createObjectStore('albums',{keyPath:'id'}); };
-  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function tx(store, mode, fn){ return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); let out;
-  if(r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
-const dbAll = s => tx(s,'readonly',st=>st.getAll());
-const dbPut = (s,v) => tx(s,'readwrite',st=>st.put(v));
-const dbDel = (s,k) => tx(s,'readwrite',st=>st.delete(k));
 
 /* ---------- state ---------- */
 let photos=[], albums=[], view='all', selecting=false;
@@ -233,48 +215,6 @@ const thumbURL = new Map();
 function urlFor(p){ if(!thumbURL.has(p.id)) thumbURL.set(p.id, URL.createObjectURL(p.thumb)); return thumbURL.get(p.id); }
 function dropURL(id){ const u=thumbURL.get(id); if(u){ URL.revokeObjectURL(u); thumbURL.delete(id); } }
 
-/* ---------- image pipeline ---------- */
-function loadImage(blob){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(blob); const i=new Image();
-  i.onload=()=>{ res(i); setTimeout(()=>URL.revokeObjectURL(u), 1000); }; i.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error('Could not read image')); }; i.src=u; }); }
-function toBlob(c, type='image/jpeg', q=.9){ return new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error('Export failed')), type, q)); }
-
-function adjust(ctx, w, h, e){
-  const p = PRESETS[e.preset] || {};
-  const B=(e.bright||0)+(p.bright||0), C=clamp((e.contrast||0)+(p.contrast||0),-100,100),
-        S=clamp((e.sat||0)+(p.sat||0),-100,100), W=(e.warmth||0)+(p.warmth||0);
-  if(!B && !C && !S && !W) return;
-  const d = ctx.getImageData(0,0,w,h), a = d.data;
-  const b = B*1.28, c = C*1.28, f = (259*(c+255))/(255*(259-c)), s = 1+S/100, wr = W*.6, wg = W*.1, wb = -W*.6;
-  for(let i=0;i<a.length;i+=4){
-    let r=f*(a[i]+b-128)+128, g=f*(a[i+1]+b-128)+128, bl=f*(a[i+2]+b-128)+128;
-    const y=.299*r+.587*g+.114*bl;
-    a[i]=y+(r-y)*s+wr; a[i+1]=y+(g-y)*s+wg; a[i+2]=y+(bl-y)*s+wb;
-  }
-  ctx.putImageData(d,0,0);
-}
-
-function render(img, e, maxDim){
-  const iw=img.naturalWidth, ih=img.naturalHeight, rot=((e.rot%360)+360)%360;
-  const sw = rot%180 ? ih : iw, sh = rot%180 ? iw : ih;
-  const A = e.aspect==='orig' ? sw/sh : parseFloat(e.aspect);
-  let cw, ch; if(sw/sh > A){ ch=sh; cw=sh*A; } else { cw=sw; ch=sw/A; }
-  cw/=e.zoom; ch/=e.zoom;
-  const cx = sw/2 + e.panX*(sw-cw)/2, cy = sh/2 + e.panY*(sh-ch)/2;
-  const k = Math.min(1, maxDim/Math.max(cw,ch));
-  const W=Math.max(1,Math.round(cw*k)), H=Math.max(1,Math.round(ch*k));
-  const c = document.createElement('canvas'); c.width=W; c.height=H;
-  const x = c.getContext('2d',{willReadFrequently:true});
-  x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
-  x.scale(k,k); x.translate(-(cx-cw/2), -(cy-ch/2)); x.translate(sw/2, sh/2);
-  x.rotate(rot*Math.PI/180); if(e.flip) x.scale(-1,1);
-  x.drawImage(img, -iw/2, -ih/2);
-  x.setTransform(1,0,0,1,0,0);
-  adjust(x, W, H, e);
-  c._geom = {sw, sh, cw, ch};
-  return c;
-}
-async function makeThumb(blob, edits){ const img=await loadImage(blob); return toBlob(render(img, edits||DEF, 480), 'image/jpeg', .82); }
-function edited(p){ const e=p.edits; if(!e) return false; return Object.keys(DEF).some(k=>e[k]!==DEF[k]); }
 
 /* ---------- grid / chips ---------- */
 function visible(){
@@ -324,7 +264,8 @@ function updateSelbar(){
   $('#selbar').classList.toggle('hidden', !selecting);
   $('#btnSelect').textContent = selecting ? 'Done' : 'Select';
   const n=selected.size; $('#selCount').textContent = n+' selected';
-  for(const id of ['#sFav','#sAlbum','#sMore','#sPost']) $(id).disabled = !n;
+  for(const id of ['#sFav','#sAlbum','#sMore','#sPost','#sTv']) $(id).disabled = !n;
+  $('#sTv').classList.toggle('hidden', !tv.code);
   $('#sAll').textContent = n && n===visible().length ? 'None' : 'All';
 }
 function renderAll(){ renderChips(); renderGrid(); updateSelbar(); }
@@ -672,6 +613,101 @@ $('#shareBtn').onclick=()=>{
   }
 };
 
+
+/* ---------- TV (Fire Stick) link ---------- */
+// The TV shows a 4-letter code; the phone connects to it directly over the network (PeerJS / WebRTC).
+const tv = { code:(localStorage.getItem('peggy.tv')||''), peer:null, conn:null, state:'off', waits:new Map(), connecting:null };
+function tvSetState(st){ tv.state=st; const d=$('#tvDot'); d.className='tvdot'+(st==='on'?' on':st==='wait'?' wait':''); updateSelbar(); }
+function loadPeerJS(){ return window.Peer ? Promise.resolve() : new Promise((res,rej)=>{ const s=el('script',{src:'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'}); s.onload=res; s.onerror=()=>rej(new Error('Could not load the TV connector — check your internet.')); document.head.append(s); }); }
+function tvConnect(){
+  if(tv.conn && tv.conn.open) return Promise.resolve(tv.conn);
+  if(tv.connecting) return tv.connecting;
+  if(!tv.code) return Promise.reject(new Error('No TV paired'));
+  tvSetState('wait');
+  tv.connecting = (async()=>{
+    await loadPeerJS();
+    if(!tv.peer || tv.peer.destroyed){ tv.peer=new Peer(); await new Promise((res,rej)=>{ tv.peer.once('open',res); tv.peer.once('error',rej); }); }
+    else if(tv.peer.disconnected){ tv.peer.reconnect(); await sleep(800); }
+    const c=tv.peer.connect(PEER_PREFIX+tv.code,{reliable:true, serialization:'binary'});
+    await new Promise((res,rej)=>{ const t=setTimeout(()=>rej(new Error(`Couldn't reach TV ${tv.code}. Make sure Peggy is open on the Fire Stick.`)),12000);
+      c.on('open',()=>{ clearTimeout(t); res(); }); tv.peer.once('error',e=>{ clearTimeout(t); rej(new Error(e.type==='peer-unavailable'?`TV ${tv.code} isn't online. Open Peggy on the Fire Stick.`:e.message)); }); });
+    c.on('data',m=>{ if(m && m.t==='ack'){ const w=tv.waits.get(m.i); if(w){ tv.waits.delete(m.i); m.error?w.rej(new Error(m.error)):w.res(); } } });
+    c.on('close',()=>{ if(tv.conn===c){ tv.conn=null; tvSetState('off'); for(const w of tv.waits.values()) w.rej(new Error('TV disconnected')); tv.waits.clear(); } });
+    tv.conn=c; tvSetState('on'); return c;
+  })().catch(e=>{ tvSetState('off'); throw e; }).finally(()=>{ tv.connecting=null; });
+  return tv.connecting;
+}
+function tvForget(){ try{ tv.conn&&tv.conn.close(); }catch{} try{ tv.peer&&tv.peer.destroy(); }catch{} tv.conn=null; tv.peer=null; tv.code=''; localStorage.removeItem('peggy.tv'); tvSetState('off'); }
+function tvSend(msg, timeout=60000){ return new Promise((res,rej)=>{ const t=setTimeout(()=>{ tv.waits.delete(msg.i); rej(new Error('The TV stopped responding')); },timeout);
+  tv.waits.set(msg.i,{res:()=>{clearTimeout(t);res();}, rej:e=>{clearTimeout(t);rej(e);}}); tv.conn.send(msg); }); }
+function tvPair(code){ code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,''); if(code.length!==4) return toast('TV codes are 4 characters');
+  if(code!==tv.code){ tvForget(); tv.code=code; localStorage.setItem('peggy.tv',code); }
+  return tvConnect().then(()=>toast(`Connected to TV ${code} ✓`)).catch(e=>toast(e.message,6000)); }
+$('#btnTv').onclick=()=>sheet((sh,close)=>{
+  sh.append(el('h3',{textContent:'Fire TV'}));
+  if(!tv.code){
+    sh.append(el('p',{textContent:'Open Peggy on your Fire Stick. Enter the 4-letter code shown on the TV.'}));
+    const i=el('input',{className:'codein',maxLength:4,autocapitalize:'characters',autocorrect:'off',spellcheck:false,placeholder:'····'});
+    const go=el('button',{className:'primary',textContent:'Connect',style:'width:100%;margin-top:10px'}); go.onclick=()=>{ close(); tvPair(i.value); };
+    sh.append(i,go);
+  } else {
+    sh.append(el('p',{textContent: tv.state==='on' ? `Connected to TV ${tv.code}.` : `Paired with TV ${tv.code}. Peggy connects when you send photos.`}));
+    sh.append(el('p',{textContent:'Select photos, then tap 📺 TV to show them as a slideshow or copy them to the TV.'}));
+    const st=el('div',{className:'stack'});
+    if(tv.state!=='on'){ const c=el('button',{className:'primary',textContent:'Connect now'}); c.onclick=()=>{ close(); tvConnect().then(()=>toast('Connected ✓')).catch(e=>toast(e.message,6000)); }; st.append(c); }
+    else { const r=el('button',{textContent:'Slideshow remote'}); r.onclick=()=>{ close(); tvRemote(); }; st.append(r); }
+    const f=el('button',{className:'danger',textContent:'Forget this TV'}); f.onclick=()=>{ tvForget(); close(); toast('TV forgotten'); };
+    const x=el('button',{className:'ghost',textContent:'Close'}); x.onclick=()=>close();
+    st.append(f,x); sh.append(st);
+  }
+});
+$('#sTv').onclick=async()=>{
+  const ids=visible().filter(p=>selected.has(p.id)).map(p=>p.id); if(!ids.length) return;
+  const v=await actions(`${ids.length} photo${ids.length>1?'s':''} → TV ${tv.code}`,[['▶ Show on TV now','show','primary'],['Copy to TV (keeps albums and edits)','copy']],
+    'Show plays a slideshow right away. Copy saves them in the TV’s own library.');
+  if(v==='show') tvShow(ids); if(v==='copy') tvCopy(ids);
+};
+function tvProgress(title){ let api; sheet((sh,close)=>{ const bar=el('div'), st=el('p',{textContent:'Connecting to the TV…'});
+  sh.append(el('h3',{textContent:title}), st, el('div',{className:'progress'},bar));
+  const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%'}); sh.append(cancel);
+  api={ cancelled:false, set:(d,n)=>{ bar.style.width=(100*d/n)+'%'; st.textContent=`${d} of ${n} sent`; }, close };
+  cancel.onclick=()=>{ api.cancelled=true; close(); }; }); return api; }
+async function tvShow(ids){
+  const pr=tvProgress('Showing on TV');
+  try{
+    await tvConnect(); tv.conn.send({t:'show-start', n:ids.length});
+    let n=0;
+    for(const id of ids){ if(pr.cancelled) break;
+      const p=photos.find(x=>x.id===id); const img=await loadImage(p.blob);
+      const b=await toBlob(render(img, p.edits||DEF, 1920),'image/jpeg',.88);
+      await tvSend({t:'show-item', i:uid(), name:p.name, data:await b.arrayBuffer()});
+      pr.set(++n, ids.length); if(n===1){ pr.close(); tvRemote(); }
+    }
+  }catch(e){ pr.close(); toast(e.message,6000); }
+}
+async function tvCopy(ids){
+  const pr=tvProgress('Copying to TV');
+  try{
+    await tvConnect(); tv.conn.send({t:'copy-start', n:ids.length});
+    let n=0;
+    for(const id of ids){ if(pr.cancelled) break;
+      const p=photos.find(x=>x.id===id);
+      const b=await downscale(p.blob, 2560);
+      await tvSend({t:'copy-item', i:uid(), pid:p.id, name:p.name, created:p.created, fav:!!p.fav, edits:p.edits||null,
+        albums:p.albums.map(a=>(albums.find(x=>x.id===a)||{}).name).filter(Boolean), data:await b.arrayBuffer()});
+      pr.set(++n, ids.length);
+    }
+    tv.conn.send({t:'copy-end'}); pr.close(); toast(`Copied ${n} photo${n===1?'':'s'} to the TV ✓`);
+    selecting=false; selected.clear(); renderAll();
+  }catch(e){ pr.close(); toast(e.message,6000); }
+}
+function tvRemote(){ sheet((sh,close)=>{
+  sh.append(el('h3',{textContent:'TV slideshow'}), el('p',{textContent:'You can also use the Fire TV remote: ◀ ▶ to skip, OK to pause.'}));
+  const b=(t,a)=>{ const x=el('button',{textContent:t}); x.onclick=()=>{ if(tv.conn&&tv.conn.open) tv.conn.send({t:'ctl',a}); else toast('TV disconnected'); if(a==='stop') close(); }; return x; };
+  sh.append(el('div',{className:'remote'}, b('⏮','prev'), b('⏯','pause'), b('⏭','next'), b('⏹','stop')));
+  const x=el('button',{className:'ghost',textContent:'Close',style:'width:100%'}); x.onclick=()=>close(); sh.append(x);
+}); }
+
 /* ---------- boot ---------- */
 (async function boot(){
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -679,6 +715,8 @@ $('#shareBtn').onclick=()=>{
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
   renderAll();
+  const tvParam=new URLSearchParams(location.search).get('tv');
+  if(tvParam){ history.replaceState(null,'',location.pathname+location.hash); tvPair(tvParam); }
   const after=handleRedirect();
   if(after==='import') startGoogleImport();
   else if(pending()){ if(getToken()){ showWaiting(); poll(); } else localStorage.removeItem('peggy.session'); }
