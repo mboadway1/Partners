@@ -459,13 +459,13 @@ function needsSetup(){
 }
 async function startGoogleImport(){
   if(needsSetup()) return;
-  if(!(await ensureToken())){ localStorage.setItem('peggy.after','import'); return peggySignIn('index.html'); }
+  if(!(await ensureToken())){ if(!acct.session) return signIn('import'); localStorage.setItem('peggy.after','import'); return peggySignIn('index.html'); }
   try{
     const s=await api('POST','/v1/sessions',{});
     localStorage.setItem('peggy.pickSession', JSON.stringify({id:s.id, uri:s.pickerUri,
       interval:Math.max(2,secs(s.pollingConfig?.pollInterval)||4), until:Date.now()+(secs(s.pollingConfig?.timeoutIn)||1800)*1000}));
     showWaiting(); poll();
-  }catch(e){ if(e.status===401){ localStorage.setItem('peggy.after','import'); return peggySignIn('index.html'); } toast('Could not start Google Photos: '+e.message, 6000); }
+  }catch(e){ if(e.status===401){ if(!acct.session){ localStorage.removeItem('peggy.token'); return signIn('import'); } localStorage.setItem('peggy.after','import'); return peggySignIn('index.html'); } toast('Could not start Google Photos: '+e.message, 6000); }
 }
 let waitClose=null, pollT=null;
 function showWaiting(){
