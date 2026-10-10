@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en" data-peggy="phone">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Peggy">
+<meta name="theme-color" content="#FFE9F1">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<title>Peggy · Plans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
+<script src="theme.js"></script>
+<style>
+:root{
+  --bg:#FFE9F1; --panel:#FFF8FB; --panel2:#FBDCE8; --line:#F4C6D8; --text:#4A1D3F; --dim:#9B6B8E; --accent:#D1386E; --accentDark:#A82556; --lilac:#8B6CE0;
+  --danger:#C62A4A; --star:#F5A524; --ok:#1F9D63; --headerbg:rgba(255,233,241,.9); --inputbg:#fff;
+  --display:"Fredoka","Nunito",ui-rounded,system-ui,sans-serif;
+  --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom); --sl:env(safe-area-inset-left); --sr:env(safe-area-inset-right);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:500 16px/1.45 "Nunito",ui-rounded,-apple-system,system-ui,sans-serif}
+button{font:inherit;font-weight:700;color:inherit;background:var(--panel2);border:0;border-radius:14px;padding:10px 14px;min-height:44px;cursor:pointer}
+button:disabled{opacity:.45}
+button.primary{background:var(--accent);color:#fff;font-weight:800;box-shadow:0 3px 0 var(--accentDark)}
+button.ghost{background:transparent}
+button.danger{color:var(--danger)}
+input,textarea,select{font:inherit;color:var(--text);background:var(--inputbg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
+textarea{min-height:80px;resize:vertical}
+.hidden{display:none!important}
+a{color:var(--accent)}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
+
+/* header */
+header{position:sticky;top:0;z-index:5;background:var(--headerbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:calc(var(--st) + 8px) calc(var(--sr) + 12px) 8px calc(var(--sl) + 12px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:8px}
+.bar h1{font:600 24px/1 var(--display);margin:0;flex:1;display:flex;align-items:center;gap:6px;min-width:0;color:var(--text)}
+.bar h1 .bfly{flex:none}
+.bar h1 .sect{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bfly .wing{transform-box:view-box;transform-origin:50px 44px}
+.bfly.flutter .wing{animation:flap 1.6s ease-in-out infinite}
+@keyframes flap{0%,70%,100%{transform:scaleX(1)}80%{transform:scaleX(.45)}90%{transform:scaleX(.9)}}
+@media (prefers-reduced-motion:reduce){.bfly .wing{animation:none!important}}
+.iconbtn{background:transparent;padding:8px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-top:10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border-radius:999px;padding:6px 14px;min-height:34px;font-size:14px;background:var(--panel2);color:var(--dim)}
+.chip.on{background:var(--text);color:var(--bg);font-weight:800}
+.chip .n{opacity:.6;margin-left:4px}
+
+main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) + 12px);max-width:860px;margin:0 auto}
+
+/* bottom navigation (same on every Peggy page) */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;background:var(--headerbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);padding:6px calc(var(--sr) + 6px) calc(var(--sb) + 6px) calc(var(--sl) + 6px)}
+.bnav a{flex:1;max-width:120px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;color:var(--dim);text-decoration:none;font-size:12px;font-weight:800}
+.bnav a.on{color:var(--accent);background:var(--panel2)}
+
+/* cards & rows */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.signin{text-align:center;padding:36px 20px}
+.signin h2{font:600 24px var(--display);margin:8px 0}
+.signin p{color:var(--dim);max-width:34ch;margin:0 auto 16px}
+.quick{display:flex;gap:8px;margin-bottom:12px}
+.quick input{flex:1}
+.group{margin:14px 0 6px;font:600 15px var(--display);color:var(--dim)}
+.group.late{color:var(--danger)}
+.row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:6px;cursor:pointer}
+.row .main{flex:1;min-width:0}
+.row .t{font-weight:700;overflow-wrap:anywhere}
+.row .m{font-size:13px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.done .t{text-decoration:line-through;color:var(--dim)}
+.due{font-weight:800} .due.late{color:var(--danger)} .due.today{color:var(--accent)}
+.check{flex:none;width:28px;height:28px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--accent);background:transparent;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+.check.on{background:var(--accent)}
+.starbtn{flex:none;background:transparent;min-height:0;padding:6px;font-size:20px;color:var(--dim)}
+.starbtn.on{color:var(--star)}
+.who{flex:none;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:var(--accent)}
+.who.p2{background:var(--lilac)} .who.both{background:linear-gradient(135deg,var(--accent) 50%,var(--lilac) 50%)}
+.empty{text-align:center;color:var(--dim);padding:40px 16px}
+.empty h3{font:600 20px var(--display);color:var(--text);margin:6px 0}
+
+/* calendar */
+.calbar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.calbar .ttl{flex:1;font:600 20px var(--display);min-width:120px}
+.seg{display:inline-flex;background:var(--panel2);border-radius:12px;padding:3px}
+.seg button{min-height:34px;padding:4px 10px;font-size:14px;background:transparent;border-radius:10px}
+.seg button.on{background:var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.day{margin-bottom:12px}
+.dayh{display:flex;align-items:baseline;gap:8px;font:600 16px var(--display);margin:4px 2px 6px}
+.dayh .d{color:var(--dim);font-size:14px;font-family:inherit;font-weight:700}
+.dayh.today{color:var(--accent)}
+.ev{display:flex;gap:10px;align-items:stretch;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;cursor:pointer}
+.ev .bar{width:5px;border-radius:3px;flex:none;background:var(--c,var(--accent))}
+.ev .tm{flex:none;width:68px;font-size:13px;color:var(--dim);font-weight:800}
+.ev .t{font-weight:700}
+.ev .m{font-size:13px;color:var(--dim)}
+.month{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.month .hd{font-size:12px;color:var(--dim);text-align:center;font-weight:800;padding:4px 0}
+.mc{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:74px;padding:3px;cursor:pointer;overflow:hidden}
+.mc.out{opacity:.45}
+.mc .n{font-size:13px;font-weight:800;display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%}
+.mc.today .n{background:var(--accent);color:#fff}
+.mc .e{font-size:11px;line-height:1.25;border-radius:5px;padding:1px 4px;margin-top:2px;background:var(--c,var(--accent));color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc .e.task{background:transparent;color:var(--text);border:1px dashed var(--line)}
+.mc .more{font-size:11px;color:var(--dim)}
+@media (max-width:480px){ .mc{min-height:56px} .mc .e{font-size:0;height:6px;padding:0;margin-top:2px} }
+
+/* links */
+.search{margin-bottom:10px}
+.lnk{display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px;margin-bottom:6px}
+.lnk img{width:32px;height:32px;border-radius:8px;flex:none;background:var(--panel2)}
+.lnk a.main{flex:1;min-width:0;text-decoration:none;color:var(--text)}
+.lnk .t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lnk .m{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* sheets */
+.scrim{position:fixed;inset:0;z-index:30;background:rgba(40,16,40,.45);display:flex;align-items:flex-end;justify-content:center}
+@media (min-width:700px){.scrim{align-items:center}}
+.sheet{background:var(--panel);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px 16px calc(var(--sb) + 16px);max-height:90vh;overflow:auto}
+@media (min-width:700px){.sheet{border-radius:20px}}
+.sheet h3{margin:0 0 8px;font:600 21px var(--display)}
+.sheet p{margin:6px 0 12px;color:var(--dim);font-size:14px}
+.sheet label.f{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px;font-weight:700}
+.sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet .stack{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.sheet .btns{display:flex;gap:8px;margin-top:16px}
+.sheet .btns button{flex:1}
+.checkrow{display:flex;align-items:center;gap:10px;padding:8px 2px;font-weight:700}
+.checkrow input{width:22px;height:22px;accent-color:var(--accent)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills button{min-height:36px;padding:6px 12px;font-size:14px}
+.pills button.on{background:var(--accent);color:#fff}
+.themepick{display:flex;gap:10px;flex-wrap:wrap}
+.swatch{width:62px;min-height:62px;border-radius:16px;padding:0;display:flex;align-items:flex-end;justify-content:center;font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);padding-bottom:4px}
+.swatch.on{outline:3px solid var(--ring,var(--accent));outline-offset:2px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 84px);z-index:40;background:var(--text);color:var(--bg);font-weight:700;
+  padding:10px 16px;border-radius:12px;font-size:14px;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.25);text-align:center}
+.spin{color:var(--dim);text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1><a href="./" title="Peggy photos" id="logo" style="display:flex"></a><span class="sect" id="sect">Tasks</span></h1>
+    <button id="addBtn" class="primary" title="Add">＋</button>
+    <button id="setBtn" class="iconbtn" title="Settings: account, theme, calendars, import" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg></button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main id="view"><p class="spin">Loading…</p></main>
+
+<nav class="bnav" aria-label="Peggy sections">
+  <a href="./" data-k="photos" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
+  <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
+  <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
+  <a href="plan.html#links" data-k="links" title="Shared link favorites"><svg class="ic" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Links</a>
+  <a href="words.html" data-k="words" title="Words: who talks, who interrupts"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Words</a>
+</nav>
+
+<script src="core.js"></script>
+<script src="core-butterfly.js"></script>
+<script src="account.js"></script>
+<script>
+'use strict';
+/* ================= basics ================= */
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parseYmd = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const today = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const fmtDay = d => d.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+const fmtShort = d => d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const fmtTime = d => d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+function dueLabel(t){
+  if(!t.due) return null;
+  const d=parseYmd(t.due), diff=Math.round((d-today())/86400000);
+  let s = diff===0?'Today':diff===1?'Tomorrow':diff===-1?'Yesterday':(diff>1&&diff<7)?d.toLocaleDateString(undefined,{weekday:'long'}):fmtShort(d);
+  if(t.time){ const [h,m]=t.time.split(':').map(Number); const x=new Date(d); x.setHours(h,m); s+=' '+fmtTime(x); }
+  return {s, cls: t.done?'':diff<0?'late':diff===0?'today':''};
+}
+function sheet(build){ return new Promise(resolve=>{
+  const scrim=el('div',{className:'scrim'}), sh=el('div',{className:'sheet'}); scrim.append(sh);
+  const close=v=>{ scrim.remove(); resolve(v); };
+  scrim.onclick=e=>{ if(e.target===scrim) close(null); };
+  build(sh, close); document.body.append(scrim);
+  const f=sh.querySelector('[autofocus]'); if(f) setTimeout(()=>f.focus(),50);
+}); }
+const field=(label,input)=>[el('label',{className:'f',textContent:label}),input];
+function addTips(root){ root.querySelectorAll('button:not([title]),a:not([title])').forEach(b=>{ const t=(b.getAttribute('aria-label')||b.textContent||'').replace(/\s+/g,' ').trim(); if(t) b.title=t; }); }
+new MutationObserver(()=>addTips(document)).observe(document.body,{childList:true,subtree:true});
+
+/* ================= people ================= */
+let members=[];
+const me = () => acct.me || {};
+const partner = () => members.find(m=>m.email!==me().email) || null;
+const nameOf = email => email==='both' ? 'Both of you' : (members.find(m=>m.email===email)||{}).name || (email||'').split('@')[0] || 'Anyone';
+function whoBubble(a){
+  if(!a) return null;
+  const both=a==='both', p2=!both && a!==me().email;
+  return el('span',{className:'who'+(both?' both':p2?' p2':''),textContent:both?'∞':(nameOf(a)[0]||'?').toUpperCase(),title:both?'Both of you':nameOf(a)});
+}
+
+/* ================= shared data (tasks, links) ================= */
+const store = {
+  tasks: { items:[], lists:[], v:0 },
+  links: { items:[], lists:[], v:0 },
+};
+const pending = { tasks: [], links: [] };
+function loadCache(){ for(const k of ['tasks','links']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
+function saveCache(k){ try{ localStorage.setItem('peggy.cache.'+k, JSON.stringify(store[k])); localStorage.setItem('peggy.pending.'+k, JSON.stringify(pending[k])); }catch(_){} }
+function applyLocal(doc, op){
+  const coll = op.kind==='list' ? doc.lists : doc.items;
+  if(op.op==='upsert'){ const i=coll.findIndex(x=>x.id===op.item.id); if(i<0) coll.push({createdAt:Date.now(),createdBy:me().email,...op.item}); else coll[i]={...coll[i],...op.item}; }
+  if(op.op==='delete'){ const i=coll.findIndex(x=>x.id===op.id); if(i>=0) coll.splice(i,1); }
+}
+async function change(k, ops){
+  ops=ops.map(o=>o.item?{...o,item:{...o.item,updatedAt:Date.now(),updatedBy:me().email}}:o);
+  ops.forEach(o=>applyLocal(store[k],o)); pending[k].push(...ops); saveCache(k); render();
+  await flush(k);
+}
+let flushing={};
+async function flush(k){
+  if(flushing[k] || !pending[k].length || !acct.session) return;
+  flushing[k]=true; const ops=pending[k].slice();
+  try{ const doc=await peggyApi('data/'+k,{method:'POST',body:JSON.stringify({ops})}); pending[k]=pending[k].slice(ops.length);
+       store[k]=doc; pending[k].forEach(o=>applyLocal(store[k],o)); saveCache(k); render(); }
+  catch(e){ if(e.status!==401) toast('Saved on this device. Will sync when online.',2500); }
+  finally{ flushing[k]=false; }
+}
+async function pull(k){
+  if(!acct.session) return;
+  try{ const doc=await peggyApi('data/'+k); if(doc.v!==store[k].v || pending[k].length){ store[k]=doc; pending[k].forEach(o=>applyLocal(store[k],o)); saveCache(k); render(); } }
+  catch(e){ if(e.status===401) render(); }
+}
+async function syncAll(){ for(const k of ['tasks','links']){ await flush(k); await pull(k); } }
+setInterval(()=>{ if(!document.hidden) syncAll(); }, 20000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(); });
+
+/* ================= routing ================= */
+let tab='tasks';
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links'};
+function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
+  document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
+  $('#sect').textContent=SECT[tab];
+  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':'Add a link';
+  render(); if(tab==='calendar') loadCalendar(); }
+window.addEventListener('hashchange', route);
+$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):editLink(null); };
+$('#setBtn').onclick=()=>openSettings();
+
+function render(){
+  const v=$('#view');
+  if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
+  $('#addBtn').classList.remove('hidden');
+  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else renderLinks(v);
+}
+function renderSignIn(v){
+  v.replaceChildren(el('div',{className:'card signin'},
+    Object.assign(el('div'),{innerHTML:butterfly({size:64,flutter:true})}),
+    el('h2',{textContent:'Share plans together'}),
+    el('p',{textContent:'Sign in with Google to see your calendar, import your Google Tasks, and share tasks and favorite links with each other.'}),
+    Object.assign(el('button',{className:'primary',textContent:'Sign in with Google'}),{onclick:()=>peggySignIn('plan.html#'+tab)})));
+}
+
+/* ================= TASKS ================= */
+let tview='all';
+function taskViews(){
+  const p=partner(), L=store.tasks.lists.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const v=[['all','All'],['mine','Mine']];
+  if(p) v.push(['p2',p.name]);
+  v.push(['today','Today'],['upcoming','Upcoming'],['starred','★ Starred']);
+  L.forEach(l=>v.push(['list:'+l.id,l.name]));
+  v.push(['done','Done']);
+  return v;
+}
+function inView(t){
+  const v=tview, m=me().email, p=partner();
+  if(v==='done') return t.done;
+  if(t.done) return false;
+  if(v==='mine') return t.assignee===m || t.assignee==='both';
+  if(v==='p2') return p && (t.assignee===p.email || t.assignee==='both');
+  if(v==='today') return t.due && t.due<=ymd(today());
+  if(v==='upcoming') return !!t.due;
+  if(v==='starred') return t.important;
+  if(v.startsWith('list:')) return t.list===v.slice(5);
+  return true;
+}
+function renderTasks(v){
+  const chips=$('#chips'); chips.replaceChildren();
+  for(const [k,label] of taskViews()){
+    const n=store.tasks.items.filter(t=>{ const s=tview; tview=k; const r=inView(t); tview=s; return r; }).length;
+    const b=el('button',{className:'chip'+(tview===k?' on':''),title:k.startsWith('list:')?`Show the “${label}” list (tap again to rename or delete)`:`Show ${label.toLowerCase()} tasks`},label);
+    if(k!=='done') b.append(el('span',{className:'n',textContent:n}));
+    b.onclick=()=>{ if(tview===k && k.startsWith('list:')) return listMenu('tasks',k.slice(5)); tview=k; render(); };
+    chips.append(b);
+  }
+  const nl=el('button',{className:'chip',textContent:'＋ List',title:'Create a new task list'}); nl.onclick=()=>newList('tasks'); chips.append(nl);
+
+  const q=el('input',{placeholder:tview==='done'?'':'Add a task and press Enter…',enterKeyHint:'done',title:'Type a task and press Enter to add it'});
+  q.onkeydown=e=>{ if(e.key==='Enter' && q.value.trim()){ quickAdd(q.value.trim()); q.value=''; } };
+  const qb=el('button',{className:'primary',textContent:'Add',title:'Add this task'}); qb.onclick=()=>{ if(q.value.trim()){ quickAdd(q.value.trim()); q.value=''; q.focus(); } };
+  const parts=[];
+  if(tview!=='done') parts.push(el('div',{className:'quick'},q,qb));
+
+  let list=store.tasks.items.filter(inView);
+  if(tview==='done'){
+    list.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+    if(list.length){ const clr=el('button',{className:'ghost danger',textContent:'Clear completed',title:'Delete all completed tasks for both of you'});
+      clr.onclick=async()=>{ if(confirm(`Delete ${list.length} completed task${list.length>1?'s':''}?`)) change('tasks', list.map(t=>({op:'delete',id:t.id}))); }; parts.push(clr); }
+    list.forEach(t=>parts.push(taskRow(t)));
+  } else {
+    const T=ymd(today()), TM=ymd(addDays(today(),1)), W=ymd(addDays(today(),7));
+    const groups=[['Overdue',t=>t.due&&t.due<T,'late'],['Today',t=>t.due===T],['Tomorrow',t=>t.due===TM],['This week',t=>t.due>TM&&t.due<=W],['Later',t=>t.due>W],['No date',t=>!t.due]];
+    list.sort((a,b)=>(b.important?1:0)-(a.important?1:0) || String(a.due||'9').localeCompare(String(b.due||'9')) || String(a.time||'').localeCompare(String(b.time||'')) || (a.createdAt||0)-(b.createdAt||0));
+    for(const [name,fn,cls] of groups){ const g=list.filter(fn); if(!g.length) continue; parts.push(el('div',{className:'group'+(cls?' '+cls:''),textContent:`${name} · ${g.length}`})); g.forEach(t=>parts.push(taskRow(t))); }
+  }
+  if(!list.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:tview==='done'?'Nothing completed yet':'All clear'}),
+    el('p',{textContent:store.tasks.items.length?'No tasks here.':'Add your first task above, or import your Google Tasks from Settings.'})));
+  v.replaceChildren(...parts);
+}
+function quickAdd(title){
+  const t={id:uid(), title, done:false, important:tview==='starred', due:tview==='today'?ymd(today()):null, time:null,
+    list:tview.startsWith('list:')?tview.slice(5):null, assignee:tview==='mine'?me().email:(tview==='p2'&&partner()?partner().email:''), repeat:'', notes:''};
+  change('tasks',[{op:'upsert',item:t}]);
+}
+function taskRow(t){
+  const r=el('div',{className:'row'+(t.done?' done':''),title:'Open this task'});
+  const c=el('button',{className:'check'+(t.done?' on':''),textContent:t.done?'✓':'',title:t.done?'Mark as not done':'Mark as done'});
+  c.onclick=e=>{ e.stopPropagation(); toggleDone(t); };
+  const meta=el('div',{className:'m'});
+  const dl=dueLabel(t); if(dl) meta.append(el('span',{className:'due '+dl.cls,textContent:dl.s}));
+  if(t.repeat) meta.append(el('span',{textContent:'↻ '+t.repeat}));
+  const L=store.tasks.lists.find(l=>l.id===t.list); if(L && !tview.startsWith('list:')) meta.append(el('span',{textContent:L.name}));
+  if(t.notes) meta.append(el('span',{textContent:'📝'}));
+  const main=el('div',{className:'main'},el('div',{className:'t',textContent:t.title}),meta);
+  const s=el('button',{className:'starbtn'+(t.important?' on':''),textContent:t.important?'★':'☆',title:t.important?'Unstar':'Star as important'});
+  s.onclick=e=>{ e.stopPropagation(); change('tasks',[{op:'upsert',item:{...t,important:!t.important}}]); };
+  r.append(c,main); const w=whoBubble(t.assignee); if(w) r.append(w); r.append(s);
+  r.onclick=()=>editTask(t);
+  return r;
+}
+function nextDue(t){
+  const d=parseYmd(t.due||ymd(today()));
+  if(t.repeat==='daily') d.setDate(d.getDate()+1);
+  else if(t.repeat==='weekdays'){ do{ d.setDate(d.getDate()+1); }while([0,6].includes(d.getDay())); }
+  else if(t.repeat==='weekly') d.setDate(d.getDate()+7);
+  else if(t.repeat==='monthly') d.setMonth(d.getMonth()+1);
+  else if(t.repeat==='yearly') d.setFullYear(d.getFullYear()+1);
+  return ymd(d);
+}
+function toggleDone(t){
+  if(!t.done && t.repeat){ const n=nextDue(t); change('tasks',[{op:'upsert',item:{...t,due:n,lastDone:Date.now()}}]); toast(`Done ✓ Next one: ${fmtShort(parseYmd(n))}`); return; }
+  change('tasks',[{op:'upsert',item:{...t,done:!t.done,doneAt:t.done?null:Date.now(),doneBy:t.done?null:me().email}}]);
+  if(!t.done) toast('Done ✓');
+}
+async function editTask(t){
+  const isNew=!t; t=t?{...t}:{id:uid(),title:'',done:false,important:false,due:null,time:null,list:tview.startsWith('list:')?tview.slice(5):null,assignee:'',repeat:'',notes:''};
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:isNew?'New task':'Task'}));
+    const title=el('input',{value:t.title,placeholder:'What needs doing?',autofocus:isNew});
+    const notes=el('textarea',{value:t.notes||'',placeholder:'Notes'});
+    const due=el('input',{type:'date',value:t.due||'',title:'Due date'}); const time=el('input',{type:'time',value:t.time||'',title:'Optional time'});
+    const list=el('select',{title:'Which list'}); list.append(el('option',{value:'',textContent:'No list'}));
+    store.tasks.lists.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(l=>list.append(el('option',{value:l.id,textContent:l.name})));
+    list.append(el('option',{value:'__new',textContent:'＋ New list…'})); list.value=t.list||'';
+    list.onchange=async()=>{ if(list.value==='__new'){ const l=await newList('tasks',true); if(l){ list.insertBefore(el('option',{value:l.id,textContent:l.name}),list.lastChild); list.value=l.id; } else list.value=t.list||''; } };
+    const who=el('div',{className:'pills'}); let assignee=t.assignee||'';
+    const opts=[[me().email,'Me']]; if(partner()) opts.push([partner().email,partner().name]); opts.push(['both','Both'],['','Anyone']);
+    const drawWho=()=>{ who.replaceChildren(...opts.map(([v,l])=>{ const b=el('button',{type:'button',textContent:l,className:assignee===v?'on':'',title:`Assign to ${l.toLowerCase()==='me'?'yourself':l}`}); b.onclick=()=>{ assignee=v; drawWho(); }; return b; })); };
+    drawWho();
+    const rep=el('select',{title:'Repeat'}); [['','Does not repeat'],['daily','Every day'],['weekdays','Every weekday'],['weekly','Every week'],['monthly','Every month'],['yearly','Every year']].forEach(([v,l])=>rep.append(el('option',{value:v,textContent:l}))); rep.value=t.repeat||'';
+    const imp=el('label',{className:'checkrow'},el('input',{type:'checkbox',checked:!!t.important}),'★ Important');
+    sh.append(...field('Title',title),...field('Notes',notes),el('div',{className:'two'},el('div',{},...field('Due date',due)),el('div',{},...field('Time',time))),
+      ...field('List',list),...field('Who',who),...field('Repeat',rep),imp);
+    if(!isNew){ const by=el('p',{textContent:`Added by ${nameOf(t.createdBy)}${t.updatedBy&&t.updatedBy!==t.createdBy?` · last changed by ${nameOf(t.updatedBy)}`:''}${t.done&&t.doneBy?` · done by ${nameOf(t.doneBy)}`:''}`}); sh.append(by); }
+    const save=el('button',{className:'primary',textContent:'Save',title:'Save this task'});
+    save.onclick=()=>{ if(!title.value.trim()) return title.focus();
+      const item={...t,title:title.value.trim(),notes:notes.value.trim(),due:due.value||null,time:due.value&&time.value?time.value:null,list:list.value&&list.value!=='__new'?list.value:null,assignee,repeat:rep.value,important:imp.querySelector('input').checked};
+      change('tasks',[{op:'upsert',item}]); close(); };
+    const btns=el('div',{className:'btns'});
+    if(!isNew){ const del=el('button',{className:'danger',textContent:'Delete',title:'Delete this task for both of you'}); del.onclick=()=>{ if(confirm('Delete this task?')){ change('tasks',[{op:'delete',id:t.id}]); close(); } }; btns.append(del); }
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(); btns.append(c,save); sh.append(btns);
+  });
+}
+async function newList(k, quiet){
+  const name=(prompt(k==='tasks'?'New list name':'New folder name')||'').trim(); if(!name) return null;
+  const l={id:uid(),name}; await change(k,[{op:'upsert',kind:'list',item:l}]);
+  if(!quiet){ if(k==='tasks') tview='list:'+l.id; else lview=l.id; render(); }
+  return l;
+}
+async function listMenu(k,id){
+  const L=store[k].lists.find(l=>l.id===id); if(!L) return;
+  const n=prompt(`Rename “${L.name}” (leave empty to delete the ${k==='tasks'?'list':'folder'})`, L.name); if(n===null) return;
+  if(n.trim()) return change(k,[{op:'upsert',kind:'list',item:{...L,name:n.trim()}}]);
+  if(!confirm(`Delete “${L.name}”? Its ${k==='tasks'?'tasks':'links'} stay, without a ${k==='tasks'?'list':'folder'}.`)) return;
+  const ops=store[k].items.filter(x=>(k==='tasks'?x.list:x.folder)===id).map(x=>({op:'upsert',item:k==='tasks'?{...x,list:null}:{...x,folder:null}}));
+  ops.push({op:'delete',kind:'list',id}); if(k==='tasks') tview='all'; else lview='all'; change(k,ops);
+}
+
+/* ---- import from Google Tasks (one time per person) ---- */
+async function importGoogleTasks(){
+  let lists;
+  try{ lists=(await gapi('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100')).items||[]; }
+  catch(e){ return toast(e.status===403?'Google Tasks isn’t turned on for Peggy yet (see setup steps), or you need to sign in again.':'Could not reach Google Tasks: '+e.message,6000); }
+  if(!lists.length) return toast('No Google Tasks lists found');
+  const chosen=await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Import from Google Tasks'}),el('p',{textContent:'Pick the lists to bring into Peggy. Tasks come in assigned to you; you can reassign them after. Importing again skips tasks already brought in.'}));
+    const boxes=lists.map(l=>{ const i=el('input',{type:'checkbox',checked:true}); sh.append(el('label',{className:'checkrow'},i,l.title)); return [l,i]; });
+    const comp=el('input',{type:'checkbox'}); sh.append(el('label',{className:'checkrow'},comp,'Also bring in completed tasks'));
+    const go=el('button',{className:'primary',textContent:'Import',title:'Import the chosen lists'}); go.onclick=()=>close({lists:boxes.filter(b=>b[1].checked).map(b=>b[0]),completed:comp.checked});
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(null);
+    sh.append(el('div',{className:'btns'},c,go));
+  });
+  if(!chosen || !chosen.lists.length) return;
+  toast('Importing…',3000);
+  const have=new Set(store.tasks.items.map(t=>t.gtid).filter(Boolean)); const ops=[]; let n=0;
+  for(const gl of chosen.lists){
+    let L=store.tasks.lists.find(l=>l.name.toLowerCase()===gl.title.toLowerCase());
+    if(!L){ L={id:uid(),name:gl.title}; ops.push({op:'upsert',kind:'list',item:L}); store.tasks.lists.push(L); }
+    let pageToken='';
+    do{
+      const q=new URLSearchParams({maxResults:'100',showCompleted:String(chosen.completed),showHidden:String(chosen.completed)}); if(pageToken) q.set('pageToken',pageToken);
+      const d=await gapi(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(gl.id)}/tasks?${q}`);
+      for(const gt of d.items||[]){
+        if(!gt.title || have.has(gt.id)) continue;
+        const done=gt.status==='completed';
+        ops.push({op:'upsert',item:{id:uid(),gtid:gt.id,title:gt.title,notes:gt.notes||'',due:gt.due?gt.due.slice(0,10):null,time:null,list:L.id,
+          assignee:me().email,done,doneAt:done?Date.parse(gt.completed)||Date.now():null,doneBy:done?me().email:null,important:false,repeat:''}}); n++;
+      }
+      pageToken=d.nextPageToken||'';
+    }while(pageToken);
+  }
+  await change('tasks',ops);
+  toast(`Imported ${n} task${n===1?'':'s'} from Google Tasks`,4000);
+}
+
+/* ================= CALENDAR ================= */
+let cview=matchMedia('(min-width:700px)').matches?'month':'schedule', cdate=today(), calendars=[], events={}, calLoaded=false, calErr='', showTasksOnCal=true;
+try{ showTasksOnCal=localStorage.getItem('peggy.calTasks')!=='0'; }catch(_){}
+let prefs={};
+async function loadCalendar(force){
+  if(!acct.session) return;
+  try{
+    if(!calLoaded || force){
+      const d=await gapi('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250');
+      prefs=await peggyApi('prefs').catch(()=>({}));
+      const saved=new Map((prefs.calendars||[]).map(c=>[c.id,c]));
+      calendars=(d.items||[]).filter(c=>!c.hidden).map(c=>({id:c.id,name:c.summaryOverride||c.summary,color:c.backgroundColor||'#D1386E',
+        write:['owner','writer'].includes(c.accessRole),primary:!!c.primary,
+        show: saved.has(c.id) ? saved.get(c.id).show!==false : (!!c.primary || (c.selected && ['owner','writer'].includes(c.accessRole)))}));
+      calendars.sort((a,b)=>(b.primary?1:0)-(a.primary?1:0)||a.name.localeCompare(b.name));
+      calLoaded=true; calErr=''; if(!prefs.calendars) savePrefs();
+    }
+    await loadEvents();
+  }catch(e){ calErr = e.status===403 ? 'Peggy doesn’t have calendar access yet. Turn on the Google Calendar API (see setup) and sign in again from Settings.' : e.message; }
+  if(tab==='calendar') render();
+}
+function savePrefs(){ prefs.calendars=calendars.map(c=>({id:c.id,name:c.name,color:c.color,show:c.show})); return peggyApi('prefs',{method:'PUT',body:JSON.stringify(prefs)}).catch(()=>{}); }
+function range(){
+  if(cview==='month'){ const f=new Date(cdate.getFullYear(),cdate.getMonth(),1); const s=addDays(f,-f.getDay()); return [s,addDays(s,42)]; }
+  if(cview==='week'){ const s=addDays(cdate,-cdate.getDay()); return [s,addDays(s,7)]; }
+  return [cdate, addDays(cdate,30)];
+}
+async function loadEvents(){
+  const [s,e]=range(), key=ymd(s)+'|'+ymd(e); const out=[];
+  await Promise.all(calendars.filter(c=>c.show).map(async c=>{
+    const q=new URLSearchParams({timeMin:s.toISOString(),timeMax:e.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'250'});
+    try{ const d=await gapi(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.id)}/events?${q}`);
+      (d.items||[]).forEach(ev=>{ if(ev.status!=='cancelled') out.push({...ev,_cal:c}); }); }catch(_){}
+  }));
+  events[key]=out;
+}
+function evStart(ev){ return ev.start.dateTime ? new Date(ev.start.dateTime) : parseYmd(ev.start.date); }
+function evDays(ev){ // day keys this event shows on
+  if(ev.start.date){ const a=parseYmd(ev.start.date), b=parseYmd(ev.end.date); const r=[]; for(let d=a; d<b; d=addDays(d,1)) r.push(ymd(d)); return r.length?r:[ev.start.date]; }
+  return [ymd(new Date(ev.start.dateTime))];
+}
+function byDay(){
+  const [s,e]=range(), list=events[ymd(s)+'|'+ymd(e)]||[], m={};
+  for(const ev of list) for(const k of evDays(ev)) (m[k]=m[k]||[]).push({type:'ev',ev});
+  if(showTasksOnCal) for(const t of store.tasks.items) if(t.due && !t.done) (m[t.due]=m[t.due]||[]).push({type:'task',t});
+  for(const k in m) m[k].sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+  return m;
+}
+function sortKey(x){ if(x.type==='task') return '1'+(x.t.time||'99'); const ev=x.ev; return ev.start.date?'0':'1'+fmt24(new Date(ev.start.dateTime)); }
+const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+function renderCalendar(v){
+  $('#chips').replaceChildren();
+  if(calErr){ v.replaceChildren(el('div',{className:'card'},el('p',{textContent:calErr}),Object.assign(el('button',{className:'primary',textContent:'Sign in again'}),{onclick:()=>peggySignIn('plan.html#calendar')}))); return; }
+  const [s,e]=range();
+  const title = cview==='month' ? cdate.toLocaleDateString(undefined,{month:'long',year:'numeric'}) : cview==='week' ? `${fmtShort(s)} – ${fmtShort(addDays(e,-1))}` : 'Coming up';
+  const step = d => { if(cview==='month') cdate=new Date(cdate.getFullYear(),cdate.getMonth()+d,1); else cdate=addDays(cdate,(cview==='week'?7:30)*d); loadCalendar(); };
+  const prev=el('button',{className:'iconbtn',textContent:'‹',title:'Earlier'}); prev.onclick=()=>step(-1);
+  const next=el('button',{className:'iconbtn',textContent:'›',title:'Later'}); next.onclick=()=>step(1);
+  const tdy=el('button',{textContent:'Today',title:'Jump to today'}); tdy.onclick=()=>{ cdate=today(); loadCalendar(); };
+  const seg=el('div',{className:'seg'}); [['schedule','List'],['week','Week'],['month','Month']].forEach(([k,l])=>{ const b=el('button',{textContent:l,className:cview===k?'on':'',title:`${l} view`}); b.onclick=()=>{ cview=k; if(k!=='month') cdate=k==='week'?cdate:today(); loadCalendar(); render(); }; seg.append(b); });
+  const parts=[el('div',{className:'calbar'},prev,el('span',{className:'ttl',textContent:title}),next,tdy,seg)];
+  if(!calLoaded){ parts.push(el('p',{className:'spin',textContent:'Loading your calendar…'})); return v.replaceChildren(...parts); }
+  if(!calendars.some(c=>c.show)) parts.push(el('div',{className:'card'},el('p',{textContent:'No calendars are turned on. Choose them in Settings.'})));
+  const m=byDay();
+  if(cview==='month'){
+    const g=el('div',{className:'month'}); ['S','M','T','W','T','F','S'].forEach(d=>g.append(el('div',{className:'hd',textContent:d})));
+    for(let d=new Date(s); d<e; d=addDays(d,1)){
+      const k=ymd(d), items=m[k]||[], c=el('div',{className:'mc'+(d.getMonth()!==cdate.getMonth()?' out':'')+(k===ymd(today())?' today':''),title:fmtDay(d)});
+      c.append(el('span',{className:'n',textContent:d.getDate()}));
+      items.slice(0,3).forEach(x=>{ const t=el('div',{className:'e'+(x.type==='task'?' task':''),textContent:x.type==='task'?'☐ '+x.t.title:(x.ev.summary||'(No title)')}); if(x.type==='ev') t.style.setProperty('--c',x.ev._cal.color); c.append(t); });
+      if(items.length>3) c.append(el('div',{className:'more',textContent:`+${items.length-3} more`}));
+      const day=new Date(d); c.onclick=()=>daySheet(day, items); g.append(c);
+    }
+    parts.push(g);
+  } else {
+    const days=[]; for(let d=new Date(s); d<e; d=addDays(d,1)) days.push(new Date(d));
+    let any=false;
+    for(const d of days){
+      const k=ymd(d), items=m[k]||[]; const isToday=k===ymd(today());
+      if(!items.length && cview==='schedule' && !isToday) continue; any=true;
+      const box=el('div',{className:'day'},el('div',{className:'dayh'+(isToday?' today':'')},document.createTextNode(isToday?'Today':d.toLocaleDateString(undefined,{weekday:'long'})),el('span',{className:'d',textContent:fmtShort(d)})));
+      if(!items.length) box.append(el('div',{className:'ev',style:'cursor:default'},el('span',{className:'m',textContent:'Nothing planned'})));
+      items.forEach(x=>box.append(x.type==='task'?calTask(x.t):evRow(x.ev)));
+      parts.push(box);
+    }
+    if(!any) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Nothing planned'}),el('p',{textContent:'Tap ＋ to add an event.'})));
+  }
+  v.replaceChildren(...parts);
+}
+function evRow(ev){
+  const allDay=!!ev.start.date, st=evStart(ev);
+  const r=el('div',{className:'ev',title:'Open this event'}); r.style.setProperty('--c',ev._cal.color);
+  r.append(el('span',{className:'bar'}),el('span',{className:'tm',textContent:allDay?'All day':fmtTime(st)}),
+    el('div',{style:'flex:1;min-width:0'},el('div',{className:'t',textContent:ev.summary||'(No title)'}),el('div',{className:'m',textContent:[ev.location,ev._cal.name].filter(Boolean).join(' · ')})));
+  r.onclick=()=>showEvent(ev); return r;
+}
+function calTask(t){
+  const r=el('div',{className:'ev',title:'Open this task'});
+  const c=el('button',{className:'check',title:'Mark as done'}); c.onclick=e=>{ e.stopPropagation(); toggleDone(t); };
+  const dl=dueLabel(t);
+  r.append(c,el('div',{style:'flex:1;min-width:0'},el('div',{className:'t',textContent:t.title}),el('div',{className:'m',textContent:'Task'+(t.time?` · ${dl.s.split(' ').slice(1).join(' ')}`:'')+(t.assignee?` · ${nameOf(t.assignee)}`:'')})));
+  const w=whoBubble(t.assignee); if(w) r.append(w);
+  r.onclick=()=>editTask(t); return r;
+}
+function daySheet(d, items){
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:fmtDay(d)}));
+    if(!items.length) sh.append(el('p',{textContent:'Nothing planned.'}));
+    items.forEach(x=>{ const r=x.type==='task'?calTask(x.t):evRow(x.ev); const o=r.onclick; r.onclick=()=>{ close(); o(); }; sh.append(r); });
+    const add=el('button',{className:'primary',textContent:'＋ Event on this day',title:'Add an event on this day'}); add.onclick=()=>{ close(); editEvent(null,d); };
+    const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
+    sh.append(el('div',{className:'btns'},c,add));
+  });
+}
+function showEvent(ev){
+  sheet((sh,close)=>{
+    const allDay=!!ev.start.date, st=evStart(ev);
+    let when = allDay ? fmtDay(st) : `${fmtDay(st)} · ${fmtTime(st)} – ${fmtTime(new Date(ev.end.dateTime))}`;
+    if(allDay){ const last=addDays(parseYmd(ev.end.date),-1); if(ymd(last)!==ev.start.date) when=`${fmtShort(st)} – ${fmtShort(last)} · all day`; }
+    sh.append(el('h3',{textContent:ev.summary||'(No title)'}),el('p',{textContent:when}));
+    const info=el('div',{});
+    info.append(el('div',{className:'checkrow'},Object.assign(el('span',{className:'dot'}),{style:`background:${ev._cal.color}`}),ev._cal.name));
+    if(ev.location) info.append(el('p',{},Object.assign(el('a',{href:'https://maps.google.com/?q='+encodeURIComponent(ev.location),target:'_blank',rel:'noopener',textContent:'📍 '+ev.location,title:'Open in Google Maps'}))));
+    if(ev.description) info.append(el('p',{textContent:ev.description.replace(/<[^>]+>/g,' ')}));
+    if(ev.recurringEventId) info.append(el('p',{textContent:'↻ Repeating event. Changes here apply to this one only.'}));
+    sh.append(info);
+    const btns=el('div',{className:'btns'});
+    if(ev._cal.write){
+      const del=el('button',{className:'danger',textContent:'Delete',title:'Delete this event from Google Calendar'});
+      del.onclick=async()=>{ if(!confirm('Delete this event?')) return; try{ await gapi(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(ev._cal.id)}/events/${encodeURIComponent(ev.id)}`,{method:'DELETE'}); close(); toast('Event deleted'); loadCalendar(); }catch(e){ toast(e.message,5000); } };
+      const ed=el('button',{className:'primary',textContent:'Edit',title:'Change this event'}); ed.onclick=()=>{ close(); editEvent(ev); };
+      btns.append(del,ed);
+    }
+    if(ev.htmlLink) btns.append(Object.assign(el('a',{href:ev.htmlLink,target:'_blank',rel:'noopener',textContent:'Google',title:'Open in Google Calendar',style:'align-self:center;font-weight:800'})));
+    const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close(); btns.prepend(c);
+    sh.append(btns);
+  });
+}
+async function editEvent(ev, onDay){
+  if(!calLoaded) await loadCalendar();
+  const writable=calendars.filter(c=>c.write); if(!writable.length) return toast('No calendar you can add to. Check Settings.',5000);
+  const isNew=!ev, allDay0=ev?!!ev.start.date:false;
+  const s0=ev?evStart(ev):(()=>{ const d=new Date(onDay||today()); const n=new Date(); d.setHours(onDay?9:n.getHours()+1,0,0,0); return d; })();
+  const e0=ev?(ev.end.dateTime?new Date(ev.end.dateTime):addDays(parseYmd(ev.end.date),-1)):new Date(s0.getTime()+3600000);
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:isNew?'New event':'Edit event'}));
+    const title=el('input',{value:ev?ev.summary||'':'',placeholder:'Add title',autofocus:isNew});
+    const ad=el('input',{type:'checkbox',checked:allDay0});
+    const sd=el('input',{type:'date',value:ymd(s0)}), stt=el('input',{type:'time',value:fmt24(s0)});
+    const ed=el('input',{type:'date',value:ymd(e0)}), ett=el('input',{type:'time',value:fmt24(e0)});
+    const cal=el('select',{title:'Which calendar'}); writable.forEach(c=>cal.append(el('option',{value:c.id,textContent:c.name})));
+    cal.value = ev ? ev._cal.id : (prefs.sharedCalendarId && writable.some(c=>c.id===prefs.sharedCalendarId) ? prefs.sharedCalendarId : (writable.find(c=>c.primary)||writable[0]).id);
+    if(ev) cal.disabled=true;
+    const loc=el('input',{value:ev?ev.location||'':'',placeholder:'Location'}); const notes=el('textarea',{value:ev?(ev.description||'').replace(/<[^>]+>/g,' '):'',placeholder:'Notes'});
+    const times=el('div',{className:'two'},el('div',{},...field('Starts',sd),stt),el('div',{},...field('Ends',ed),ett));
+    const sync=()=>{ stt.classList.toggle('hidden',ad.checked); ett.classList.toggle('hidden',ad.checked); }; ad.onchange=sync; sync();
+    sd.onchange=()=>{ if(ed.value<sd.value) ed.value=sd.value; };
+    sh.append(...field('Title',title),el('label',{className:'checkrow'},ad,'All day'),times,...field('Calendar',cal),...field('Location',loc),...field('Notes',notes));
+    const save=el('button',{className:'primary',textContent:'Save',title:'Save to Google Calendar'});
+    save.onclick=async()=>{
+      if(!title.value.trim()) return title.focus();
+      const body={summary:title.value.trim(),location:loc.value.trim(),description:notes.value.trim()};
+      if(ad.checked){ body.start={date:sd.value}; body.end={date:ymd(addDays(parseYmd(ed.value||sd.value),1))}; }
+      else { let endD=ed.value||sd.value, endT=ett.value||stt.value; if(endD===sd.value && endT<=stt.value){ const x=new Date(`${sd.value}T${stt.value}`); x.setHours(x.getHours()+1); endD=ymd(x); endT=fmt24(x); }
+        body.start={dateTime:`${sd.value}T${stt.value||'09:00'}:00`,timeZone:TZ}; body.end={dateTime:`${endD}T${endT||'10:00'}:00`,timeZone:TZ}; }
+      save.disabled=true;
+      try{
+        const base=`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.value)}/events`;
+        if(isNew) await gapi(base,{method:'POST',body:JSON.stringify(body)});
+        else await gapi(`${base}/${encodeURIComponent(ev.id)}`,{method:'PATCH',body:JSON.stringify(body)});
+        close(); toast(isNew?'Event added':'Event saved'); loadCalendar();
+      }catch(e){ save.disabled=false; toast(e.message,5000); }
+    };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
+    sh.append(el('div',{className:'btns'},c,save));
+  });
+}
+async function createSharedCalendar(){
+  const p=partner(); if(!p) return toast('Your partner needs to sign in to Peggy once first.',5000);
+  if(!confirm(`Create a Google calendar named “Peggy · Shared” and share it with ${p.name} (${p.email})?`)) return;
+  try{
+    const c=await gapi('https://www.googleapis.com/calendar/v3/calendars',{method:'POST',body:JSON.stringify({summary:'Peggy · Shared',description:'Shared by Peggy',timeZone:TZ})});
+    await gapi(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.id)}/acl?sendNotifications=true`,{method:'POST',body:JSON.stringify({role:'writer',scope:{type:'user',value:p.email}})});
+    prefs.sharedCalendarId=c.id; calLoaded=false; await loadCalendar(true); await savePrefs();
+    toast(`Shared calendar created. ${p.name} gets an email to add it.`,6000);
+  }catch(e){ toast('Could not create it: '+e.message,6000); }
+}
+
+/* ================= LINKS ================= */
+let lview='all', lsearch='';
+const host=u=>{ try{ return new URL(u).hostname.replace(/^www\./,''); }catch(_){ return u; } };
+function renderLinks(v){
+  const chips=$('#chips'); chips.replaceChildren();
+  const add=(k,label,n)=>{ const b=el('button',{className:'chip'+(lview===k?' on':''),title:k==='all'?'Show all links':`Show the “${label}” folder (tap again to rename or delete)`},label); b.append(el('span',{className:'n',textContent:n}));
+    b.onclick=()=>{ if(lview===k && k!=='all') return listMenu('links',k); lview=k; render(); }; chips.append(b); };
+  add('all','All',store.links.items.length);
+  store.links.lists.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>add(f.id,f.name,store.links.items.filter(x=>x.folder===f.id).length));
+  const nf=el('button',{className:'chip',textContent:'＋ Folder',title:'Create a new folder'}); nf.onclick=()=>newList('links'); chips.append(nf);
+  const s=el('input',{className:'search',type:'search',placeholder:'Search links…',value:lsearch,title:'Search titles, notes and addresses'});
+  s.oninput=()=>{ lsearch=s.value; const pos=s.selectionStart; render(); const n=$('.search'); if(n){ n.focus(); n.setSelectionRange(pos,pos); } };
+  const q=lsearch.toLowerCase();
+  const list=store.links.items.filter(x=>(lview==='all'||x.folder===lview) && (!q || [x.title,x.url,x.note].join(' ').toLowerCase().includes(q)))
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const parts=[s];
+  list.forEach(x=>parts.push(linkRow(x)));
+  if(!list.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:q?'No matches':'No links yet'}),el('p',{textContent:'Tap ＋ to save a favorite link. Both of you will see it.'})));
+  v.replaceChildren(...parts);
+}
+function linkRow(x){
+  const r=el('div',{className:'lnk'});
+  const img=el('img',{src:`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host(x.url))}&sz=64`,alt:'',loading:'lazy'}); img.onerror=()=>{ img.style.visibility='hidden'; };
+  const F=store.links.lists.find(f=>f.id===x.folder);
+  const a=el('a',{className:'main',href:x.url,target:'_blank',rel:'noopener',title:'Open '+x.url},
+    el('div',{className:'t',textContent:x.title||host(x.url)}),
+    el('div',{className:'m',textContent:[host(x.url), lview==='all'&&F?F.name:'', x.note, `added by ${nameOf(x.createdBy)}`].filter(Boolean).join(' · ')}));
+  const cp=el('button',{className:'iconbtn',title:'Copy link',textContent:'⧉'}); cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(x.url); toast('Link copied'); }catch(_){ toast('Could not copy'); } };
+  const ed=el('button',{className:'iconbtn',title:'Edit or delete this link',textContent:'✎'}); ed.onclick=()=>editLink(x);
+  r.append(img,a,cp,ed); return r;
+}
+async function editLink(x){
+  const isNew=!x; x=x?{...x}:{id:uid(),url:'',title:'',note:'',folder:lview!=='all'?lview:null};
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:isNew?'Save a link':'Edit link'}));
+    const url=el('input',{type:'url',value:x.url,placeholder:'Paste a web address',autofocus:isNew,inputMode:'url',autocapitalize:'off'});
+    const title=el('input',{value:x.title,placeholder:'Title (filled in automatically)'});
+    let titled=!!x.title;
+    title.oninput=()=>{ titled=!!title.value; };
+    const look=async()=>{ let u=url.value.trim(); if(!u) return; if(!/^https?:\/\//i.test(u)){ u='https://'+u; url.value=u; }
+      if(titled) return; title.placeholder='Looking up the title…';
+      try{ const d=await peggyApi('linkinfo?url='+encodeURIComponent(u)); if(d.title && !titled) title.value=d.title; }catch(_){}
+      title.placeholder='Title'; };
+    url.onblur=look; url.onpaste=()=>setTimeout(look,50);
+    const folder=el('select',{title:'Folder'}); folder.append(el('option',{value:'',textContent:'No folder'}));
+    store.links.lists.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>folder.append(el('option',{value:f.id,textContent:f.name})));
+    folder.append(el('option',{value:'__new',textContent:'＋ New folder…'})); folder.value=x.folder||'';
+    folder.onchange=async()=>{ if(folder.value==='__new'){ const f=await newList('links',true); if(f){ folder.insertBefore(el('option',{value:f.id,textContent:f.name}),folder.lastChild); folder.value=f.id; } else folder.value=x.folder||''; } };
+    const note=el('input',{value:x.note||'',placeholder:'Note (optional)'});
+    sh.append(...field('Link',url),...field('Title',title),...field('Folder',folder),...field('Note',note));
+    if(!isNew) sh.append(el('p',{textContent:`Added by ${nameOf(x.createdBy)}`}));
+    const save=el('button',{className:'primary',textContent:'Save',title:'Save this link for both of you'});
+    save.onclick=async()=>{ let u=url.value.trim(); if(!u) return url.focus(); if(!/^https?:\/\//i.test(u)) u='https://'+u;
+      try{ new URL(u); }catch(_){ return toast('That doesn’t look like a web address'); }
+      change('links',[{op:'upsert',item:{...x,url:u,title:title.value.trim()||host(u),note:note.value.trim(),folder:folder.value&&folder.value!=='__new'?folder.value:null}}]); close(); };
+    const btns=el('div',{className:'btns'});
+    if(!isNew){ const del=el('button',{className:'danger',textContent:'Delete',title:'Delete this link for both of you'}); del.onclick=()=>{ if(confirm('Delete this link?')){ change('links',[{op:'delete',id:x.id}]); close(); } }; btns.append(del); }
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(); btns.append(c,save); sh.append(btns);
+  });
+}
+
+/* ================= SETTINGS ================= */
+async function openSettings(){
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Settings'}));
+    if(acct.session){
+      const p=partner();
+      sh.append(el('p',{textContent:`Signed in as ${me().name} (${me().email}).`+(p?` Sharing with ${p.name}${p.signedIn?'':' (not signed in yet)'}.`:'')}));
+    }
+    sh.append(el('label',{className:'f',textContent:'Theme color'}), peggyThemePicker());
+    if(acct.session){
+      sh.append(el('label',{className:'f',textContent:'Calendars to show'}));
+      if(!calLoaded) sh.append(el('p',{textContent:'Open the Calendar tab once to load your calendars.'}));
+      calendars.forEach(c=>{ const i=el('input',{type:'checkbox',checked:c.show}); i.onchange=()=>{ c.show=i.checked; savePrefs(); loadCalendar(); };
+        sh.append(el('label',{className:'checkrow'},i,Object.assign(el('span',{className:'dot'}),{style:`background:${c.color}`}),c.name)); });
+      const tk=el('input',{type:'checkbox',checked:showTasksOnCal}); tk.onchange=()=>{ showTasksOnCal=tk.checked; try{ localStorage.setItem('peggy.calTasks',tk.checked?'1':'0'); }catch(_){} render(); };
+      sh.append(el('label',{className:'checkrow'},tk,'Show tasks with due dates on the calendar'));
+      const st=el('div',{className:'stack'});
+      if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
+        const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Peggy · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
+      const im=el('button',{textContent:'Import from Google Tasks',title:'Bring your Google Tasks lists into Peggy'}); im.onclick=()=>{ close(); importGoogleTasks(); };
+      const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>peggySignIn('plan.html#'+tab);
+      const out=el('button',{className:'danger',textContent:'Sign out of Peggy on this device'}); out.onclick=async()=>{ try{ await peggyApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
+      st.append(im,re,out); sh.append(st);
+    }
+    const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:10px'}); c.onclick=()=>close(); sh.append(c);
+  });
+}
+
+/* ================= boot ================= */
+document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({size:30,flutter:true}); render(); });
+(async function boot(){
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  $('#logo').innerHTML=butterfly({size:30,flutter:true});
+  loadCache(); route();
+  if(acct.session){
+    try{ members=(await peggyApi('members')).members; }catch(e){ if(e.status===401){ toast('Please sign in again',4000); } }
+    render(); await syncAll(); if(tab==='calendar') loadCalendar();
+  }
+})();
+</script>
+</body>
+</html>

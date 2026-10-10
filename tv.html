@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-peggy="tv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Peggy TV</title>
+<script src="theme.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
@@ -16,9 +17,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-famil
 .f{transition:transform .12s, box-shadow .12s}
 .focus{outline:none;box-shadow:0 0 0 .3vw #FFD3E4, 0 0 2.4vw rgba(240,106,155,.65)!important;transform:scale(1.05);z-index:2;position:relative}
 button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--panel2);border:0;border-radius:1.4vw;padding:.9vw 1.6vw;font-size:1.5vw;white-space:nowrap}
-.btn.on{background:var(--lilac);color:#2A1230;font-weight:800}
+.btn.on{background:var(--lilac);color:var(--bg);font-weight:800}
 .btn.danger{color:var(--danger)}
-.btn.primary{background:var(--accent);color:#2A1230;font-weight:800}
+.btn.primary{background:var(--accent);color:var(--bg);font-weight:800}
 
 /* home */
 #home{position:absolute;inset:0;display:flex;flex-direction:column;padding:2.5vh 3vw 0}
@@ -57,14 +58,14 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 
 /* layers */
 .layer{position:absolute;inset:0;background:var(--bg);z-index:10}
-.stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#1A0A1F}
+.stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--photo)}
 .stageImg canvas,.stageImg img{max-width:100%;max-height:100%}
 .vbar{position:absolute;left:0;right:0;bottom:0;padding:3vh 3vw 4vh;display:flex;gap:1.2vw;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.85))}
 .vinfo{position:absolute;left:3vw;top:3vh;font-size:1.3vw;color:#ddd;text-shadow:0 .1vw .4vw #000;background:rgba(0,0,0,.35);padding:.5vw 1vw;border-radius:.6vw}
 .hint{position:absolute;right:3vw;top:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.45);padding:.5vw 1vw;border-radius:.6vw}
 
 /* slideshow */
-#show .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;background:#1A0A1F}
+#show .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;background:var(--photo)}
 #show .slot.on{opacity:1}
 #show .slot canvas{max-width:100%;max-height:100%}
 #show .slot.motion canvas{animation:kb var(--dur,8s) linear forwards}
@@ -75,7 +76,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 
 /* editor */
 #editor{display:flex}
-#edStage{flex:1;position:relative;background:#1A0A1F;display:flex;align-items:center;justify-content:center;padding:2vw}
+#edStage{flex:1;position:relative;background:var(--photo);display:flex;align-items:center;justify-content:center;padding:2vw}
 #edStage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 .1vw rgba(255,255,255,.2)}
 #edPanel{width:30vw;background:var(--panel);padding:2.5vh 1.6vw;display:flex;flex-direction:column;gap:.9vh;overflow:hidden}
 #edPanel h3{margin:0 0 1vh;font:600 2vw var(--display);color:var(--accent)}
@@ -86,7 +87,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #reframeHint{position:absolute;left:50%;bottom:3vh;transform:translateX(-50%);font-size:1.4vw;background:rgba(0,0,0,.7);padding:.6vw 1.4vw;border-radius:.7vw}
 
 /* dialog */
-.scrim{position:absolute;inset:0;background:rgba(26,10,31,.75);z-index:20;display:flex;align-items:center;justify-content:center}
+.scrim{position:absolute;inset:0;background:var(--scrim,rgba(26,10,31,.75));z-index:20;display:flex;align-items:center;justify-content:center}
 .dlg{background:var(--panel);border-radius:2vw;padding:3vh 2.5vw;min-width:34vw;max-width:60vw;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;gap:1vh}
 .dlg h3{margin:0;font:600 2.2vw var(--display);color:var(--accent)}
 .dlg p{margin:0 0 1vh;font-size:1.4vw;color:var(--dim);line-height:1.45}
@@ -94,8 +95,8 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 .dlg .btn{text-align:left}
 .dlg input{font:inherit;font-size:1.6vw;padding:.9vw 1.2vw;border-radius:.7vw;border:.15vw solid var(--line);background:var(--bg);color:var(--text)}
 /* Words scoreboard: 10-foot layout, lanes sized by vw so it reads from the couch */
-#words{--bg:#2A1230;--surface:#3A1B42;--fg:#FFEAF3;--muted:#D9AECB;--line:#5E3468;--live:#FFB547;
-  --s1:#F06A9B;--s2:#A98BF0;--s3:#4FD8C9;--s4:#FFB547;--s5:#7CC4FF;--s6:#F28AE8;
+#words{--surface:var(--panel);--fg:var(--text);--muted:var(--dim);--live:#FFB547;
+  --s1:var(--accent);--s2:var(--lilac);--s3:#4FD8C9;--s4:#FFB547;--s5:#7CC4FF;--s6:#F28AE8;
   --display:"Fredoka","Nunito",ui-rounded,sans-serif;--body:"Nunito",ui-rounded,sans-serif;--mono:"Nunito",ui-rounded,sans-serif;
   background:var(--bg);color:var(--fg);font:1.6vw/1.4 var(--body);padding:3.5vh 4vw;display:flex;flex-direction:column;gap:2.5vh}
 #words .wtop{display:flex;justify-content:space-between;align-items:baseline;gap:2vw}
@@ -136,9 +137,31 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #words .cap.interim p{color:var(--muted);font-style:italic}
 #words .cut{font:500 1vw var(--mono);color:var(--live);border:.12vw solid var(--live);border-radius:.4vw;padding:0 .5vw;margin-right:.8vw}
 #words .wfoot{display:flex;justify-content:space-between;font:500 1vw var(--mono);color:var(--muted)}
-#wAlert{position:absolute;left:50%;top:3vh;transform:translateX(-50%);background:var(--live);color:#2A1230;font:700 2vw var(--display);padding:1.2vh 2.4vw;border-radius:1vw;box-shadow:0 1vh 4vh rgba(0,0,0,.5);opacity:0;transition:opacity .3s;max-width:80vw;text-align:center}
+#wAlert{position:absolute;left:50%;top:3vh;transform:translateX(-50%);background:var(--live);color:var(--bg);font:700 2vw var(--display);padding:1.2vh 2.4vw;border-radius:1vw;box-shadow:0 1vh 4vh rgba(0,0,0,.5);opacity:0;transition:opacity .3s;max-width:80vw;text-align:center}
 #wAlert.on{opacity:1}
 .toast{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);z-index:40;background:var(--accent);color:#2A1230;font-weight:800;padding:1vw 2vw;border-radius:1vw;font-size:1.5vw;box-shadow:0 .5vw 2vw rgba(0,0,0,.5)}
+/* Today: calendar and shared tasks */
+#today{padding:3.5vh 4vw;display:flex;flex-direction:column;gap:2.5vh}
+#today .ttop{display:flex;align-items:baseline;justify-content:space-between}
+#today h1{font:600 3.4vw/1 var(--display);margin:0;color:var(--accent);display:flex;align-items:center;gap:.8vw}
+#today h1 .bfly{width:4.2vw;height:auto}
+#today .clock{font:600 3vw var(--display);color:var(--text)}
+#today .date{font-size:1.6vw;color:var(--dim);margin-left:1.5vw}
+#today .cols{flex:1;display:grid;grid-template-columns:3fr 2fr;gap:2.5vw;min-height:0}
+#today .col{background:var(--panel);border-radius:1.6vw;padding:2vh 1.8vw;overflow:hidden;display:flex;flex-direction:column;gap:1vh}
+#today h2{font:600 2vw var(--display);margin:0 0 .5vh;color:var(--lilac)}
+#today .dh{font:600 1.5vw var(--display);color:var(--dim);margin-top:1.2vh}
+#today .dh.now{color:var(--accent)}
+#today .ev{display:flex;gap:1.2vw;align-items:center;font-size:1.6vw;padding:.6vh 0}
+#today .ev .bar{width:.45vw;align-self:stretch;border-radius:.3vw;background:var(--c,var(--accent))}
+#today .ev .tm{width:9vw;color:var(--dim);font-weight:800;flex:none}
+#today .ev .who{color:var(--dim);font-size:1.2vw}
+#today .tk{display:flex;gap:1vw;align-items:center;font-size:1.55vw;padding:.5vh 0}
+#today .tk .box{width:1.6vw;height:1.6vw;border:.2vw solid var(--accent);border-radius:50%;flex:none}
+#today .tk .due{color:var(--dim);font-size:1.2vw;margin-left:auto;white-space:nowrap}
+#today .tk.late .due{color:#FF8FA3}
+#today .quiet{color:var(--dim);font-size:1.5vw}
+#today .foot{font-size:1.1vw;color:var(--dim);display:flex;justify-content:space-between}
 </style>
 </head>
 <body>
@@ -187,6 +210,15 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <section class="captions hidden" id="wCaps"></section>
   <div class="wfoot hidden" id="wFoot"><span>◀ ▶ change speaker · Back for photos</span><span id="wTimerInfo"></span><span id="wTotal"></span></div>
   <div id="wAlert"></div>
+</div>
+
+<div id="today" class="layer hidden">
+  <div class="ttop"><h1 id="tdWordmark">Today</h1><div><span class="clock" id="tdClock"></span><span class="date" id="tdDate"></span></div></div>
+  <div class="cols">
+    <div class="col" id="tdEvents"></div>
+    <div class="col" id="tdTasks"></div>
+  </div>
+  <div class="foot"><span>Back for photos</span><span id="tdUpdated"></span></div>
 </div>
 
 <div id="editor" class="layer hidden">
@@ -318,6 +350,7 @@ function renderHome(){
     for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
       add(a.name,()=> view===a.id ? albumOptions(a) : setView(a.id), view===a.id?'on':'', photos.filter(p=>p.albums.includes(a.id)).length);
   }
+  add('📅 Today',()=>openToday());
   add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
@@ -555,6 +588,8 @@ let incoming=null;
 async function onData(c, m){
   if(!m || typeof m!=='object') return;
   try{
+    if(m.t==='theme'){ setPeggyTheme(m.name); paintButterflies(); return; }
+    if(m.t==='plan' && m.session){ store.set('peggy.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); return; }
     if(m.t==='show-start'){
       startSlideshow([],0,true); ssMsg('Receiving photos from your phone…');
     }
@@ -677,15 +712,79 @@ function onWords(c, m){
   }
 }
 
+/* ================= butterflies (follow the theme) ================= */
+function paintButterflies(){
+  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy<span class="kiss" aria-hidden="true">😘</span>';
+  $('#wWordmark').innerHTML=butterfly({size:60,flutter:true})+'Words';
+  $('#tdWordmark').innerHTML=butterfly({size:60,flutter:true})+'Today';
+  const drift=$('#drift'); drift.replaceChildren();
+  [[18,'34s','0s',3.2],[30,'46s','-17s',2.4],[62,'40s','-30s',4]].forEach(([top,dur,delay,w])=>{
+    const d=el('div'); d.innerHTML=butterfly(); const b=d.firstElementChild;
+    b.style.cssText=`top:${top}vh;left:0;width:${w}vw;height:auto;animation-duration:${dur};animation-delay:${delay}`; drift.append(b); });
+}
+
+/* ================= Today: calendar + shared tasks (view only) ================= */
+let tdTimer=null;
+const todayOpen=()=>topScope() && topScope().root===$('#today');
+function openToday(){
+  if(todayOpen()) return;
+  while(scopes.length>1) popScope();
+  $('#today').classList.remove('hidden');
+  pushScope($('#today'),{ onkey:k=>true, onclose:()=>{ $('#today').classList.add('hidden'); clearInterval(tdTimer); tdTimer=null; } });
+  tick(); loadToday();
+  clearInterval(tdTimer); tdTimer=setInterval(()=>{ tick(); if(Date.now()-(window._tdLoaded||0)>5*60000) loadToday(); },15000);
+}
+function tick(){ const n=new Date(); $('#tdClock').textContent=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); $('#tdDate').textContent=n.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}); }
+async function loadToday(){
+  let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){}
+  const E=$('#tdEvents'), T=$('#tdTasks');
+  if(!plan){ E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:'Open Peggy on your phone, sign in under Tasks, then connect to this TV. Today’s plans will appear here.'})); T.replaceChildren(el('h2',{textContent:'Tasks'})); return; }
+  const call=p=>fetch(plan.relay+'/api/'+p,{headers:{'X-Peggy-Session':plan.session}}).then(r=>r.ok?r.json():Promise.reject(r.status));
+  const start=new Date(); start.setHours(0,0,0,0);
+  try{
+    const [ag,tasks,mem]=await Promise.all([call('agenda?days=7&from='+encodeURIComponent(start.toISOString())), call('data/tasks'), call('members')]);
+    window._tdLoaded=Date.now(); $('#tdUpdated').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+    renderTodayEvents(ag.events||[], start); renderTodayTasks(tasks.items||[], mem.members||[]);
+  }catch(e){
+    if(e===401){ store.set('peggy.tvplan',''); }
+    E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Peggy on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
+  }
+}
+const ymdL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function renderTodayEvents(evs, start){
+  const E=$('#tdEvents'); const parts=[el('h2',{textContent:'Calendar'})]; let lines=0;
+  for(let i=0;i<7 && lines<13;i++){
+    const d=new Date(start); d.setDate(d.getDate()+i); const k=ymdL(d);
+    const list=evs.filter(ev=>{ if(ev.start.date){ return ev.start.date<=k && ev.end.date>k; } return ymdL(new Date(ev.start.dateTime))===k; });
+    if(!list.length && i>0) continue;
+    parts.push(el('div',{className:'dh'+(i===0?' now':''),textContent:i===0?'Today':i===1?'Tomorrow':d.toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'})})); lines++;
+    if(!list.length) { parts.push(el('div',{className:'quiet',textContent:'Nothing planned'})); lines++; }
+    for(const ev of list){ if(lines>=13) break;
+      const r=el('div',{className:'ev'}); if(ev.color) r.style.setProperty('--c',ev.color);
+      r.append(el('span',{className:'bar'}),el('span',{className:'tm',textContent:ev.start.date?'All day':new Date(ev.start.dateTime).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}),
+        el('span',{textContent:ev.title}),el('span',{className:'who',textContent:ev.location||''}));
+      parts.push(r); lines++; }
+  }
+  E.replaceChildren(...parts);
+}
+function renderTodayTasks(items, members){
+  const T=$('#tdTasks'); const k=ymdL(new Date()); const soon=new Date(); soon.setDate(soon.getDate()+3); const ks=ymdL(soon);
+  const name=e=>e==='both'?'Both':(members.find(m=>m.email===e)||{}).name||'';
+  const open=items.filter(t=>!t.done);
+  const pick=open.filter(t=>t.due && t.due<=ks).sort((a,b)=>a.due.localeCompare(b.due)||String(a.time||'').localeCompare(String(b.time||'')));
+  const starred=open.filter(t=>t.important && !(t.due && t.due<=ks));
+  const parts=[el('h2',{textContent:'Tasks'})];
+  const row=t=>{ const late=t.due&&t.due<k; const lab=!t.due?'★':t.due<k?'Overdue':t.due===k?'Today':new Date(t.due+'T12:00').toLocaleDateString([], {weekday:'short'});
+    return el('div',{className:'tk'+(late?' late':'')},el('span',{className:'box'}),el('span',{textContent:t.title}),el('span',{className:'due',textContent:[lab,name(t.assignee)].filter(Boolean).join(' · ')})); };
+  [...pick, ...starred].slice(0,12).forEach(t=>parts.push(row(t)));
+  if(parts.length===1) parts.push(el('div',{className:'quiet',textContent:'Nothing due in the next few days.'}));
+  T.replaceChildren(...parts);
+}
+
 /* ================= boot ================= */
 (async function boot(){
   showCode();
-  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy<span class="kiss" aria-hidden="true">😘</span>';
-  $('#wWordmark').innerHTML=butterfly({size:60,flutter:true,a:'#F06A9B',b:'#A98BF0'})+'Words';
-  const drift=$('#drift');
-  [[18,'34s','0s',3.2],[30,'46s','-17s',2.4],[62,'40s','-30s',4]].forEach(([top,dur,delay,w])=>{
-    const d=el('div'); d.innerHTML=butterfly({a:'#F06A9B',b:'#A98BF0'}); const b=d.firstElementChild;
-    b.style.cssText=`top:${top}vh;left:0;width:${w}vw;height:auto;animation-duration:${dur};animation-delay:${delay}`; drift.append(b); });
+  paintButterflies();
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(_){}
   db=await openDB();

@@ -11,6 +11,10 @@ Peggy is a web app you add to your home screen. It runs entirely on your device:
 - **Edit** non-destructively: crop to Facebook-friendly shapes (Square, Portrait 4:5, Wide 16:9, Story 9:16), zoom and drag to reframe, rotate, flip, brightness, contrast, saturation, warmth, and eight filters. *Revert* always gets the original back.
 - **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Peggy on Fire TV](#peggy-on-fire-tv).
 - **Words** (🎙 in the header): counts the words each person says and who interrupts whom, with an optional **turn timer**, and shows a live scoreboard on the TV. See [Words](#words).
+- **Tasks** (shared by two people): lists, due dates and times, repeats, ★ important, assign to you, your partner or both; import once from Google Tasks.
+- **Calendar**: your Google calendars in List, Week and Month views; add, edit and delete events; one tap creates a shared “Peggy · Shared” calendar for the two of you. Tasks with due dates show on the calendar.
+- **Links**: shared favorite web links in folders, with notes and automatic titles.
+- **Themes**: Pink (default), Lavender, Ocean, Mint, Sunset and Midnight. Settings → Theme color; the TV follows along.
 - **Post** one or many photos, in the order you choose. Peggy copies your caption, opens the iOS share sheet, you tap **Facebook**, paste the caption, and post. Posted photos get a ✓.
 
 ## Two limits worth knowing
@@ -136,6 +140,25 @@ Transcript: **Copy** or **Save .txt** (includes the per-person totals and timer 
 
 ---
 
+## Shared tasks, calendar and links: one-time setup
+
+Peggy's relay keeps the shared tasks and links, and keeps each person signed in to Google so nobody has to sign in again.
+
+**Google Cloud** (Peggy project)
+1. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) and the [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com).
+2. [Audience](https://console.cloud.google.com/auth/audience): add your partner's Gmail as a test user, then **Publish app → In production** (Testing-mode sign-ins expire every 7 days). Google shows an “unverified app” notice when you sign in; choose Continue.
+3. [Clients](https://console.cloud.google.com/auth/clients) → Peggy → **Add secret**, copy the client secret.
+
+**Cloudflare** (peggy-relay worker)
+1. **Storage & databases → Workers KV → Create**, name it `peggy`.
+2. peggy-relay → **Bindings → Add → KV namespace**: variable name `PEGGY_KV`, namespace `peggy`.
+3. peggy-relay → **Settings → Variables and Secrets**: add text `ALLOWED_EMAILS` (both Gmail addresses, comma-separated), text `GOOGLE_CLIENT_ID`, and secret `GOOGLE_CLIENT_SECRET`.
+4. **Edit code**: replace it with the new `relay/worker.js`, then **Deploy**.
+
+Then each of you opens **Tasks** in Peggy and taps **Sign in with Google**. To bring in Google Tasks: Settings → **Import from Google Tasks**.
+
+---
+
 ## Everyday use
 
 | To… | Do this |
@@ -160,6 +183,9 @@ Transcript: **Copy** or **Save .txt** (includes the per-person totals and timer 
 index.html      the phone/tablet app (UI, editor, storage, Google + share + TV logic)
 tv.html         the Fire TV screen (library, slideshow, remote-control editor)
 core.js         shared photo editing engine and storage used by both
+plan.html       Tasks, Calendar and Links
+account.js      one Google sign-in for the whole app (kept by the relay)
+theme.js        color themes
 words.html      Words: listener, speaker pad, turn timer, transcript
 words-version.js  Words message version shared by words.html and tv.html (bump when they change how they talk)
 sw.js           lets the app open offline

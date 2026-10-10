@@ -1,12 +1,19 @@
-// Peggy relay — a tiny Cloudflare Worker.
-// Google Photos doesn't allow web pages to call it directly from the browser (no CORS),
-// so the app sends requests here and this forwards them to Google with your sign-in token.
-// It stores nothing and only talks to Google Photos hosts.
+// Peggy relay — a small Cloudflare Worker that Peggy talks to.
 //
-//   /picker/<path>   ->  https://photospicker.googleapis.com/<path>   (GET, POST, DELETE)
-//   /media?u=<url>   ->  photo bytes from *.googleusercontent.com    (GET)
+//  1. Google Photos relay (Google doesn't allow browsers to call it directly):
+//       /picker/<path>   ->  https://photospicker.googleapis.com/<path>
+//       /media?u=<url>   ->  photo bytes from *.googleusercontent.com
+//  2. Peggy's shared space for two people (tasks, link favorites, calendar for the TV):
+//       /api/...         sign-in, shared data, TV agenda
 //
-// Set ALLOWED_ORIGINS (comma-separated) in wrangler.toml to the site(s) hosting the app.
+// Settings (Cloudflare → the worker → Settings → Variables and Secrets / Bindings):
+//   ALLOWED_ORIGINS       text    https://mboadway1.github.io
+//   ALLOWED_EMAILS        text    the two Gmail addresses allowed in, comma-separated
+//   GOOGLE_CLIENT_ID      text    the Peggy OAuth client ID
+//   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
+//   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
+
+const DOCS = ['tasks', 'links'];
 
 export default {
   async fetch(req, env) {
@@ -15,41 +22,209 @@ export default {
     const okOrigin = allowed.includes(origin);
     const cors = {
       'Access-Control-Allow-Origin': okOrigin ? origin : (allowed[0] || ''),
-      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Peggy-Session',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     };
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (!okOrigin) return new Response('Origin not allowed', { status: 403, headers: cors });
 
-    const auth = req.headers.get('Authorization') || '';
-    if (!auth.startsWith('Bearer ')) return new Response('Missing token', { status: 401, headers: cors });
-
     const url = new URL(req.url);
-    let target, init;
-
-    if (url.pathname.startsWith('/picker/')) {
-      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return new Response('Method not allowed', { status: 405, headers: cors });
-      target = 'https://photospicker.googleapis.com/' + url.pathname.slice('/picker/'.length) + url.search;
-      init = { method: req.method, headers: { Authorization: auth } };
-      if (req.method === 'POST') { init.headers['Content-Type'] = 'application/json'; init.body = await req.text(); }
-    } else if (url.pathname === '/media') {
-      if (req.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: cors });
-      let u;
-      try { u = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad url', { status: 400, headers: cors }); }
-      if (u.protocol !== 'https:' || !(u.hostname === 'googleusercontent.com' || u.hostname.endsWith('.googleusercontent.com')))
-        return new Response('Host not allowed', { status: 400, headers: cors });
-      target = u.toString();
-      init = { headers: { Authorization: auth } };
-    } else {
+    try {
+      if (url.pathname.startsWith('/api/')) return await api(req, env, url, cors);
+      if (url.pathname.startsWith('/picker/') || url.pathname === '/media') return await photos(req, url, cors);
       return new Response('Peggy relay is running.', { status: 200, headers: cors });
+    } catch (e) {
+      return json({ error: String(e && e.message || e) }, 500, cors);
     }
-
-    const r = await fetch(target, init);
-    const headers = new Headers(cors);
-    const ct = r.headers.get('Content-Type'); if (ct) headers.set('Content-Type', ct);
-    headers.set('Cache-Control', 'no-store');
-    return new Response(r.body, { status: r.status, headers });
   },
 };
+
+const json = (o, status, cors) => new Response(JSON.stringify(o), { status: status || 200, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+
+/* ---------------- Google Photos relay ---------------- */
+async function photos(req, url, cors) {
+  const auth = req.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) return new Response('Missing token', { status: 401, headers: cors });
+  let target, init;
+  if (url.pathname.startsWith('/picker/')) {
+    if (!['GET', 'POST', 'DELETE'].includes(req.method)) return new Response('Method not allowed', { status: 405, headers: cors });
+    target = 'https://photospicker.googleapis.com/' + url.pathname.slice('/picker/'.length) + url.search;
+    init = { method: req.method, headers: { Authorization: auth } };
+    if (req.method === 'POST') { init.headers['Content-Type'] = 'application/json'; init.body = await req.text(); }
+  } else {
+    let u;
+    try { u = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad url', { status: 400, headers: cors }); }
+    if (u.protocol !== 'https:' || !(u.hostname === 'googleusercontent.com' || u.hostname.endsWith('.googleusercontent.com')))
+      return new Response('Host not allowed', { status: 400, headers: cors });
+    target = u.toString();
+    init = { headers: { Authorization: auth } };
+  }
+  const r = await fetch(target, init);
+  const headers = new Headers(cors);
+  const ct = r.headers.get('Content-Type'); if (ct) headers.set('Content-Type', ct);
+  headers.set('Cache-Control', 'no-store');
+  return new Response(r.body, { status: r.status, headers });
+}
+
+/* ---------------- Peggy shared space ---------------- */
+async function api(req, env, url, cors) {
+  if (!env.PEGGY_KV) return json({ error: 'The PEGGY_KV storage isn’t connected to this worker yet.' }, 500, cors);
+  const KV = env.PEGGY_KV;
+  const path = url.pathname.slice(5);           // after "/api/"
+  const emails = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const body = async () => { try { return await req.json(); } catch { return {}; } };
+
+  // --- sign-in: exchange Google's one-time code for tokens, kept here so nobody has to sign in again ---
+  if (path === 'auth/exchange' && req.method === 'POST') {
+    const { code, redirect_uri } = await body();
+    if (!code || !redirect_uri) return json({ error: 'Missing code' }, 400, cors);
+    const t = await googleToken(env, { code, redirect_uri, grant_type: 'authorization_code' });
+    if (t.error) return json({ error: t.error_description || t.error }, 400, cors);
+    const claims = decodeJwt(t.id_token);
+    const email = (claims.email || '').toLowerCase();
+    if (!email || !emails.includes(email)) return json({ error: `${email || 'This account'} isn’t on Peggy’s list of members.` }, 403, cors);
+    const user = (await KV.get('user:' + email, 'json')) || { email };
+    Object.assign(user, { name: claims.given_name || claims.name || email.split('@')[0], fullName: claims.name || '', picture: claims.picture || '',
+      access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000, scope: t.scope });
+    if (t.refresh_token) user.refresh = t.refresh_token;
+    await KV.put('user:' + email, JSON.stringify(user));
+    const session = token();
+    await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
+    return json({ session, me: publicUser(user), access_token: t.access_token, expires_in: t.expires_in - 60, scope: t.scope }, 200, cors);
+  }
+
+  const s = await sessionOf(req, KV);
+  if (!s || !emails.includes(s.email)) return json({ error: 'Please sign in again.', reauth: true }, 401, cors);
+  const full = !s.ro;
+
+  if (path === 'auth/token' && req.method === 'GET') {
+    if (!full) return json({ error: 'Read-only' }, 403, cors);
+    const user = await KV.get('user:' + s.email, 'json');
+    const t = await accessFor(env, KV, user);
+    if (!t) return json({ error: 'Google sign-in expired. Please sign in again.', reauth: true }, 401, cors);
+    return json(t, 200, cors);
+  }
+  if (path === 'auth/signout' && req.method === 'POST') {
+    await KV.delete('session:' + req.headers.get('X-Peggy-Session'));
+    return json({ ok: true }, 200, cors);
+  }
+  if (path === 'me' && req.method === 'GET') {
+    const user = await KV.get('user:' + s.email, 'json');
+    return json({ me: publicUser(user || { email: s.email }), readOnly: !full }, 200, cors);
+  }
+  if (path === 'members' && req.method === 'GET') {
+    const list = [];
+    for (const e of emails) { const u = await KV.get('user:' + e, 'json'); list.push(publicUser(u || { email: e })); }
+    return json({ members: list }, 200, cors);
+  }
+  if (path === 'tv-token' && req.method === 'POST') {
+    if (!full) return json({ error: 'Read-only' }, 403, cors);
+    const tv = token();
+    await KV.put('session:' + tv, JSON.stringify({ email: s.email, ro: true, created: Date.now() }));
+    return json({ session: tv }, 200, cors);
+  }
+
+  // --- each person's calendar choices (used for the TV agenda) ---
+  if (path === 'prefs') {
+    if (req.method === 'GET') return json((await KV.get('prefs:' + s.email, 'json')) || {}, 200, cors);
+    if (req.method === 'PUT' && full) { const p = await body(); await KV.put('prefs:' + s.email, JSON.stringify(p)); return json(p, 200, cors); }
+  }
+
+  // --- shared documents (tasks, links): last change wins per item ---
+  const dm = path.match(/^data\/(\w+)$/);
+  if (dm && DOCS.includes(dm[1])) {
+    const key = 'doc:' + dm[1];
+    if (req.method === 'GET') return json((await KV.get(key, 'json')) || { v: 0, items: [], lists: [] }, 200, cors);
+    if (req.method === 'POST' && full) {
+      const { ops } = await body();
+      const doc = (await KV.get(key, 'json')) || { v: 0, items: [], lists: [] };
+      for (const op of (ops || []).slice(0, 2000)) applyOp(doc, op, s.email);
+      doc.v = (doc.v || 0) + 1; doc.updated = Date.now();
+      await KV.put(key, JSON.stringify(doc));
+      return json(doc, 200, cors);
+    }
+  }
+
+  // --- link titles: look up a web page's title for a new favorite ---
+  if (path === 'linkinfo' && req.method === 'GET' && full) {
+    let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return json({ error: 'Bad link' }, 400, cors); }
+    if (!/^https?:$/.test(u.protocol)) return json({ error: 'Bad link' }, 400, cors);
+    try {
+      const r = await fetch(u.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (Peggy link preview)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(6000) });
+      const text = (await r.text()).slice(0, 200000);
+      const pick = re => { const m = text.match(re); return m ? decodeEntities(m[1].trim()).slice(0, 200) : ''; };
+      const title = pick(/<meta[^>]+property=["']og:title["'][^>]*content=["']([^"']+)/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
+      return json({ title, url: r.url || u.toString() }, 200, cors);
+    } catch { return json({ title: '' }, 200, cors); }
+  }
+
+  // --- TV agenda: both people's chosen calendars, merged ---
+  if (path === 'agenda' && req.method === 'GET') {
+    const days = Math.min(31, Math.max(1, +url.searchParams.get('days') || 7));
+    const from = new Date(url.searchParams.get('from') || Date.now());
+    const to = new Date(from.getTime() + days * 86400000);
+    const seen = new Set(), events = [], problems = [];
+    for (const e of emails) {
+      const user = await KV.get('user:' + e, 'json'); if (!user || !user.refresh) continue;
+      const prefs = (await KV.get('prefs:' + e, 'json')) || {};
+      const cals = (prefs.calendars || []).filter(c => c.show !== false);
+      if (!cals.length) continue;
+      const t = await accessFor(env, KV, user); if (!t) { problems.push(e); continue; }
+      for (const c of cals) {
+        const q = new URLSearchParams({ timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '250' });
+        const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.id)}/events?${q}`, { headers: { Authorization: 'Bearer ' + t.access_token } });
+        if (!r.ok) continue;
+        const d = await r.json();
+        for (const ev of d.items || []) {
+          if (ev.status === 'cancelled') continue;
+          const k = (ev.iCalUID || ev.id) + '|' + (ev.start && (ev.start.dateTime || ev.start.date));
+          if (seen.has(k)) continue; seen.add(k);
+          events.push({ id: ev.id, title: ev.summary || '(No title)', start: ev.start, end: ev.end, location: ev.location || '', calendar: c.name || c.id, color: c.color || '', who: user.name });
+        }
+      }
+    }
+    events.sort((a, b) => String(a.start.dateTime || a.start.date).localeCompare(String(b.start.dateTime || b.start.date)));
+    return json({ events, problems }, 200, cors);
+  }
+
+  return json({ error: 'Not found' }, 404, cors);
+}
+
+function applyOp(doc, op, email) {
+  if (!op || typeof op !== 'object') return;
+  const now = Date.now();
+  const coll = op.kind === 'list' ? (doc.lists = doc.lists || []) : (doc.items = doc.items || []);
+  if (op.op === 'upsert' && op.item && op.item.id) {
+    const i = coll.findIndex(x => x.id === op.item.id);
+    const incoming = { ...op.item, updatedAt: op.item.updatedAt || now, updatedBy: email };
+    if (i < 0) coll.push({ createdAt: now, createdBy: email, ...incoming });
+    else if ((incoming.updatedAt || 0) >= (coll[i].updatedAt || 0)) coll[i] = { ...coll[i], ...incoming };
+  } else if (op.op === 'delete' && op.id) {
+    const i = coll.findIndex(x => x.id === op.id); if (i >= 0) coll.splice(i, 1);
+  }
+}
+
+async function googleToken(env, params) {
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, ...params }),
+  });
+  return r.json();
+}
+async function accessFor(env, KV, user) {
+  if (!user) return null;
+  if (user.access && user.exp > Date.now() + 30000) return { access_token: user.access, expires_in: Math.floor((user.exp - Date.now()) / 1000), scope: user.scope };
+  if (!user.refresh) return null;
+  const t = await googleToken(env, { refresh_token: user.refresh, grant_type: 'refresh_token' });
+  if (t.error) { if (t.error === 'invalid_grant') { delete user.refresh; await KV.put('user:' + user.email, JSON.stringify(user)); } return null; }
+  user.access = t.access_token; user.exp = Date.now() + (t.expires_in - 60) * 1000; if (t.scope) user.scope = t.scope;
+  await KV.put('user:' + user.email, JSON.stringify(user));
+  return { access_token: t.access_token, expires_in: t.expires_in - 60, scope: user.scope };
+}
+async function sessionOf(req, KV) { const t = req.headers.get('X-Peggy-Session'); if (!t || t.length < 20) return null; return KV.get('session:' + t, 'json'); }
+function publicUser(u) { return { email: u.email, name: u.name || u.email.split('@')[0], picture: u.picture || '', signedIn: !!u.refresh }; }
+function token() { const b = new Uint8Array(24); crypto.getRandomValues(b); return [...b].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function decodeJwt(j) { try { const p = j.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(decodeURIComponent(escape(atob(p + '==='.slice((p.length + 3) % 4))))); } catch { return {}; } }
+function decodeEntities(s) { return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)); }
