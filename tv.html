@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Peggy TV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
 :root{--bg:#0e0f12;--panel:#1a1c21;--panel2:#262930;--line:#33363d;--text:#f3f3f5;--dim:#9a9ca4;--accent:#3b82f6;--star:#fbbf24;--ok:#22c55e;--danger:#ef4444}
 *{box-sizing:border-box}
@@ -78,6 +80,50 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 .dlg .list{display:flex;flex-direction:column;gap:.8vh;overflow:hidden}
 .dlg .btn{text-align:left}
 .dlg input{font:inherit;font-size:1.6vw;padding:.9vw 1.2vw;border-radius:.7vw;border:.15vw solid var(--line);background:var(--bg);color:var(--text)}
+/* Words scoreboard: 10-foot layout, lanes sized by vw so it reads from the couch */
+#words{--bg:#0d1210;--surface:#151c19;--fg:#eef3f0;--muted:#8a9a94;--line:#26302c;--live:#fb8a4a;
+  --s1:#3fc79a;--s2:#7aa5ff;--s3:#e486d3;--s4:#f0b14a;--s5:#9fd65a;--s6:#b597ff;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  background:var(--bg);color:var(--fg);font:1.6vw/1.4 var(--body);padding:3.5vh 4vw;display:flex;flex-direction:column;gap:2.5vh}
+#words .wtop{display:flex;justify-content:space-between;align-items:baseline;gap:2vw}
+#words h1{font:700 3vw/1 var(--display);margin:0;letter-spacing:-.01em}
+#words .wstat{font:500 1.1vw var(--mono);color:var(--muted);display:flex;align-items:center;gap:.8vw}
+#words .wdot{width:1vw;height:1vw;border-radius:50%;background:var(--line)}
+#words .wstat.live .wdot{background:var(--live);animation:wpulse 1.2s infinite}
+@keyframes wpulse{50%{opacity:.35}}
+#words .wempty{flex:1;display:flex;flex-direction:column;justify-content:center;gap:2vh;font-size:1.8vw;color:var(--muted)}
+#words .wempty b{color:var(--fg)}
+#words .wempty h2{font:700 2.6vw var(--display);color:var(--fg);margin:0}
+#words .board{flex:1;display:grid;gap:2vh;align-content:center;min-height:0}
+#words .lane{--c:var(--s1);display:grid;grid-template-columns:22vw 1fr 11vw;align-items:center;gap:2vw;padding:1.6vh 1.6vw;border-radius:1vw;border:.2vw solid transparent;transition:border-color .2s,background .2s}
+#words .lane.active{border-color:var(--c);background:var(--surface)}
+#words .who{display:grid;gap:.4vh;min-width:0}
+#words .name{font:700 2.4vw/1.1 var(--display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#words .speaking{font:500 1vw var(--mono);color:var(--c);letter-spacing:.12em;visibility:hidden}
+#words .lane.active .speaking{visibility:visible}
+#words .clock{font:700 2.2vw/1 var(--display);color:var(--c);font-variant-numeric:tabular-nums;display:none}
+#words .lane.active .clock.on{display:block}
+#words .clock.low{color:var(--live)} #words .clock.over{color:var(--live);animation:wpulse 1s infinite}
+#words .track{display:grid;gap:1vh}
+#words .bar{height:2.4vh;background:var(--line);border-radius:1.2vh;overflow:hidden}
+#words .bar i{display:block;height:100%;width:0;background:var(--c);border-radius:1.2vh;transition:width .5s ease}
+#words .tbar{height:.8vh;background:var(--line);border-radius:.4vh;overflow:hidden;display:none}
+#words .lane.active .tbar.on{display:block}
+#words .tbar i{display:block;height:100%;background:var(--c)} #words .tbar i.over{background:var(--live)}
+#words .meta{display:flex;gap:2.4vw;font:500 1.15vw var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+#words .meta b{color:var(--fg);font-weight:500}
+#words .meta .int b{color:var(--live)}
+#words .count{font:700 4.6vw/1 var(--display);text-align:right;font-variant-numeric:tabular-nums}
+#words .count small{display:block;font:500 1vw var(--mono);color:var(--muted);margin-top:.6vh}
+#words .captions{border-top:.15vw solid var(--line);padding-top:2vh;min-height:13vh;display:grid;gap:1vh;align-content:end}
+#words .cap{display:flex;gap:1.2vw;align-items:baseline;font-size:1.7vw;line-height:1.35}
+#words .cap .w{font:500 1.1vw var(--mono);color:var(--c);white-space:nowrap}
+#words .cap p{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#words .cap.interim p{color:var(--muted);font-style:italic}
+#words .cut{font:500 1vw var(--mono);color:var(--live);border:.12vw solid var(--live);border-radius:.4vw;padding:0 .5vw;margin-right:.8vw}
+#words .wfoot{display:flex;justify-content:space-between;font:500 1vw var(--mono);color:var(--muted)}
+#wAlert{position:absolute;left:50%;top:3vh;transform:translateX(-50%);background:var(--live);color:#1a0d05;font:700 2vw var(--display);padding:1.2vh 2.4vw;border-radius:1vw;box-shadow:0 1vh 4vh rgba(0,0,0,.5);opacity:0;transition:opacity .3s;max-width:80vw;text-align:center}
+#wAlert.on{opacity:1}
 .toast{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);z-index:40;background:#fff;color:#111;padding:1vw 2vw;border-radius:1vw;font-size:1.5vw;box-shadow:0 .5vw 2vw rgba(0,0,0,.5)}
 </style>
 </head>
@@ -115,6 +161,19 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
   <div id="showInfo"></div>
 </div>
 
+<div id="words" class="layer hidden">
+  <div class="wtop"><h1>Words</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
+  <div class="wempty" id="wEmpty">
+    <h2>Count who talks, and who interrupts</h2>
+    <div>In Peggy on your iPhone, tap <b>🎙</b>, then <b>Start listening</b>.</div>
+    <div>Phone code <b id="wCode">····</b> · the scoreboard appears here automatically.</div>
+  </div>
+  <section class="board hidden" id="wBoard"></section>
+  <section class="captions hidden" id="wCaps"></section>
+  <div class="wfoot hidden" id="wFoot"><span>◀ ▶ change speaker · Back for photos</span><span id="wTimerInfo"></span><span id="wTotal"></span></div>
+  <div id="wAlert"></div>
+</div>
+
 <div id="editor" class="layer hidden">
   <div id="edStage"></div>
   <div id="edPanel"></div>
@@ -123,6 +182,7 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="core.js"></script>
+<script src="words-version.js"></script>
 <script>
 'use strict';
 const PHONE_URL = new URL('./', location.href).href;
@@ -242,6 +302,7 @@ function renderHome(){
     for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
       add(a.name,()=> view===a.id ? albumOptions(a) : setView(a.id), view===a.id?'on':'', photos.filter(p=>p.albums.includes(a.id)).length);
   }
+  add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
   const keepPid = cur && cur._pid; const grid=$('#grid');
@@ -463,8 +524,8 @@ function startPeer(){
   peer.on('open',()=>setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0));
   peer.on('connection',c=>{
     c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Peggy TV', count:photos.length}); });
-    c.on('data',m=>onData(c,m));
-    c.on('close',()=>{ conns.delete(c); setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0); });
+    c.on('data',m=>{ if(m && m.type) return onWords(c,m); onData(c,m); });
+    c.on('close',()=>{ conns.delete(c); if(c===wConn){ wConn=null; if(wordsOpen()) renderWords(); } setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0); });
     c.on('error',()=>{});
   });
   peer.on('disconnected',()=>{ setStatus('Reconnecting…',false); setTimeout(()=>{ try{ if(peer && !peer.destroyed) peer.reconnect(); }catch(_){} },3000); });
@@ -513,6 +574,91 @@ async function saveFromPhone(m){
   p={id:uid(), src:'phone', pid:m.pid, name:m.name||'photo', created:m.created||Date.now(), added:Date.now(), blob,
      thumb:await makeThumb(blob, m.edits), edits:m.edits||null, fav:!!m.fav, albums:ids, postedAt:null};
   await dbPut('photos',p); photos.push(p); return 'added';
+}
+
+
+/* ================= Words scoreboard ================= */
+// The phone (words.html) does the listening and counting and sends its state here.
+let wState=null, wConn=null, wGot=0, wDismissed=false, wLastListening=false, wLastAlert=0, wLastUpTurn=-1, wTick=null;
+const esc=t=>{ const d=document.createElement('div'); d.textContent=t; return d.innerHTML; };
+const fmtT=ms=>{ const neg=ms<0, s=Math.ceil(Math.abs(ms)/1000), t=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; return neg?'+'+t:t; };
+function wordsOpen(){ return topScope() && topScope().root===$('#words'); }
+function openWords(){
+  wDismissed=false;
+  if(wordsOpen()) return;
+  while(scopes.length>1) popScope();            // close any viewer, editor or slideshow
+  $('#words').classList.remove('hidden');
+  pushScope($('#words'),{ onkey:wordsKey, onclose:()=>{ $('#words').classList.add('hidden'); wDismissed=true; clearInterval(wTick); wTick=null; } });
+  clearInterval(wTick); wTick=setInterval(wordsClock,250);
+  renderWords();
+}
+function wordsKey(k){
+  const send=t=>{ if(wConn && wConn.open){ try{ wConn.send({type:t}); }catch(_){} } };
+  if(k==='left'||k==='up'||k==='rew'){ send('prev'); return true; }
+  if(k==='right'||k==='down'||k==='ff'){ send('next'); return true; }
+  return true;
+}
+function wordsTimerLeft(){ const t=wState&&wState.timer; if(!t) return null; return t.running ? t.left-(Date.now()-wGot) : t.left; }
+function wordsClock(){
+  if(!wState || !wState.timer) return;
+  const left=wordsTimerLeft(), t=wState.timer, lane=$('#wBoard').children[wState.active]; if(!lane) return;
+  const c=lane.querySelector('.clock'), b=lane.querySelector('.tbar i');
+  c.textContent=left<=0 ? `Time's up ${fmtT(left)}` : fmtT(left);
+  c.classList.toggle('over',left<=0); c.classList.toggle('low',left>0 && left<=10000);
+  const pct=left<=0?100:Math.min(100,100*(1-left/(t.len*1000))); b.style.width=pct+'%'; b.classList.toggle('over',left<=0);
+  if(t.running && left<=0 && wLastUpTurn!==t.turn){ wLastUpTurn=t.turn; chime(); }
+}
+let actx=null;
+function chime(){
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); actx.resume&&actx.resume();
+    [0,0.22].forEach((d,i)=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type='sine'; o.frequency.value=i?660:880;
+      g.gain.setValueAtTime(0.0001,actx.currentTime+d); g.gain.exponentialRampToValueAtTime(0.35,actx.currentTime+d+0.02); g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+d+0.5);
+      o.connect(g).connect(actx.destination); o.start(actx.currentTime+d); o.stop(actx.currentTime+d+0.55); }); }catch(_){}
+}
+function wordsAlert(a){
+  if(!a || a.id===wLastAlert) return; wLastAlert=a.id;
+  const el_=$('#wAlert'); el_.textContent=a.text; el_.classList.add('on'); clearTimeout(el_._t); el_._t=setTimeout(()=>el_.classList.remove('on'),5000);
+  if(/interrupted/.test(a.text)) chime();
+}
+function renderWords(){
+  $('#wCode').textContent=code;
+  const live=!!(wState && wConn && wConn.open);
+  $('#wStatText').textContent = !wState ? (wConn&&wConn.open?'Phone connected':'Waiting for phone') : !live ? 'Phone disconnected' : wState.listening ? 'Listening' : 'Connected · mic off';
+  $('#wStat').classList.toggle('live', live && !!(wState&&wState.listening));
+  const has=!!wState;
+  $('#wEmpty').classList.toggle('hidden',has); for(const id of ['#wBoard','#wCaps','#wFoot']) $(id).classList.toggle('hidden',!has);
+  if(!has) return;
+  const st=wState, sp=st.speakers, total=sp.reduce((a,s)=>a+s.words,0), max=Math.max(1,...sp.map(s=>s.words)), timer=st.timer;
+  const board=$('#wBoard');
+  if(board.children.length!==sp.length){ board.innerHTML=sp.map(()=>`<div class="lane"><div class="who"><div class="name"></div><div class="speaking">SPEAKING</div><div class="clock"></div></div>
+    <div class="track"><div class="bar"><i></i></div><div class="tbar"><i></i></div><div class="meta"></div></div><div class="count"></div></div>`).join(''); }
+  sp.forEach((s,i)=>{
+    const L=board.children[i]; L.style.setProperty('--c',`var(${WORDS_COLORS[i]})`);
+    L.classList.toggle('active',i===st.active);
+    L.querySelector('.speaking').textContent=st.listening?'SPEAKING':'SELECTED';
+    L.querySelector('.name').textContent=s.name;
+    L.querySelector('.bar i').style.width=(s.words/max*100)+'%';
+    L.querySelector('.clock').classList.toggle('on',!!timer); L.querySelector('.tbar').classList.toggle('on',!!timer);
+    const pct=total?Math.round(s.words/total*100):0;
+    L.querySelector('.meta').innerHTML=`<span><b>${pct}%</b> of words</span><span><b>${s.turns}</b> turns</span><span class="int"><b>${s.interrupts}</b> interruptions${timer?` · <b>${s.timerCuts||0}</b> on the clock`:''}</span><span>cut off <b>${s.interrupted}</b>×</span>`;
+    L.querySelector('.count').innerHTML=`${s.words}<small>words</small>`;
+  });
+  board.style.gap=sp.length>4?'1vh':'2vh';
+  const caps=[...(st.recent||[]).map(r=>({...r,cls:''}))]; if(st.interim) caps.push({...st.interim,cls:'interim'});
+  $('#wCaps').innerHTML=caps.slice(-2).map(c=>`<div class="cap ${c.cls}" style="--c:var(${WORDS_COLORS[c.spk]||'--s1'})"><span class="w">${esc((sp[c.spk]||{name:'?'}).name)}</span><p>${c.cut!=null&&sp[c.cut]?`<span class="cut">cut off ${esc(sp[c.cut].name)}</span>`:''}${esc(c.text)}</p></div>`).join('')||'<div class="cap"><p style="color:var(--muted)">Captions appear here as people talk.</p></div>';
+  const ints=sp.reduce((a,s)=>a+s.interrupts,0);
+  $('#wTotal').textContent=`${total} words · ${ints} interruptions`;
+  $('#wTimerInfo').textContent=timer?`⏱ ${fmtT(timer.len*1000)} per turn · ${timer.mode==='next'?'passes on when time is up':'overtime allowed'}`:'';
+  wordsClock();
+}
+function onWords(c, m){
+  if(m.type==='hello'){ try{ c.send({type:'hello', v:WORDS_VERSION}); }catch(_){} wConn=c; if(wordsOpen()) renderWords(); return; }
+  if(m.type==='state' && Array.isArray(m.speakers)){
+    wConn=c; wState=m; wGot=Date.now();
+    const startedListening = m.listening && !wLastListening; wLastListening=!!m.listening;
+    if(!wordsOpen() && (startedListening || (!wDismissed && m.listening))) openWords();
+    if(wordsOpen()){ renderWords(); wordsAlert(m.alert); }
+  }
 }
 
 /* ================= boot ================= */

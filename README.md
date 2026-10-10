@@ -10,6 +10,7 @@ Peggy is a web app you add to your home screen. It runs entirely on your device:
 - **Organize** with albums, ★ favorites, and automatic *Not posted* / *Posted* views. Select many at once to tag, move, or delete.
 - **Edit** non-destructively: crop to Facebook-friendly shapes (Square, Portrait 4:5, Wide 16:9, Story 9:16), zoom and drag to reframe, rotate, flip, brightness, contrast, saturation, warmth, and eight filters. *Revert* always gets the original back.
 - **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Peggy on Fire TV](#peggy-on-fire-tv).
+- **Words** (🎙 in the header): counts the words each person says and who interrupts whom, with an optional **turn timer**, and shows a live scoreboard on the TV. See [Words](#words).
 - **Post** one or many photos, in the order you choose. Peggy copies your caption, opens the iOS share sheet, you tap **Facebook**, paste the caption, and post. Posted photos get a ✓.
 
 ## Two limits worth knowing
@@ -117,6 +118,24 @@ Importing from Google Photos happens on the phone, because Google doesn't allow 
 
 ---
 
+## Words
+
+Tap **🎙** in Peggy's header (‹ Photos goes back). The iPhone listens and transcribes; you tap who's talking (or press ◀ ▶ on the Fire remote). Speaker names, language and timer choices are remembered.
+
+**Turn timer.** Choose how long each turn gets (30 s – 5 min) and what happens when time is up:
+- Each change of speaker starts that person's countdown, on the phone and on the TV. The clock runs only while listening.
+- Switching speakers before their time is up always counts as an interruption, tallied as **on the clock**. The TV flashes who cut in and how much time was left, and the phone offers **↩ Give the floor back**, which returns the turn with the remaining time.
+- When time runs out the TV chimes. **Keep going** shows overtime (+0:12); **Pass to next person** moves to the next speaker automatically, without counting an interruption.
+- **↺ Restart turn** resets the current speaker's clock.
+
+Without the timer, a switch counts as an interruption when someone is mid-sentence or spoke within the last second (adjustable in Settings).
+
+**On the TV**, Peggy switches to the scoreboard as soon as you start listening. Back returns to photos (it won't pop up again until you stop and start listening), and **🎙 Words** on the TV's home screen brings it back. Words uses the same TV code as photos.
+
+Transcript: **Copy** or **Save .txt** (includes the per-person totals and timer setting).
+
+---
+
 ## Everyday use
 
 | To… | Do this |
@@ -141,6 +160,8 @@ Importing from Google Photos happens on the phone, because Google doesn't allow 
 index.html      the phone/tablet app (UI, editor, storage, Google + share + TV logic)
 tv.html         the Fire TV screen (library, slideshow, remote-control editor)
 core.js         shared photo editing engine and storage used by both
+words.html      Words: listener, speaker pad, turn timer, transcript
+words-version.js  Words message version shared by words.html and tv.html (bump when they change how they talk)
 sw.js           lets the app open offline
 manifest.json   home-screen app settings
 icon-*.png      app icons

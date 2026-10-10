@@ -1,6 +1,6 @@
 // Peggy service worker: lets the app open offline. Pages load network-first so updates arrive right away.
-const CACHE = 'peggy-v2';
-const SHELL = ['./', 'index.html', 'tv.html', 'core.js', 'manifest.json', 'icon-180.png', 'icon-512.png'];
+const CACHE = 'peggy-v3';
+const SHELL = ['./', 'index.html', 'tv.html', 'core.js', 'words.html', 'words-version.js', 'manifest.json', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -15,6 +15,6 @@ self.addEventListener('fetch', e => {
     fetch(e.request).then(r => {
       if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
       return r;
-    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match(url.pathname.endsWith('tv.html') ? 'tv.html' : 'index.html')))
+    }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match(url.pathname.endsWith('tv.html') ? 'tv.html' : url.pathname.endsWith('words.html') ? 'words.html' : 'index.html')))
   );
 });

@@ -113,6 +113,9 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .progress div{height:100%;background:var(--accent);width:0;transition:width .2s}
 
 #btnTv{position:relative;padding:10px}
+@media (max-width:360px){ .lbl{display:none} .bar h1{font-size:18px!important} .bar button{padding:10px 8px!important} }
+@media (max-width:420px){ .bar{gap:4px} .bar h1{font-size:20px} .bar button{padding:10px 10px} #btnTv,.iconlink,#btnSettings{min-width:38px;padding:8px 6px} }
+.iconlink{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:10px;text-decoration:none;font-size:18px}
 .tvdot{position:absolute;right:6px;top:8px;width:9px;height:9px;border-radius:50%;background:transparent}
 .tvdot.on{background:var(--ok)} .tvdot.wait{background:var(--star)}
 .remote{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
@@ -127,8 +130,9 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 <header>
   <div class="bar">
     <h1>Peggy</h1>
-    <button id="btnImport" class="primary">＋ Import</button>
+    <button id="btnImport" class="primary" aria-label="Import">＋<span class="lbl"> Import</span></button>
     <button id="btnSelect">Select</button>
+    <a id="btnWords" class="ghost iconlink" href="words.html" aria-label="Words">🎙</a>
     <button id="btnTv" class="ghost" aria-label="TV">📺<span class="tvdot" id="tvDot"></span></button>
     <button id="btnSettings" class="ghost" aria-label="Settings">⚙︎</button>
   </div>
