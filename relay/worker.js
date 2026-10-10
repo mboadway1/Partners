@@ -147,6 +147,36 @@ async function api(req, env, url, cors) {
     }
   }
 
+  // --- AI captions: Claude looks at the photos and suggests Facebook captions ---
+  if (path === 'caption' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'AI captions need an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { images, tone, about, draft } = await body();
+    const pics = (Array.isArray(images) ? images : []).filter(x => typeof x === 'string' && x.length < 1500000).slice(0, 4);
+    if (!pics.length) return json({ error: 'No photos sent' }, 400, cors);
+    const user = await KV.get('user:' + s.email, 'json');
+    const TONES = { warm: 'warm and friendly', funny: 'light and playful, gently funny', short: 'very short (a few words) and sweet', heartfelt: 'heartfelt and sincere', excited: 'upbeat and excited' };
+    const ask = [
+      `Write 3 different Facebook captions for ${pics.length > 1 ? 'these ' + pics.length + ' photos, posted together' : 'this photo'}.`,
+      `The person posting is ${(user && user.name) || 'the account owner'}. Write in their voice, first person, as a regular person sharing with friends and family.`,
+      `Tone: ${TONES[tone] || TONES.warm}.`,
+      about ? `What it's about, in their words: ${String(about).slice(0, 500)}` : '',
+      draft ? `Their draft so far (improve on it, keep its meaning): ${String(draft).slice(0, 1000)}` : '',
+      'Describe only what you can actually see or what they told you. Don’t guess names, places or events. At most one or two emoji per caption, no hashtags unless they fit naturally.',
+      'Reply with only a JSON array of 3 strings.',
+    ].filter(Boolean).join('\n');
+    const content = pics.map(d => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: d.replace(/^data:image\/\w+;base64,/, '') } }));
+    content.push({ type: 'text', text: ask });
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST',
+      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: env.CAPTION_MODEL || 'claude-sonnet-5-5', max_tokens: 800, messages: [{ role: 'user', content }] }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return json({ error: (d.error && d.error.message) || ('Claude answered ' + r.status) }, 502, cors);
+    const text = (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    let captions = [];
+    try { const m = text.match(/\[[\s\S]*\]/); captions = JSON.parse(m ? m[0] : text).filter(x => typeof x === 'string'); } catch { captions = text.split(/\n+/).map(t => t.replace(/^\s*(\d+[.)]|[-*•])\s*/, '').replace(/^"|"$/g, '').trim()).filter(Boolean); }
+    return json({ captions: captions.slice(0, 3) }, 200, cors);
+  }
+
   // --- link titles: look up a web page's title for a new favorite ---
   if (path === 'linkinfo' && req.method === 'GET' && full) {
     let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return json({ error: 'Bad link' }, 400, cors); }

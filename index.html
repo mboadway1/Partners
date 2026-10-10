@@ -129,6 +129,18 @@ input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--a
 /* post */
 .postbody{flex:1;overflow:auto;padding:14px calc(var(--sr) + 14px) calc(var(--sb) + 20px) calc(var(--sl) + 14px);max-width:720px;width:100%;margin:0 auto}
 .strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0;display:flex;flex-direction:column;gap:8px}
+.cardh{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.cardh .hint{font-size:13px}
+.card .chips{display:flex;flex-wrap:wrap;gap:6px}
+.card .chips button{min-height:36px;padding:6px 12px;border-radius:999px;font-size:14px}
+.card .chips button.on{background:var(--text);color:var(--bg)}
+.card input[type=text]{font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);min-width:0}
+.lab2{font-weight:800;font-size:14px}
+.checkrow{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--dim)}
+.checkrow input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
+.sugg{display:block;width:100%;text-align:left;font-weight:600;line-height:1.4;background:var(--panel2);border-radius:12px;padding:10px 12px;margin-top:6px;white-space:pre-wrap}
+.sugg small{display:block;color:var(--dim);font-weight:700;margin-top:4px;font-size:12px}
 .pthumb{flex:none;position:relative;width:96px}
 .pthumb img{width:96px;height:96px;object-fit:cover;border-radius:8px;display:block}
 .pthumb .ord{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.65);border-radius:6px;padding:0 6px;font-size:12px}
@@ -301,6 +313,20 @@ body.selecting-mode .bnav{display:none}
   <div class="postbody">
     <div class="strip" id="postStrip"></div>
     <textarea id="caption" placeholder="Write a caption…"></textarea>
+    <div class="card" id="aiCard">
+      <div class="cardh"><b>✨ Caption ideas</b><span class="hint">Claude looks at your photos and suggests a caption</span></div>
+      <div class="chips" id="aiTones"></div>
+      <input id="aiAbout" type="text" placeholder="What’s it about? (optional, e.g. “Sunday at the lake with the grandkids”)" title="A few words help the caption get names, places and the occasion right">
+      <button id="aiGo" title="Ask Claude for three caption ideas for these photos">✨ Suggest captions</button>
+      <div id="aiOut"></div>
+    </div>
+    <div class="card" id="privCard">
+      <div class="cardh"><b>🔒 Privacy</b></div>
+      <div class="lab2">Who should see this post?</div>
+      <div class="chips" id="audience"></div>
+      <p class="hint" id="audHint"></p>
+      <label class="checkrow" title="Peggy always re-saves photos before sharing, which removes this hidden information"><input type="checkbox" checked disabled> <span>Hidden location and camera details are removed from the photos</span></label>
+    </div>
     <button id="shareBtn" title="Copy the caption and open the share sheet; choose Facebook" class="fb" style="width:100%" disabled>Preparing photos…</button>
     <p class="hint" id="postHint">Tapping Share copies your caption, then opens the share sheet. Choose <b>Facebook</b>, then long-press the text box and tap <b>Paste</b> to add the caption.</p>
   </div>
@@ -821,6 +847,7 @@ async function openPost(ids, plain){
   $('#post').classList.remove('hidden'); document.body.style.overflow='hidden';
   $('#caption').classList.toggle('hidden', post.plain);
   $('#postHint').classList.toggle('hidden', post.plain);
+  $('#aiCard').classList.toggle('hidden', post.plain); $('#privCard').classList.toggle('hidden', post.plain); $('#aiOut').replaceChildren(); $('#aiGo').textContent='✨ Suggest captions'; renderAudience();
   $('#caption').value=localStorage.getItem('peggy.caption')||'';
   renderStrip(); setShare();
   const mine=post;
@@ -847,6 +874,38 @@ function renderStrip(){
   }));
 }
 $('#caption').oninput=e=>localStorage.setItem('peggy.caption',e.target.value);
+/* ---------- AI captions (Claude, through Peggy's relay) ---------- */
+const TONES=[['warm','Warm'],['funny','Funny'],['short','Short'],['heartfelt','Heartfelt'],['excited','Excited']];
+let aiTone=(()=>{ try{ return localStorage.getItem('peggy.aiTone')||'warm'; }catch(_){ return 'warm'; } })();
+function renderTones(){ $('#aiTones').replaceChildren(...TONES.map(([k,l])=>{ const b=el('button',{textContent:l,className:aiTone===k?'on':'',title:`Make the caption ${l.toLowerCase()}`}); b.onclick=()=>{ aiTone=k; try{ localStorage.setItem('peggy.aiTone',k); }catch(_){} renderTones(); }; return b; })); }
+renderTones();
+async function smallJpeg(file){ const img=await loadImage(file); return (await toBlob(render(img, DEF, 1024),'image/jpeg',.82)); }
+const b64=blob=>new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(String(f.result).split(',')[1]); f.readAsDataURL(blob); });
+$('#aiGo').onclick=async()=>{
+  const out=$('#aiOut'), btn=$('#aiGo');
+  if(!acct.session){ out.replaceChildren(el('p',{className:'hint',textContent:'Sign in with Google first (Settings → Sign in), then try again.'})); return; }
+  const ids=post.ids.filter(id=>post.files.has(id)).slice(0,4); if(!ids.length) return;
+  btn.disabled=true; btn.textContent='✨ Looking at your photos…'; out.replaceChildren();
+  try{
+    const images=await Promise.all(ids.map(async id=>b64(await smallJpeg(post.files.get(id)))));
+    const d=await peggyApi('caption',{method:'POST', body:JSON.stringify({images, tone:aiTone, about:$('#aiAbout').value.trim(), draft:$('#caption').value.trim()})});
+    if(!d.captions||!d.captions.length) throw new Error('No ideas came back');
+    out.replaceChildren(...d.captions.map(c=>{ const b=el('button',{className:'sugg',title:'Use this caption (you can still edit it)'}); b.append(c, el('small',{textContent:'Tap to use'}));
+      b.onclick=()=>{ $('#caption').value=c; localStorage.setItem('peggy.caption',c); $('#caption').focus(); toast('Caption added. Edit it any way you like.'); }; return b; }));
+  }catch(e){ out.replaceChildren(el('p',{className:'hint',textContent:'Couldn’t get caption ideas: '+e.message})); }
+  finally{ btn.disabled=false; btn.textContent='✨ Suggest again'; }
+};
+/* ---------- privacy ---------- */
+// Facebook doesn't let other apps pick a post's audience, so Peggy remembers the choice and reminds you where to set it.
+const AUDIENCES=[['friends','👥 Friends','Friends'],['public','🌎 Public','Public'],['specific','👤 Specific friends','Specific friends'],['except','🚫 Friends except…','Friends except…'],['me','🔒 Only me','Only me']];
+let audience=(()=>{ try{ return localStorage.getItem('peggy.audience')||'friends'; }catch(_){ return 'friends'; } })();
+function renderAudience(){
+  $('#audience').replaceChildren(...AUDIENCES.map(([k,l])=>{ const b=el('button',{textContent:l,className:audience===k?'on':'',title:`Remind me to share with ${l.replace(/^\S+ /,'')}`}); b.onclick=()=>{ audience=k; try{ localStorage.setItem('peggy.audience',k); }catch(_){} renderAudience(); }; return b; }));
+  const name=AUDIENCES.find(a=>a[0]===audience)[2];
+  $('#audHint').innerHTML=`In Facebook’s post screen, tap the audience button under your name and pick <b>${name}</b>. Facebook keeps that choice for your next post, but check it each time.`;
+  $('#postHint').innerHTML=`Tapping Share copies your caption, then opens the share sheet. Choose <b>Facebook</b>, set the audience to <b>${name}</b>, then long-press the text box and tap <b>Paste</b>.`;
+}
+renderAudience();
 $('#postBack').onclick=()=>{ $('#post').classList.add('hidden'); document.body.style.overflow=''; post=null; };
 $('#shareBtn').onclick=()=>{
   // Everything here must start synchronously inside the tap, or iOS blocks the share sheet.
