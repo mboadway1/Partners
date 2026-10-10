@@ -1,8 +1,12 @@
 // Peggy shared engine: used by the phone app (index.html) and the TV app (tv.html).
 // Edits are stored as settings and applied on the fly, so originals are never changed.
 'use strict';
-const DEF = {rot:0, flip:false, aspect:'orig', zoom:1, panX:0, panY:0, bright:0, contrast:0, sat:0, warmth:0, preset:'none'};
-const ASPECTS = [['orig','Original'],['1','Square'],['0.8','Portrait 4:5'],['1.7778','Wide 16:9'],['0.5625','Story 9:16']];
+// crop: {x,y,w,h} as fractions of the (rotated) photo, or null to use the older aspect/zoom/pan settings.
+// straight: fine rotation in degrees (−45…45); the photo is enlarged just enough that no blank corners show.
+const DEF = {rot:0, flip:false, flipV:false, straight:0, aspect:'orig', crop:null, zoom:1, panX:0, panY:0, bright:0, contrast:0, sat:0, warmth:0, preset:'none'};
+const ASPECTS = [['free','Free'],['orig','Original'],['1','Square'],['0.8','4:5'],['0.75','3:4'],['0.6667','2:3'],['1.5','3:2'],['1.3333','4:3'],['1.7778','16:9'],['0.5625','9:16']];
+const ASPECT_TIPS = {free:'Crop to any shape', orig:'Keep the photo’s own shape', '1':'Square, good for Instagram and profile pictures', '0.8':'Portrait 4:5, fills the most space in a Facebook or Instagram feed',
+  '0.75':'Portrait 3:4', '0.6667':'Portrait 2:3, like a 4×6 print', '1.5':'Landscape 3:2, like a 6×4 print', '1.3333':'Landscape 4:3', '1.7778':'Wide 16:9, fills a TV screen', '0.5625':'Tall 9:16, for stories and phone wallpaper'};
 const PRESETS = {
   none:{name:'Original'}, vivid:{name:'Vivid',sat:35,contrast:15}, warm:{name:'Warm',warmth:35,sat:10,bright:4},
   cool:{name:'Cool',warmth:-35,contrast:5}, punch:{name:'Punch',contrast:30,sat:20,bright:-4},
@@ -51,28 +55,50 @@ function adjust(ctx, w, h, e){
   ctx.putImageData(d,0,0);
 }
 
-function render(img, e, maxDim){
-  const iw=img.naturalWidth, ih=img.naturalHeight, rot=((e.rot%360)+360)%360;
+// The photo after 90° turns: its width and height, and how much straightening enlarges it.
+function frameOf(img, e){
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height, rot=((e.rot%360)+360)%360;
   const sw = rot%180 ? ih : iw, sh = rot%180 ? iw : ih;
-  const A = e.aspect==='orig' ? sw/sh : parseFloat(e.aspect);
-  let cw, ch; if(sw/sh > A){ ch=sh; cw=sh*A; } else { cw=sw; ch=sw/A; }
-  cw/=e.zoom; ch/=e.zoom;
-  const cx = sw/2 + e.panX*(sw-cw)/2, cy = sh/2 + e.panY*(sh-ch)/2;
+  const t=Math.abs(e.straight||0)*Math.PI/180, co=Math.cos(t), si=Math.sin(t);
+  const grow=Math.max(co+(sh/sw)*si, (sw/sh)*si+co);
+  return {iw, ih, rot, sw, sh, grow};
+}
+const aspectOf = (e, sw, sh) => { const a=parseFloat(e.aspect); return isFinite(a)&&a>0 ? a : sw/sh; };
+// Largest crop of pixel shape A, centred: as fractions of the frame.
+function maxCrop(A, sw, sh){ let w=1, h=1; if(sw/sh > A) w=(sh*A)/sw; else h=(sw/A)/sh; return {x:(1-w)/2, y:(1-h)/2, w, h}; }
+// The crop as fractions of the frame, from the new crop box or the older aspect/zoom/pan settings.
+function cropOf(e, sw, sh){
+  if(e.crop) return e.crop;
+  const m=maxCrop(aspectOf(e,sw,sh), sw, sh), z=e.zoom||1, w=m.w/z, h=m.h/z;
+  return {x:(1-w)/2+(e.panX||0)*(1-w)/2, y:(1-h)/2+(e.panY||0)*(1-h)/2, w, h};
+}
+// opts.full: draw the whole frame, ignoring the crop (used while cropping).
+function render(img, e, maxDim, opts={}){
+  const f=frameOf(img, e), {iw, ih, sw, sh}=f;
+  const cr = opts.full ? {x:0,y:0,w:1,h:1} : cropOf(e, sw, sh);
+  const x0=cr.x*sw, y0=cr.y*sh, cw=Math.max(1,cr.w*sw), ch=Math.max(1,cr.h*sh);
   const k = Math.min(1, maxDim/Math.max(cw,ch));
   const W=Math.max(1,Math.round(cw*k)), H=Math.max(1,Math.round(ch*k));
   const c = document.createElement('canvas'); c.width=W; c.height=H;
   const x = c.getContext('2d',{willReadFrequently:true});
   x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
-  x.scale(k,k); x.translate(-(cx-cw/2), -(cy-ch/2)); x.translate(sw/2, sh/2);
-  x.rotate(rot*Math.PI/180); if(e.flip) x.scale(-1,1);
+  x.scale(k,k); x.translate(-x0, -y0); x.translate(sw/2, sh/2);
+  x.rotate((f.rot+(e.straight||0))*Math.PI/180); x.scale(f.grow*(e.flip?-1:1), f.grow*(e.flipV?-1:1));
   x.drawImage(img, -iw/2, -ih/2);
   x.setTransform(1,0,0,1,0,0);
   adjust(x, W, H, e);
-  c._geom = {sw, sh, cw, ch};
+  c._geom = {sw, sh, cw, ch, crop:cr};
   return c;
 }
 async function makeThumb(blob, edits){ const img=await loadImage(blob); return toBlob(render(img, edits||DEF, 480), 'image/jpeg', .82); }
-function edited(p){ const e=p.edits; if(!e) return false; return Object.keys(DEF).some(k=>e[k]!==DEF[k]); }
+function editsChanged(e){
+  if(!e) return false; e={...DEF, ...e};
+  const c=e.crop, cropped = c ? (c.x>.002||c.y>.002||c.w<.996||c.h<.996)
+    : ((e.aspect!=='orig'&&e.aspect!=='free') || e.zoom!==1);
+  return cropped || ((e.rot%360)+360)%360!==0 || e.flip || e.flipV || !!e.straight
+    || ['bright','contrast','sat','warmth'].some(k=>e[k]) || e.preset!=='none';
+}
+function edited(p){ return !!p.orig || editsChanged(p.edits); }
 
 // Re-encode a photo so its long edge is at most `max` px (keeps smaller photos as they are).
 async function downscale(blob, max){

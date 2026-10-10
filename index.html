@@ -83,12 +83,36 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .overlay{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column}
 .ohead{display:flex;align-items:center;gap:8px;padding:calc(var(--st) + 8px) calc(var(--sr) + 10px) 8px calc(var(--sl) + 10px);border-bottom:1px solid var(--line)}
 .ohead .t{flex:1;min-width:0;text-align:center;font:600 18px var(--display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:none;background:var(--photo)}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:none;background:var(--photo);position:relative;overflow:hidden}
+/* crop box: dims everything outside it, shows a rule-of-thirds grid and 8 drag handles */
+.cropbox{position:absolute;box-shadow:0 0 0 9999px rgba(20,8,20,.58);outline:2px solid #fff;outline-offset:-1px;cursor:move;touch-action:none;
+  background-image:linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),linear-gradient(90deg,rgba(255,255,255,.45),rgba(255,255,255,.45)),linear-gradient(90deg,rgba(255,255,255,.45),rgba(255,255,255,.45));
+  background-size:100% 1px,100% 1px,1px 100%,1px 100%;background-position:0 33.33%,0 66.67%,33.33% 0,66.67% 0;background-repeat:no-repeat}
+.cropbox .h{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;touch-action:none}
+.cropbox .h::after{content:"";position:absolute;inset:14px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.cropbox .h.edge::after{inset:17px 12px;border-radius:4px}
+.cropbox .h[data-h=n],.cropbox .h[data-h=s]{left:50%} .cropbox .h[data-h=e],.cropbox .h[data-h=w]{top:50%}
+.cropbox .h[data-h=n]::after,.cropbox .h[data-h=s]::after{inset:18px 10px}
+.cropbox .h[data-h=e]::after,.cropbox .h[data-h=w]::after{inset:10px 18px}
+.cropbox .h[data-h*=n]{top:0} .cropbox .h[data-h*=s]{top:100%} .cropbox .h[data-h*=w]{left:0} .cropbox .h[data-h*=e]{left:100%}
+.cropbox .h[data-h=nw],.cropbox .h[data-h=se]{cursor:nwse-resize} .cropbox .h[data-h=ne],.cropbox .h[data-h=sw]{cursor:nesw-resize}
+.cropbox .h[data-h=n],.cropbox .h[data-h=s]{cursor:ns-resize} .cropbox .h[data-h=e],.cropbox .h[data-h=w]{cursor:ew-resize}
+.cropbox.locked .h.edge{display:none}
+.cropbox .dim{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:rgba(20,8,20,.7);color:#fff;font:700 11px var(--body,system-ui);padding:2px 7px;border-radius:999px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s}
+.cropbox.drag .dim{opacity:1}
+#aspects{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+#aspects::-webkit-scrollbar{display:none}
+#aspects button{flex:none}
 .stage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
 .tools{background:var(--panel);padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 10px) calc(var(--sl) + 12px)}
 .tabs{display:flex;gap:6px;margin-bottom:10px}
 .tabs button{flex:1;min-height:38px;padding:6px}
 .tabs button.on{background:var(--text);color:var(--bg);font-weight:800}
+.seg2{display:flex;gap:6px;margin-bottom:8px}
+.seg2 button{flex:1;min-height:38px;padding:6px;font-size:14px}
+.seg2 button.on{outline:2px solid var(--accent);outline-offset:-2px;background:var(--panel)}
+.paint{position:absolute;pointer-events:none;opacity:.55}
+.busy{position:absolute;inset:0;display:grid;place-content:center;background:rgba(20,8,20,.45);color:#fff;font-weight:800;font-size:16px;z-index:3}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row button{flex:1 1 auto;min-width:64px;font-size:14px}
 .row button.on{outline:2px solid var(--accent)}
@@ -222,20 +246,48 @@ body.selecting-mode .bnav{display:none}
       <button data-tab="crop" title="Crop, zoom, rotate and flip" class="on">Crop</button>
       <button data-tab="adjust" title="Brightness, contrast, saturation and warmth">Adjust</button>
       <button data-tab="filters" title="One-tap color filters">Filters</button>
+      <button data-tab="magic" title="Magic eraser and blur background">✨ Magic</button>
     </div>
     <div data-panel="crop">
       <div class="row" id="aspects"></div>
-      <div class="slider"><label>Zoom</label><input type="range" id="zoom" min="1" max="3" step="0.01" value="1"><span id="zoomV">1.0×</span></div>
+      <div class="slider"><label id="straightL" title="Tilt the photo to level a crooked horizon. Tap to reset">Straighten</label><input type="range" id="straight" min="-45" max="45" step="0.5" value="0" title="Tilt the photo to level a crooked horizon"><span id="straightV">0°</span></div>
       <div class="row">
-        <button id="rotL" title="Rotate left">⟲ Rotate</button>
-        <button id="rotR" title="Rotate right">⟳ Rotate</button>
-        <button id="flip" title="Flip left to right">⇋ Flip</button>
+        <button id="rotL" title="Turn a quarter turn to the left" aria-label="Rotate left">⟲</button>
+        <button id="rotR" title="Turn a quarter turn to the right" aria-label="Rotate right">⟳</button>
+        <button id="flip" title="Mirror left to right" aria-label="Flip left to right">⇋</button>
+        <button id="flipV" title="Mirror top to bottom" aria-label="Flip top to bottom">⇅</button>
+        <button id="cropFill" title="Make the crop box as big as the shape allows">Fill</button>
         <button id="edReset" title="Undo all edits and go back to the original" class="danger">Revert</button>
       </div>
-      <p class="hint" style="margin:8px 0 0">Drag the photo to reposition the crop.</p>
+      <p class="hint" style="margin:8px 0 0">Drag the corners or edges to crop, or drag inside the box to move it. Double-tap the box to fill.</p>
     </div>
     <div data-panel="adjust" class="hidden" id="sliders"></div>
     <div data-panel="filters" class="hidden"><div class="presets" id="presets"></div></div>
+    <div data-panel="magic" class="hidden">
+      <div class="seg2" role="tablist">
+        <button id="mgErase" class="on" title="Paint over something to make it disappear">🪄 Magic eraser</button>
+        <button id="mgBlur" title="Keep people sharp and soften everything behind them">Blur background</button>
+      </div>
+      <div id="mgErasePanel">
+        <div class="slider"><label title="How wide the brush paints">Brush</label><input type="range" id="brush" min="8" max="90" step="1" value="28" title="How wide the brush paints"><span id="brushV">28</span></div>
+        <div class="row">
+          <button id="mgUndoStroke" title="Remove the last brush stroke">↶ Stroke</button>
+          <button id="mgClear" title="Remove all brush strokes">Clear</button>
+          <button id="mgDoErase" class="primary" title="Make the painted parts disappear">Erase</button>
+        </div>
+        <p class="hint" style="margin:8px 0 0">Paint over what you want gone, a little past its edges, then tap <b>Erase</b>. Works best on small things against sky, grass, sand or walls.</p>
+      </div>
+      <div id="mgBlurPanel" class="hidden">
+        <div class="slider"><label title="How soft the background gets">Blur</label><input type="range" id="blurAmt" min="5" max="100" step="1" value="45" title="How soft the background gets"><span id="blurV">45</span></div>
+        <div class="row">
+          <button id="mgBlurApply" class="primary" title="Apply the background blur">Apply blur</button>
+        </div>
+        <p class="hint" id="mgBlurHint" style="margin:8px 0 0">Keeps people sharp and softens everything behind them, like portrait mode.</p>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="mgUndo" class="ghost" title="Undo the last erase or blur" disabled>↶ Undo last magic</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -259,6 +311,7 @@ body.selecting-mode .bnav{display:none}
 <script src="core.js"></script>
 <script src="core-butterfly.js"></script>
 <script src="account.js"></script>
+<script src="magic.js"></script>
 <script>
 'use strict';
 /* ---------- config ---------- */
@@ -584,7 +637,8 @@ let ed=null, raf=0;
 async function openEditor(p){
   try{
     const img=await loadImage(p.blob);
-    ed={p, img, e:{...DEF, ...(p.edits||{})}, dirty:false};
+    ed={p, img, e:{...DEF, ...(p.edits||{})}, dirty:false, tab:'crop'};
+    if(!ed.e.crop){ const f=frameOf(img, ed.e); ed.e.crop=cropOf(ed.e, f.sw, f.sh); ed.e.zoom=1; ed.e.panX=0; ed.e.panY=0; }
     $('#edTitle').textContent=p.name; $('#editor').classList.remove('hidden'); document.body.style.overflow='hidden';
     selTab('crop'); syncControls(); syncFav(); draw(); buildPresets();
   }catch(err){ toast(err.message); }
@@ -612,7 +666,7 @@ function fileBase(name){ return (name||'photo').replace(/\.[^.]+$/,'').replace(/
 async function exportFull(p, edits){
   const img=await loadImage(p.blob), e=edits||p.edits||DEF;
   const b=await toBlob(render(img, e, 4096),'image/jpeg',.92);
-  const changed=Object.keys(DEF).some(k=>e[k]!==DEF[k]);
+  const changed=editsChanged(e);
   return new File([b], fileBase(p.name)+(changed?'-peggy':'')+'.jpg', {type:'image/jpeg'});
 }
 function saveFile(f){ const u=URL.createObjectURL(f), a=el('a',{href:u,download:f.name}); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); }
@@ -623,26 +677,83 @@ async function downloadPhotos(list, edits){
   for(const p of list){ try{ saveFile(await exportFull(p, list.length===1?edits:null)); n++; await sleep(400); }catch(e){ console.error(e); } }
   toast(n===list.length ? `Downloaded ${n} photo${n>1?'s':''}` : `Downloaded ${n} of ${list.length}`);
 }
-$('#edDl').onclick=()=>{ if(ed) downloadPhotos([ed.p], {...ed.e}); };
+$('#edDl').onclick=async()=>{ if(!ed) return;
+  if(ed.baked){ const b=await toBlob(render(ed.img, ed.e, 4096),'image/jpeg',.92); saveFile(new File([b], fileBase(ed.p.name)+'-peggy.jpg',{type:'image/jpeg'})); toast('Downloaded 1 photo'); return; }
+  downloadPhotos([ed.p], {...ed.e}); };
 function syncFav(){ if(!ed) return; const on=!!ed.p.fav, b=$('#edFav'); b.innerHTML=(on?'★':'☆')+'<span class="fl"> Favorite</span>'; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); }
 $('#edFav').onclick=async()=>{ if(!ed) return; ed.p.fav=!ed.p.fav; await dbPut('photos',ed.p); syncFav(); toast(ed.p.fav?'Added to Favorites':'Removed from Favorites'); renderAll(); };
-function closeEditor(){ $('#editor').classList.add('hidden'); document.body.style.overflow=''; ed=null; $('#edStage').replaceChildren(); $('#presets').replaceChildren(); }
+function closeEditor(){ boxEl=null; $('#editor').classList.add('hidden'); document.body.style.overflow=''; ed=null; $('#edStage').replaceChildren(); $('#presets').replaceChildren(); }
 function draw(){
   cancelAnimationFrame(raf);
   raf=requestAnimationFrame(()=>{ if(!ed) return; const st=$('#edStage'), r=st.getBoundingClientRect();
     const max=Math.round(Math.max(r.width,r.height)*Math.min(devicePixelRatio||1,2));
-    const c=render(ed.img, ed.e, Math.max(400, Math.min(max, 1600)));
-    c.style.width='auto'; c.style.height='auto'; st.replaceChildren(c); ed.c=c; });
+    const cropping=ed.tab==='crop', magic=ed.tab==='magic';
+    const c=render(magic&&ed.preview?ed.preview:ed.img, ed.e, Math.max(400, Math.min(max, 1600)), {full:cropping||magic});
+    c.style.width='auto'; c.style.height='auto'; st.replaceChildren(c); ed.c=c;
+    if(cropping){ st.append(cropBox()); placeBox(); }
+    if(magic) magicOverlay(); });
 }
+/* ---------- crop box ---------- */
+let boxEl=null;
+function cropBox(){
+  if(boxEl) return boxEl;
+  boxEl=el('div',{className:'cropbox',title:'Drag to move the crop. Double-tap to fill'});
+  for(const h of ['nw','n','ne','e','se','s','sw','w']){ const d=el('div',{className:'h'+(h.length===1?' edge':'')}); d.dataset.h=h; d.title=h.length===1?'Drag to crop this side':'Drag to resize the crop'; boxEl.append(d); }
+  boxEl.append(el('span',{className:'dim'}));
+  let s=null, lastTap=0;
+  boxEl.addEventListener('pointerdown',ev=>{ if(!ed||!ed.c) return; ev.preventDefault(); ev.stopPropagation();
+    const now=Date.now(); if(ev.target===boxEl && now-lastTap<320){ lastTap=0; fillCrop(); return; } lastTap=ev.target===boxEl?now:0;
+    s={h:ev.target.dataset.h||'move', x:ev.clientX, y:ev.clientY, c:{...ed.e.crop}, r:ed.c.getBoundingClientRect()};
+    boxEl.setPointerCapture(ev.pointerId); boxEl.classList.add('drag'); });
+  boxEl.addEventListener('pointermove',ev=>{ if(!s||!ed) return;
+    const dx=(ev.clientX-s.x)/s.r.width, dy=(ev.clientY-s.y)/s.r.height; if(Math.abs(ev.clientX-s.x)+Math.abs(ev.clientY-s.y)>6) lastTap=0;
+    ed.e.crop = s.h==='move' ? moveCrop(s.c,dx,dy) : resizeCrop(s.c,s.h,dx,dy,lockRatio());
+    ed.dirty=true; placeBox(); });
+  const end=()=>{ if(!s) return; s=null; boxEl.classList.remove('drag'); };
+  boxEl.addEventListener('pointerup',end); boxEl.addEventListener('pointercancel',end);
+  return boxEl;
+}
+function frame(){ return frameOf(ed.img, ed.e); }
+// Width÷height of the crop box in frame fractions, or 0 when the shape is free.
+function lockRatio(){ if(ed.e.aspect==='free') return 0; const {sw,sh}=frame(); return aspectOf(ed.e,sw,sh)*sh/sw; }
+function moveCrop(c,dx,dy){ return {...c, x:clamp(c.x+dx,0,1-c.w), y:clamp(c.y+dy,0,1-c.h)}; }
+function resizeCrop(c,h,dx,dy,a){
+  const MIN=.06; let L=c.x, T=c.y, R=c.x+c.w, B=c.y+c.h;
+  if(h.includes('w')) L=clamp(L+dx,0,R-MIN); if(h.includes('e')) R=clamp(R+dx,L+MIN,1);
+  if(h.includes('n')) T=clamp(T+dy,0,B-MIN); if(h.includes('s')) B=clamp(B+dy,T+MIN,1);
+  if(a && h.length===2){
+    const ax=h.includes('w')?c.x+c.w:c.x, ay=h.includes('n')?c.y+c.h:c.y;      // the corner that stays put
+    let w=R-L, hh=B-T; if(w/a>hh) hh=w/a; else w=hh*a;
+    const availW=h.includes('w')?ax:1-ax, availH=h.includes('n')?ay:1-ay;
+    if(w>availW){ w=availW; hh=w/a; } if(hh>availH){ hh=availH; w=hh*a; }
+    if(w<MIN){ w=MIN; hh=w/a; } if(hh<MIN){ hh=MIN; w=hh*a; }
+    L=h.includes('w')?ax-w:ax; T=h.includes('n')?ay-hh:ay; R=L+w; B=T+hh;
+  }
+  return {x:L, y:T, w:R-L, h:B-T};
+}
+function fullCrop(){ if(ed.e.aspect==='free') return {x:0,y:0,w:1,h:1}; const {sw,sh}=frame(); return maxCrop(aspectOf(ed.e,sw,sh),sw,sh); }
+function fillCrop(){ ed.e.crop=fullCrop(); ed.dirty=true; placeBox(); }
+function placeBox(){
+  if(!ed||!ed.c||!boxEl||ed.tab!=='crop') return;
+  const st=$('#edStage').getBoundingClientRect(), r=ed.c.getBoundingClientRect(), c=ed.e.crop;
+  Object.assign(boxEl.style,{left:(r.left-st.left+c.x*r.width)+'px', top:(r.top-st.top+c.y*r.height)+'px', width:(c.w*r.width)+'px', height:(c.h*r.height)+'px'});
+  boxEl.classList.toggle('locked', ed.e.aspect!=='free');
+  const {sw,sh}=frame(); boxEl.querySelector('.dim').textContent=`${Math.round(c.w*sw)} × ${Math.round(c.h*sh)}`;
+}
+addEventListener('resize',()=>{ if(ed) draw(); });
 function change(k,v){ ed.e[k]=v; ed.dirty=true; syncControls(); draw(); }
 function selTab(t){
+  const was=ed&&ed.tab;
+  if(ed){ ed.tab=t; if(was==='magic' && t!=='magic') magicLeave(); if(t==='magic' && was!=='magic') magicEnter();
+    if(was && was!==t && [was,t].some(x=>x==='crop'||x==='magic')) draw(); if(t==='magic' && ed.mode==='blur') blurPreview(); }
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===t));
   document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('hidden', p.dataset.panel!==t));
 }
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>selTab(b.dataset.tab));
 (function buildStatic(){
   const as=$('#aspects');
-  for(const [v,l] of ASPECTS){ const b=el('button',{textContent:l,title:v==='orig'?'Keep the original shape':`Crop to ${l}`}); b.dataset.aspect=v; b.onclick=()=>{ ed.e.panX=0; ed.e.panY=0; change('aspect',v); }; as.append(b); }
+  for(const [v,l] of ASPECTS){ const b=el('button',{textContent:l,title:ASPECT_TIPS[v]||`Crop to ${l}`}); b.dataset.aspect=v;
+    b.onclick=()=>{ ed.e.aspect=v; if(v!=='free') ed.e.crop=fullCrop(); ed.dirty=true; syncControls(); placeBox(); }; as.append(b); }
   const sl=$('#sliders');
   for(const [k,l] of SLIDERS){
     const lab=el('label',{textContent:l,title:'Tap to reset'}), r=el('input',{type:'range',min:-100,max:100,step:1,value:0,id:'sl-'+k}), v=el('span',{id:'sv-'+k,textContent:'0'});
@@ -653,14 +764,15 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>selTab(b.data
 function syncControls(){
   if(!ed) return; const e=ed.e;
   document.querySelectorAll('#aspects button').forEach(b=>b.classList.toggle('on', b.dataset.aspect===e.aspect));
-  $('#zoom').value=e.zoom; $('#zoomV').textContent=(+e.zoom).toFixed(1)+'×';
-  $('#flip').classList.toggle('on', !!e.flip);
+  $('#straight').value=e.straight||0; $('#straightV').textContent=(+(e.straight||0)).toFixed(1).replace(/\.0$/,'')+'°';
+  const sideways=(((e.rot%360)+360)%360)%180!==0;
+  $('#flip').classList.toggle('on', !!(sideways?e.flipV:e.flip)); $('#flipV').classList.toggle('on', !!(sideways?e.flip:e.flipV));
   for(const [k] of SLIDERS){ $('#sl-'+k).value=e[k]; $('#sv-'+k).textContent=(e[k]>0?'+':'')+e[k]; }
   document.querySelectorAll('.preset').forEach(p=>p.classList.toggle('on', p.dataset.preset===e.preset));
 }
 async function buildPresets(){
   const box=$('#presets'); box.replaceChildren(); if(!ed) return;
-  const base={...DEF, rot:ed.e.rot, flip:ed.e.flip};
+  const base={...DEF, rot:ed.e.rot, flip:ed.e.flip, flipV:ed.e.flipV, straight:ed.e.straight};
   const small=render(ed.img, base, 160); const si=new Image(); si.src=small.toDataURL('image/jpeg',.85); await si.decode().catch(()=>{});
   for(const [k,p] of Object.entries(PRESETS)){
     if(!ed) return;
@@ -671,29 +783,35 @@ async function buildPresets(){
   }
   syncControls();
 }
-$('#zoom').oninput=e=>change('zoom', +e.target.value);
-$('#rotL').onclick=()=>{ change('rot', ed.e.rot-90); buildPresets(); };
-$('#rotR').onclick=()=>{ change('rot', ed.e.rot+90); buildPresets(); };
-$('#flip').onclick=()=>{ change('flip', !ed.e.flip); buildPresets(); };
-$('#edReset').onclick=()=>{ ed.e={...DEF}; ed.dirty=true; syncControls(); draw(); buildPresets(); };
+$('#straight').oninput=e=>change('straight', +e.target.value);
+$('#straightL').onclick=()=>change('straight', 0);
+function turn(d){ ed.e.rot=(((ed.e.rot+d)%360)+360)%360; ed.e.crop=fullCrop(); ed.dirty=true; syncControls(); draw(); buildPresets(); }
+$('#rotL').onclick=()=>turn(-90);
+$('#rotR').onclick=()=>turn(90);
+// Flips are as you see them: on a sideways photo, mirroring left-right flips the photo's own top and bottom.
+function mirror(horizontal){
+  const sideways=ed.e.rot%180!==0, k=(horizontal!==sideways)?'flip':'flipV', c=ed.e.crop;
+  ed.e[k]=!ed.e[k]; ed.e.crop = horizontal ? {...c, x:1-c.x-c.w} : {...c, y:1-c.y-c.h};
+  ed.dirty=true; syncControls(); draw(); buildPresets();
+}
+$('#flip').onclick=()=>mirror(true);
+$('#flipV').onclick=()=>mirror(false);
+$('#cropFill').onclick=()=>fillCrop();
+$('#edReset').onclick=async()=>{
+  ed.e={...DEF, crop:{x:0,y:0,w:1,h:1}}; ed.dirty=true;
+  if(ed.p.orig || ed.baked){ ed.img=await loadImage(ed.p.orig||ed.p.blob); ed.restoreOrig=!!ed.p.orig; ed.baked=false; ed.history=[]; ed.strokes=[]; ed.personMask=null; ed.preview=null; }
+  syncControls(); draw(); buildPresets(); if(typeof magicSync==='function') magicSync(); };
 $('#edCancel').onclick=()=>{ if(ed && ed.dirty && !confirm('Discard your changes?')) return; closeEditor(); };
 $('#edSave').onclick=async()=>{
   if(!ed) return; const p=ed.p, e={...ed.e};
   $('#edSave').disabled=true;
-  try{ p.edits=e; p.thumb=await makeThumb(p.blob, e); await dbPut('photos',p); dropURL(p.id); closeEditor(); renderAll(); }
+  try{
+    if(ed.baked){ if(!p.orig) p.orig=p.blob; p.blob=await toBlob(ed.img,'image/jpeg',.94); }       // magic edits: keep the untouched original for Revert
+    else if(ed.restoreOrig){ p.blob=p.orig; delete p.orig; }
+    p.edits=e; p.thumb=await makeThumb(p.blob, e); await dbPut('photos',p); dropURL(p.id); closeEditor(); renderAll(); }
   catch(err){ toast('Save failed: '+err.message); }
   finally{ $('#edSave').disabled=false; }
 };
-(function pan(){
-  const st=$('#edStage'); let s=null;
-  st.addEventListener('pointerdown',e=>{ if(!ed||!ed.c) return; s={x:e.clientX,y:e.clientY,px:ed.e.panX,py:ed.e.panY}; st.setPointerCapture(e.pointerId); });
-  st.addEventListener('pointermove',e=>{ if(!s||!ed||!ed.c) return; const g=ed.c._geom, r=ed.c.getBoundingClientRect();
-    const sx=g.cw/r.width, sy=g.ch/r.height;
-    const nx = g.sw>g.cw+.5 ? clamp(s.px-(e.clientX-s.x)*sx/((g.sw-g.cw)/2),-1,1) : 0;
-    const ny = g.sh>g.ch+.5 ? clamp(s.py-(e.clientY-s.y)*sy/((g.sh-g.ch)/2),-1,1) : 0;
-    if(nx!==ed.e.panX || ny!==ed.e.panY){ ed.e.panX=nx; ed.e.panY=ny; ed.dirty=true; draw(); } });
-  const end=()=>{ s=null; }; st.addEventListener('pointerup',end); st.addEventListener('pointercancel',end);
-})();
 
 /* ---------- post ---------- */
 let post=null;

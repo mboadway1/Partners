@@ -1,6 +1,6 @@
 // Peggy service worker: lets the app open offline. Pages load network-first so updates arrive right away.
-const CACHE = 'peggy-v7';
-const SHELL = ['./', 'index.html', 'plan.html', 'tv.html', 'theme.js', 'account.js', 'core.js', 'core-butterfly.js', 'words.html', 'words-version.js', 'manifest.json', 'icon-180.png', 'icon-512.png'];
+const CACHE = 'peggy-v8';
+const SHELL = ['./', 'index.html', 'plan.html', 'tv.html', 'theme.js', 'account.js', 'core.js', 'magic.js', 'core-butterfly.js', 'words.html', 'words-version.js', 'manifest.json', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
