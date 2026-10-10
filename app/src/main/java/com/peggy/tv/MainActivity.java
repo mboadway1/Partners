@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         web = new WebView(this);
-        web.setBackgroundColor(Color.rgb(14, 15, 18));
+        web.setBackgroundColor(Color.rgb(42, 18, 48));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -64,10 +64,10 @@ public class MainActivity extends Activity {
 
     private void showOffline() {
         showingError = true;
-        String html = "<html><body style='margin:0;background:#0e0f12;color:#f3f3f5;font-family:sans-serif;"
+        String html = "<html><body style='margin:0;background:#2A1230;color:#FFEAF3;font-family:sans-serif;"
                 + "display:flex;align-items:center;justify-content:center;height:100vh;text-align:center'>"
                 + "<div><h1 style='font-size:3vw'>Peggy can't reach the internet</h1>"
-                + "<p style='font-size:1.8vw;color:#9a9ca4'>Check the Fire TV's Wi-Fi. Retrying in 10 seconds.</p></div></body></html>";
+                + "<p style='font-size:1.8vw;color:#D9AECB'>Check the Fire TV's Wi-Fi. Retrying in 10 seconds.</p></div></body></html>";
         web.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
         handler.postDelayed(() -> { if (showingError) load(); }, 10000);
     }

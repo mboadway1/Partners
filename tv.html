@@ -5,23 +5,35 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Peggy TV</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
-:root{--bg:#0e0f12;--panel:#1a1c21;--panel2:#262930;--line:#33363d;--text:#f3f3f5;--dim:#9a9ca4;--accent:#3b82f6;--star:#fbbf24;--ok:#22c55e;--danger:#ef4444}
+:root{/* Peggy in bloom, evening edition: plum room, peony and lilac light */
+  --bg:#2A1230;--panel:#3A1B42;--panel2:#4B2654;--line:#5E3468;--text:#FFEAF3;--dim:#D9AECB;--accent:#F06A9B;--lilac:#A98BF0;--star:#FFC24B;--ok:#5EE0A6;--danger:#FF7A93;
+  --display:"Fredoka","Nunito",ui-rounded,system-ui,sans-serif}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Roboto,"Amazon Ember",system-ui,sans-serif;overflow:hidden;cursor:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Nunito",Roboto,"Amazon Ember",system-ui,sans-serif;font-weight:600;overflow:hidden;cursor:none}
 .hidden{display:none!important}
 .f{transition:transform .12s, box-shadow .12s}
-.focus{outline:none;box-shadow:0 0 0 .3vw #fff, 0 0 2vw rgba(255,255,255,.35)!important;transform:scale(1.05);z-index:2;position:relative}
-button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;border-radius:.8vw;padding:.9vw 1.6vw;font-size:1.5vw;white-space:nowrap}
-.btn.on{background:var(--text);color:var(--bg);font-weight:700}
+.focus{outline:none;box-shadow:0 0 0 .3vw #FFD3E4, 0 0 2.4vw rgba(240,106,155,.65)!important;transform:scale(1.05);z-index:2;position:relative}
+button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--panel2);border:0;border-radius:1.4vw;padding:.9vw 1.6vw;font-size:1.5vw;white-space:nowrap}
+.btn.on{background:var(--lilac);color:#2A1230;font-weight:800}
 .btn.danger{color:var(--danger)}
-.btn.primary{background:var(--accent);color:#fff;font-weight:700}
+.btn.primary{background:var(--accent);color:#2A1230;font-weight:800}
 
 /* home */
 #home{position:absolute;inset:0;display:flex;flex-direction:column;padding:2.5vh 3vw 0}
 .top{display:flex;align-items:center;gap:2vw}
-.top h1{font-size:3vw;margin:0;flex:1;letter-spacing:-.05vw}
+.top h1{font:600 3.4vw/1 var(--display);margin:0;flex:1;color:var(--accent);display:flex;align-items:center;gap:.8vw}
+.top h1 .bfly{width:4.2vw;height:auto}
+.bfly .wing{transform-box:view-box;transform-origin:50px 44px}
+.bfly.flutter .wing{animation:flap 1.8s ease-in-out infinite}
+@keyframes flap{0%,70%,100%{transform:scaleX(1)}80%{transform:scaleX(.45)}90%{transform:scaleX(.9)}}
+/* butterflies drifting behind the home screen */
+#drift{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+#drift .bfly{position:absolute;opacity:.28;animation:drift linear infinite}
+#drift .bfly .wing{animation:flap 1.4s ease-in-out infinite}
+@keyframes drift{0%{transform:translate(-10vw,0) rotate(8deg)}25%{transform:translate(25vw,-6vh) rotate(-4deg)}50%{transform:translate(55vw,4vh) rotate(10deg)}75%{transform:translate(85vw,-5vh) rotate(-6deg)}100%{transform:translate(115vw,2vh) rotate(6deg)}}
+#home>*:not(#drift){position:relative;z-index:1}
 .status{font-size:1.3vw;color:var(--dim);display:flex;align-items:center;gap:.6vw}
 .status i{width:.8vw;height:.8vw;border-radius:50%;background:#666;display:inline-block}
 .status.live i{background:var(--ok)}
@@ -31,27 +43,27 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 .navrow .btn .n{opacity:.6;margin-left:.4vw}
 #gridWrap{flex:1;overflow:hidden;padding:1vw .5vw 4vh}
 #grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.2vw}
-.cell{position:relative;aspect-ratio:1;border-radius:.8vw;overflow:hidden;background:var(--panel)}
+.cell{position:relative;aspect-ratio:1;border-radius:1.4vw;overflow:hidden;background:var(--panel)}
 .cell img{width:100%;height:100%;object-fit:cover;display:block}
 .badges{position:absolute;left:.6vw;bottom:.4vw;font-size:1.4vw;text-shadow:0 .1vw .3vw #000;display:flex;gap:.4vw}
 .badges .star{color:var(--star)}
 .welcome{flex:1;display:flex;align-items:center;justify-content:center;gap:5vw}
-.welcome h2{font-size:3vw;margin:0 0 1.5vh}
+.welcome h2{font:600 3.2vw var(--display);margin:0 0 1.5vh}
 .welcome p{font-size:1.6vw;color:var(--dim);max-width:45vw;line-height:1.5}
-.welcome .big{font-size:7vw;font-weight:800;letter-spacing:1.2vw;color:var(--text);margin:1vh 0}
+.welcome .big{font:600 7.5vw var(--display);letter-spacing:1.2vw;color:var(--accent);margin:1vh 0}
 .qr{width:16vw;height:16vw;background:#fff;padding:1vw;border-radius:1vw}
 .qr svg{width:100%;height:100%}
 
 /* layers */
 .layer{position:absolute;inset:0;background:var(--bg);z-index:10}
-.stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000}
+.stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#1A0A1F}
 .stageImg canvas,.stageImg img{max-width:100%;max-height:100%}
 .vbar{position:absolute;left:0;right:0;bottom:0;padding:3vh 3vw 4vh;display:flex;gap:1.2vw;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.85))}
 .vinfo{position:absolute;left:3vw;top:3vh;font-size:1.3vw;color:#ddd;text-shadow:0 .1vw .4vw #000;background:rgba(0,0,0,.35);padding:.5vw 1vw;border-radius:.6vw}
 .hint{position:absolute;right:3vw;top:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.45);padding:.5vw 1vw;border-radius:.6vw}
 
 /* slideshow */
-#show .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;background:#000}
+#show .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;background:#1A0A1F}
 #show .slot.on{opacity:1}
 #show .slot canvas{max-width:100%;max-height:100%}
 #show .slot.motion canvas{animation:kb var(--dur,8s) linear forwards}
@@ -62,10 +74,10 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 
 /* editor */
 #editor{display:flex}
-#edStage{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center;padding:2vw}
+#edStage{flex:1;position:relative;background:#1A0A1F;display:flex;align-items:center;justify-content:center;padding:2vw}
 #edStage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 .1vw rgba(255,255,255,.2)}
 #edPanel{width:30vw;background:var(--panel);padding:2.5vh 1.6vw;display:flex;flex-direction:column;gap:.9vh;overflow:hidden}
-#edPanel h3{margin:0 0 1vh;font-size:1.8vw}
+#edPanel h3{margin:0 0 1vh;font:600 2vw var(--display);color:var(--accent)}
 .erow{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border-radius:.7vw;padding:.8vw 1.2vw;font-size:1.35vw}
 .erow .v{color:var(--dim)} .erow .v::before{content:"◀  "} .erow .v::after{content:"  ▶"}
 .erow.act{justify-content:center}
@@ -73,20 +85,21 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 #reframeHint{position:absolute;left:50%;bottom:3vh;transform:translateX(-50%);font-size:1.4vw;background:rgba(0,0,0,.7);padding:.6vw 1.4vw;border-radius:.7vw}
 
 /* dialog */
-.scrim{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:20;display:flex;align-items:center;justify-content:center}
-.dlg{background:var(--panel);border-radius:1.2vw;padding:3vh 2.5vw;min-width:34vw;max-width:60vw;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;gap:1vh}
-.dlg h3{margin:0;font-size:2vw}
+.scrim{position:absolute;inset:0;background:rgba(26,10,31,.75);z-index:20;display:flex;align-items:center;justify-content:center}
+.dlg{background:var(--panel);border-radius:2vw;padding:3vh 2.5vw;min-width:34vw;max-width:60vw;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;gap:1vh}
+.dlg h3{margin:0;font:600 2.2vw var(--display);color:var(--accent)}
 .dlg p{margin:0 0 1vh;font-size:1.4vw;color:var(--dim);line-height:1.45}
 .dlg .list{display:flex;flex-direction:column;gap:.8vh;overflow:hidden}
 .dlg .btn{text-align:left}
 .dlg input{font:inherit;font-size:1.6vw;padding:.9vw 1.2vw;border-radius:.7vw;border:.15vw solid var(--line);background:var(--bg);color:var(--text)}
 /* Words scoreboard: 10-foot layout, lanes sized by vw so it reads from the couch */
-#words{--bg:#0d1210;--surface:#151c19;--fg:#eef3f0;--muted:#8a9a94;--line:#26302c;--live:#fb8a4a;
-  --s1:#3fc79a;--s2:#7aa5ff;--s3:#e486d3;--s4:#f0b14a;--s5:#9fd65a;--s6:#b597ff;
-  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+#words{--bg:#2A1230;--surface:#3A1B42;--fg:#FFEAF3;--muted:#D9AECB;--line:#5E3468;--live:#FFB547;
+  --s1:#F06A9B;--s2:#A98BF0;--s3:#4FD8C9;--s4:#FFB547;--s5:#7CC4FF;--s6:#F28AE8;
+  --display:"Fredoka","Nunito",ui-rounded,sans-serif;--body:"Nunito",ui-rounded,sans-serif;--mono:"Nunito",ui-rounded,sans-serif;
   background:var(--bg);color:var(--fg);font:1.6vw/1.4 var(--body);padding:3.5vh 4vw;display:flex;flex-direction:column;gap:2.5vh}
 #words .wtop{display:flex;justify-content:space-between;align-items:baseline;gap:2vw}
-#words h1{font:700 3vw/1 var(--display);margin:0;letter-spacing:-.01em}
+#words h1{font:600 3.4vw/1 var(--display);margin:0;color:var(--s1);display:flex;align-items:center;gap:.8vw}
+#words h1 .bfly{width:4.2vw;height:auto}
 #words .wstat{font:500 1.1vw var(--mono);color:var(--muted);display:flex;align-items:center;gap:.8vw}
 #words .wdot{width:1vw;height:1vw;border-radius:50%;background:var(--line)}
 #words .wstat.live .wdot{background:var(--live);animation:wpulse 1.2s infinite}
@@ -122,16 +135,17 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 #words .cap.interim p{color:var(--muted);font-style:italic}
 #words .cut{font:500 1vw var(--mono);color:var(--live);border:.12vw solid var(--live);border-radius:.4vw;padding:0 .5vw;margin-right:.8vw}
 #words .wfoot{display:flex;justify-content:space-between;font:500 1vw var(--mono);color:var(--muted)}
-#wAlert{position:absolute;left:50%;top:3vh;transform:translateX(-50%);background:var(--live);color:#1a0d05;font:700 2vw var(--display);padding:1.2vh 2.4vw;border-radius:1vw;box-shadow:0 1vh 4vh rgba(0,0,0,.5);opacity:0;transition:opacity .3s;max-width:80vw;text-align:center}
+#wAlert{position:absolute;left:50%;top:3vh;transform:translateX(-50%);background:var(--live);color:#2A1230;font:700 2vw var(--display);padding:1.2vh 2.4vw;border-radius:1vw;box-shadow:0 1vh 4vh rgba(0,0,0,.5);opacity:0;transition:opacity .3s;max-width:80vw;text-align:center}
 #wAlert.on{opacity:1}
-.toast{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);z-index:40;background:#fff;color:#111;padding:1vw 2vw;border-radius:1vw;font-size:1.5vw;box-shadow:0 .5vw 2vw rgba(0,0,0,.5)}
+.toast{position:absolute;left:50%;bottom:5vh;transform:translateX(-50%);z-index:40;background:var(--accent);color:#2A1230;font-weight:800;padding:1vw 2vw;border-radius:1vw;font-size:1.5vw;box-shadow:0 .5vw 2vw rgba(0,0,0,.5)}
 </style>
 </head>
 <body>
 
 <div id="home">
+  <div id="drift"></div>
   <div class="top">
-    <h1>Peggy</h1>
+    <h1 id="tvWordmark">Peggy</h1>
     <span class="status" id="status"><i></i><span id="statusText">Starting…</span></span>
     <span class="codechip">Phone code <b id="codeSm">····</b></span>
   </div>
@@ -162,7 +176,7 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 </div>
 
 <div id="words" class="layer hidden">
-  <div class="wtop"><h1>Words</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
+  <div class="wtop"><h1 id="wWordmark">Words</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
   <div class="wempty" id="wEmpty">
     <h2>Count who talks, and who interrupts</h2>
     <div>In Peggy on your iPhone, tap <b>🎙</b>, then <b>Start listening</b>.</div>
@@ -182,6 +196,7 @@ button,.btn{font:inherit;color:var(--text);background:var(--panel2);border:0;bor
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="core.js"></script>
+<script src="core-butterfly.js"></script>
 <script src="words-version.js"></script>
 <script>
 'use strict';
@@ -664,6 +679,12 @@ function onWords(c, m){
 /* ================= boot ================= */
 (async function boot(){
   showCode();
+  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy';
+  $('#wWordmark').innerHTML=butterfly({size:60,flutter:true,a:'#F06A9B',b:'#A98BF0'})+'Words';
+  const drift=$('#drift');
+  [[18,'34s','0s',3.2],[30,'46s','-17s',2.4],[62,'40s','-30s',4]].forEach(([top,dur,delay,w])=>{
+    const d=el('div'); d.innerHTML=butterfly({a:'#F06A9B',b:'#A98BF0'}); const b=d.firstElementChild;
+    b.style.cssText=`top:${top}vh;left:0;width:${w}vw;height:auto;animation-duration:${dur};animation-delay:${delay}`; drift.append(b); });
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(_){}
   db=await openDB();

@@ -5,32 +5,28 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Peggy">
-<meta name="theme-color" content="#111614">
+<meta name="theme-color" content="#FFE9F1">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Words · Peggy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
 /* Layout: phone controller. Status strip, start button, turn timer, speaker pad (tap = who's talking), TV, transcript */
 :root{
-  --bg:#f3f5f4; --surface:#ffffff; --fg:#17201d; --muted:#5d6b66; --line:#d8dfdc;
-  --accent:#0f7a5c; --live:#c2410c;
-  --s1:#0f7a5c; --s2:#2f5fb3; --s3:#a23c8f; --s4:#b26b00; --s5:#4b6e14; --s6:#7a4fd1;
-  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
-  --body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root{--bg:#111614;--surface:#19201d;--fg:#e6ece9;--muted:#93a39d;--line:#2c3632;
-    --accent:#3fc79a;--live:#fb8a4a;
-    --s1:#3fc79a;--s2:#7aa5ff;--s3:#e486d3;--s4:#f0b14a;--s5:#9fd65a;--s6:#b597ff;color-scheme:dark}
+  /* Peggy in bloom: petal background, peony actions, lilac accents, plum ink */
+  --bg:#FFE9F1; --surface:#FFF8FB; --fg:#4A1D3F; --muted:#8E5F81; --line:#F4C6D8;
+  --accent:#D1386E; --live:#C2410C;
+  --s1:#D1386E; --s2:#7C5CD6; --s3:#0E8F8A; --s4:#C46A00; --s5:#2F7FD0; --s6:#B02FB8;
+  --display:"Fredoka","Nunito",ui-rounded,system-ui,sans-serif;
+  --body:"Nunito",ui-rounded,system-ui,sans-serif;
+  --mono:"Nunito",ui-rounded,system-ui,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
+body{background:var(--bg);color:var(--fg);font:500 16px/1.5 var(--body);
   padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:640px;margin:0 auto;display:grid;gap:16px}
 .kbd{display:none;font:500 .7rem var(--mono);color:var(--muted)}
@@ -46,8 +42,12 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
 .update{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .back{color:var(--accent);text-decoration:none;font-weight:700;font-size:.95rem}
-h1{font:700 1.7rem/1.1 var(--display);margin:0;letter-spacing:-.01em}
-h2{font:700 1.05rem var(--display);margin:0}
+h1{font:600 1.9rem/1.1 var(--display);margin:0;color:var(--accent);display:flex;align-items:center;gap:6px}
+.bfly .wing{transform-box:view-box;transform-origin:50px 44px}
+.bfly.flutter .wing{animation:flap 1.6s ease-in-out infinite}
+@keyframes flap{0%,70%,100%{transform:scaleX(1)}80%{transform:scaleX(.45)}90%{transform:scaleX(.9)}}
+@media (prefers-reduced-motion:reduce){.bfly .wing{animation:none!important}}
+h2{font:600 1.15rem var(--display);margin:0}
 .pills{display:flex;gap:8px;flex-wrap:wrap}
 .pill{font:500 .72rem var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;display:flex;align-items:center;gap:6px;background:var(--surface)}
 .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -56,18 +56,18 @@ h2{font:700 1.05rem var(--display);margin:0}
 @keyframes pulse{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.pill .dot{animation:none!important}}
 button,select,input{font:inherit;color:inherit}
-.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:10px;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:14px;cursor:pointer;font-weight:700}
 .btn:disabled{opacity:.5}
 .btn.strong{border-color:var(--accent);color:var(--accent);font-weight:700}
 .btn:focus-visible,.pad button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.go{width:100%;padding:16px;border-radius:14px;border:0;background:var(--accent);color:var(--bg);font:700 1.15rem var(--display);cursor:pointer}
-.go.on{background:var(--live)}
+.go{width:100%;padding:16px;border-radius:18px;border:0;background:var(--accent);color:#fff;font:600 1.25rem var(--display);cursor:pointer;box-shadow:0 4px 0 #A82556}
+.go.on{background:#7C5CD6;box-shadow:0 4px 0 #5A3DAF}
 .warn{border:1px solid var(--live);background:var(--surface);border-radius:10px;padding:12px 14px;font-size:.95rem}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;display:grid;gap:12px;min-width:0}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .hint{color:var(--muted);font-size:.85rem;margin:0}
 .pad{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.pad button{--c:var(--s1);text-align:left;border:2px solid var(--line);background:var(--bg);border-radius:12px;padding:12px;cursor:pointer;display:grid;gap:2px;min-height:96px;min-width:0}
+.pad button{--c:var(--s1);text-align:left;border:2px solid var(--line);background:#fff;border-radius:16px;padding:12px;cursor:pointer;display:grid;gap:2px;min-height:96px;min-width:0}
 .pad button.active{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--bg))}
 .pad .nm{font-weight:700;display:flex;align-items:center;gap:8px;min-width:0}
 .pad .nm .label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -110,7 +110,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="wrap">
   <div class="warn update" id="update" hidden><span>A newer version of Words is on the TV.</span><button class="btn" id="reload">Reload</button></div>
   <header>
-    <div><a class="back" href="./">‹ Photos</a><h1>Words</h1></div>
+    <div><a class="back" href="./">‹ Photos</a><h1 id="wordmark">Words</h1></div>
     <div class="pills">
       <span class="pill" id="micPill"><span class="dot"></span><span id="micText">Mic off</span></span>
       <span class="pill" id="tvPill"><span class="dot"></span><span id="tvText">No TV</span></span>
@@ -187,6 +187,7 @@ details summary{cursor:pointer;font-weight:700}
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="words-version.js"></script>
+<script src="core-butterfly.js"></script>
 <script>
 const PREFIX='peggy-tv-';           // same TV link as Peggy's photos
 const COLORS=WORDS_COLORS;
@@ -450,6 +451,7 @@ const startCode=(q||store.get('peggy.tv')||'').toUpperCase();
 if(startCode){$('code').value=startCode;window.addEventListener('load',()=>connectTv(startCode))}
 if(q)history.replaceState(null,'',location.pathname);
 
+document.getElementById('wordmark').innerHTML=butterfly({size:30,flutter:true})+'Words';
 render();
 </script>
 </body>
