@@ -130,6 +130,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .kiss{font-size:.8em;margin-left:5px;vertical-align:2px}
 .favbtn{background:transparent;color:var(--text);margin-right:4px;white-space:nowrap}
 .favbtn.on{color:#B7791F}
+@media (max-width:420px){ .fl{display:none} .favbtn{font-size:22px;padding:8px} #edDl{padding:8px} .ohead{gap:4px} }
 .favtap{position:absolute;top:5px;left:5px;width:34px;height:34px;min-height:0;padding:0;border-radius:50%;
   background:rgba(255,248,251,.82);color:var(--accent);font-size:20px;line-height:34px;text-align:center;box-shadow:0 1px 4px rgba(74,29,63,.25)}
 .favtap.on{background:var(--accent);color:#FFE3A3}
@@ -188,7 +189,8 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
   <div class="ohead">
     <button id="edCancel" title="Close without saving changes" class="ghost">Cancel</button>
     <span class="t" id="edTitle">Edit</span>
-    <button id="edFav" class="favbtn" title="Add to or remove from Favorites">☆ Favorite</button>
+    <button id="edDl" class="ghost" title="Download this photo with your edits" aria-label="Download"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg></button>
+    <button id="edFav" class="favbtn" title="Add to or remove from Favorites">☆<span class="fl"> Favorite</span></button>
     <button id="edSave" title="Save your edits (the original is kept)" class="primary">Save</button>
   </div>
   <div class="stage" id="edStage"></div>
@@ -360,12 +362,13 @@ $('#sAlbum').onclick=async()=>{
 $('#sMore').onclick=async()=>{
   const inAlbum=albums.find(a=>a.id===view), items=[];
   if(inAlbum) items.push([`Remove from “${inAlbum.name}”`,'unalbum']);
-  items.push(['Mark as posted','posted'],['Mark as not posted','unposted'],['Save to device / share…','share'],['Delete from Peggy','delete','danger']);
+  items.push(['⬇ Download','download'],['Share…','share'],['Mark as posted','posted'],['Mark as not posted','unposted'],['Delete from Peggy','delete','danger']);
   const v=await actions(`${selected.size} selected`, items); if(!v) return;
   const sel=photos.filter(p=>selected.has(p.id));
   if(v==='unalbum'){ for(const p of sel){ p.albums=p.albums.filter(x=>x!==view); await dbPut('photos',p); } }
   if(v==='posted'||v==='unposted'){ for(const p of sel){ p.postedAt = v==='posted' ? Date.now() : null; await dbPut('photos',p); } }
   if(v==='share'){ openPost([...selected], true); return; }
+  if(v==='download'){ downloadPhotos(visible().filter(p=>selected.has(p.id))); return; }
   if(v==='delete'){
     if(!confirm(`Delete ${sel.length} photo(s) from Peggy? This doesn't touch Google Photos.`)) return;
     for(const p of sel){ await dbDel('photos',p.id); dropURL(p.id); } photos=photos.filter(p=>!selected.has(p.id)); selected.clear();
@@ -531,7 +534,25 @@ async function openEditor(p){
     selTab('crop'); syncControls(); syncFav(); draw(); buildPresets();
   }catch(err){ toast(err.message); }
 }
-function syncFav(){ if(!ed) return; const on=!!ed.p.fav, b=$('#edFav'); b.textContent=on?'★ Favorite':'☆ Favorite'; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); }
+/* ---------- download ---------- */
+// Saves photos as JPEGs with their edits applied, at full size (up to 4096 px on the long edge).
+function fileBase(name){ return (name||'photo').replace(/\.[^.]+$/,'').replace(/[^\w\- ]+/g,'_')||'photo'; }
+async function exportFull(p, edits){
+  const img=await loadImage(p.blob), e=edits||p.edits||DEF;
+  const b=await toBlob(render(img, e, 4096),'image/jpeg',.92);
+  const changed=Object.keys(DEF).some(k=>e[k]!==DEF[k]);
+  return new File([b], fileBase(p.name)+(changed?'-peggy':'')+'.jpg', {type:'image/jpeg'});
+}
+function saveFile(f){ const u=URL.createObjectURL(f), a=el('a',{href:u,download:f.name}); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); }
+async function downloadPhotos(list, edits){
+  if(!list.length) return;
+  toast(list.length>1?`Preparing ${list.length} photos…`:'Preparing photo…', 2000);
+  let n=0;
+  for(const p of list){ try{ saveFile(await exportFull(p, list.length===1?edits:null)); n++; await sleep(400); }catch(e){ console.error(e); } }
+  toast(n===list.length ? `Downloaded ${n} photo${n>1?'s':''}` : `Downloaded ${n} of ${list.length}`);
+}
+$('#edDl').onclick=()=>{ if(ed) downloadPhotos([ed.p], {...ed.e}); };
+function syncFav(){ if(!ed) return; const on=!!ed.p.fav, b=$('#edFav'); b.innerHTML=(on?'★':'☆')+'<span class="fl"> Favorite</span>'; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); }
 $('#edFav').onclick=async()=>{ if(!ed) return; ed.p.fav=!ed.p.fav; await dbPut('photos',ed.p); syncFav(); toast(ed.p.fav?'Added to Favorites':'Removed from Favorites'); renderAll(); };
 function closeEditor(){ $('#editor').classList.add('hidden'); document.body.style.overflow=''; ed=null; $('#edStage').replaceChildren(); $('#presets').replaceChildren(); }
 function draw(){
