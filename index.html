@@ -152,11 +152,11 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 <header>
   <div class="bar">
     <h1 id="wordmark">Peggy</h1>
-    <button id="btnImport" class="primary" aria-label="Import">＋<span class="lbl"> Import</span></button>
-    <button id="btnSelect">Select</button>
-    <a id="btnWords" class="ghost iconlink" href="words.html" aria-label="Words" title="Words"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span class="tl">Words</span></a>
-    <button id="btnTv" class="ghost" aria-label="TV"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span class="tl">TV</span><span class="tvdot" id="tvDot"></span></button>
-    <button id="btnSettings" class="ghost" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg><span class="tl">Settings</span></button>
+    <button id="btnImport" title="Import photos from Google Photos or this device" class="primary" aria-label="Import">＋<span class="lbl"> Import</span></button>
+    <button id="btnSelect" title="Select photos to favorite, add to an album, post or send to the TV">Select</button>
+    <a id="btnWords" title="Words: count who talks and who interrupts, with a turn timer" class="ghost iconlink" href="words.html" aria-label="Words"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span class="tl">Words</span></a>
+    <button id="btnTv" title="Connect to Peggy on your Fire TV" class="ghost" aria-label="TV"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span class="tl">TV</span><span class="tvdot" id="tvDot"></span></button>
+    <button id="btnSettings" title="Settings: Google sign-in, storage, delete data" class="ghost" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg><span class="tl">Settings</span></button>
   </div>
   <div class="chips" id="chips"></div>
 </header>
@@ -168,36 +168,36 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 
 <div class="selbar hidden" id="selbar">
   <span class="count" id="selCount">0</span>
-  <button id="sAll">All</button>
-  <button id="sFav">★</button>
-  <button id="sAlbum">Album</button>
-  <button id="sMore">More</button>
-  <button id="sTv" class="hidden"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span>TV</span></button>
-  <button id="sPost" class="fb">Post</button>
+  <button id="sAll" title="Select all or none in this view">All</button>
+  <button id="sFav" title="Add to or remove from Favorites">★</button>
+  <button id="sAlbum" title="Add the selected photos to an album">Album</button>
+  <button id="sMore" title="More: remove from album, mark posted, save, delete">More</button>
+  <button id="sTv" title="Show on the TV now, or copy to the TV" class="hidden"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span>TV</span></button>
+  <button id="sPost" title="Post the selected photos to Facebook" class="fb">Post</button>
 </div>
 
 <!-- Editor -->
 <div class="overlay hidden" id="editor">
   <div class="ohead">
-    <button id="edCancel" class="ghost">Cancel</button>
+    <button id="edCancel" title="Close without saving changes" class="ghost">Cancel</button>
     <span class="t" id="edTitle">Edit</span>
-    <button id="edSave" class="primary">Save</button>
+    <button id="edSave" title="Save your edits (the original is kept)" class="primary">Save</button>
   </div>
   <div class="stage" id="edStage"></div>
   <div class="tools">
     <div class="tabs">
-      <button data-tab="crop" class="on">Crop</button>
-      <button data-tab="adjust">Adjust</button>
-      <button data-tab="filters">Filters</button>
+      <button data-tab="crop" title="Crop, zoom, rotate and flip" class="on">Crop</button>
+      <button data-tab="adjust" title="Brightness, contrast, saturation and warmth">Adjust</button>
+      <button data-tab="filters" title="One-tap color filters">Filters</button>
     </div>
     <div data-panel="crop">
       <div class="row" id="aspects"></div>
       <div class="slider"><label>Zoom</label><input type="range" id="zoom" min="1" max="3" step="0.01" value="1"><span id="zoomV">1.0×</span></div>
       <div class="row">
-        <button id="rotL">⟲ Rotate</button>
-        <button id="rotR">⟳ Rotate</button>
-        <button id="flip">⇋ Flip</button>
-        <button id="edReset" class="danger">Revert</button>
+        <button id="rotL" title="Rotate left">⟲ Rotate</button>
+        <button id="rotR" title="Rotate right">⟳ Rotate</button>
+        <button id="flip" title="Flip left to right">⇋ Flip</button>
+        <button id="edReset" title="Undo all edits and go back to the original" class="danger">Revert</button>
       </div>
       <p class="hint" style="margin:8px 0 0">Drag the photo to reposition the crop.</p>
     </div>
@@ -209,14 +209,14 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 <!-- Post -->
 <div class="overlay hidden" id="post">
   <div class="ohead">
-    <button id="postBack" class="ghost">‹ Back</button>
+    <button id="postBack" title="Back to your photos" class="ghost">‹ Back</button>
     <span class="t">Post to Facebook</span>
     <span style="width:64px"></span>
   </div>
   <div class="postbody">
     <div class="strip" id="postStrip"></div>
     <textarea id="caption" placeholder="Write a caption…"></textarea>
-    <button id="shareBtn" class="fb" style="width:100%" disabled>Preparing photos…</button>
+    <button id="shareBtn" title="Copy the caption and open the share sheet; choose Facebook" class="fb" style="width:100%" disabled>Preparing photos…</button>
     <p class="hint" id="postHint">Tapping Share copies your caption, then opens the share sheet. Choose <b>Facebook</b>, then long-press the text box and tap <b>Paste</b> to add the caption.</p>
   </div>
 </div>
@@ -252,23 +252,24 @@ function visible(){
   else if(view!=='all') l=l.filter(p=>p.albums.includes(view));
   return l.slice().sort((a,b)=>b.created-a.created);
 }
+const CHIP_TIPS={all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
 function renderChips(){
   const box=$('#chips'); box.replaceChildren();
-  const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':'')},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
+  const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':''),title:CHIP_TIPS[id]||`Show the “${label}” album (tap again to rename or delete)`},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
     b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b); };
   add('all','All',photos.length);
   add('fav','★ Favorites',photos.filter(p=>p.fav).length);
   add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
   add('posted','Posted',photos.filter(p=>p.postedAt).length);
   for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, a.name, photos.filter(p=>p.albums.includes(a.id)).length);
-  const nb=el('button',{className:'chip',textContent:'＋ Album'}); nb.onclick=()=>newAlbum(); box.append(nb);
+  const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
   if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted'].includes(view)) view='all';
 }
 function renderGrid(){
   const grid=$('#grid'), list=visible();
   grid.classList.toggle('selecting', selecting);
   grid.replaceChildren(...list.map(p=>{
-    const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':'')});
+    const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':''),title:(selecting?'Select ':'Edit ')+p.name+(p.fav?' · Favorite':'')+(p.postedAt?' · Posted':'')});
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
     const bd=el('div',{className:'badges'});
     if(p.fav) bd.append(el('span',{className:'star',textContent:'★'}));
@@ -433,7 +434,7 @@ function showWaiting(){
     waitClose=v=>{ waitClose=null; close(v); };
     sh.append(el('h3',{textContent:'Pick photos in Google Photos'}),
       el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to Peggy. They\'ll import automatically.'}));
-    const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos'});
+    const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos',title:'Opens Google Photos to pick photos for Peggy'});
     const status=el('p',{id:'pickStatus',textContent:'Waiting for your selection…'});
     const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:8px'});
     cancel.onclick=()=>{ clearTimeout(pollT); api('DELETE','/v1/sessions/'+s.id).catch(()=>{}); localStorage.removeItem('peggy.session'); waitClose(null); };
@@ -535,7 +536,7 @@ function selTab(t){
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>selTab(b.dataset.tab));
 (function buildStatic(){
   const as=$('#aspects');
-  for(const [v,l] of ASPECTS){ const b=el('button',{textContent:l}); b.dataset.aspect=v; b.onclick=()=>{ ed.e.panX=0; ed.e.panY=0; change('aspect',v); }; as.append(b); }
+  for(const [v,l] of ASPECTS){ const b=el('button',{textContent:l,title:v==='orig'?'Keep the original shape':`Crop to ${l}`}); b.dataset.aspect=v; b.onclick=()=>{ ed.e.panX=0; ed.e.panY=0; change('aspect',v); }; as.append(b); }
   const sl=$('#sliders');
   for(const [k,l] of SLIDERS){
     const lab=el('label',{textContent:l,title:'Tap to reset'}), r=el('input',{type:'range',min:-100,max:100,step:1,value:0,id:'sl-'+k}), v=el('span',{id:'sv-'+k,textContent:'0'});
@@ -558,7 +559,7 @@ async function buildPresets(){
   for(const [k,p] of Object.entries(PRESETS)){
     if(!ed) return;
     const c=render(si,{...DEF, aspect:'1', preset:k},152);
-    const d=el('div',{className:'preset'},c,el('div',{textContent:p.name})); d.dataset.preset=k;
+    const d=el('div',{className:'preset',title:`Apply the ${p.name} filter`},c,el('div',{textContent:p.name})); d.dataset.preset=k;
     d.onclick=()=>change('preset',k); box.append(d);
     await sleep(0);
   }
@@ -616,8 +617,8 @@ function setShare(){
 function renderStrip(){
   const s=$('#postStrip');
   s.replaceChildren(...post.ids.map((id,i)=>{ const p=photos.find(x=>x.id===id);
-    const left=el('button',{textContent:'◀',disabled:i===0}); left.onclick=()=>{ [post.ids[i-1],post.ids[i]]=[post.ids[i],post.ids[i-1]]; renderStrip(); };
-    const rm=el('button',{textContent:'✕'}); rm.onclick=()=>{ post.ids.splice(i,1); renderStrip(); setShare(); };
+    const left=el('button',{textContent:'◀',disabled:i===0,title:'Move earlier in the post'}); left.onclick=()=>{ [post.ids[i-1],post.ids[i]]=[post.ids[i],post.ids[i-1]]; renderStrip(); };
+    const rm=el('button',{textContent:'✕',title:'Leave this photo out of the post'}); rm.onclick=()=>{ post.ids.splice(i,1); renderStrip(); setShare(); };
     return el('div',{className:'pthumb'}, el('img',{src:urlFor(p),alt:''}), el('span',{className:'ord',textContent:i+1}), el('div',{className:'acts'},left,rm));
   }));
 }
@@ -730,10 +731,19 @@ async function tvCopy(ids){
 }
 function tvRemote(){ sheet((sh,close)=>{
   sh.append(el('h3',{textContent:'TV slideshow'}), el('p',{textContent:'You can also use the Fire TV remote: ◀ ▶ to skip, OK to pause.'}));
-  const b=(t,a)=>{ const x=el('button',{textContent:t}); x.onclick=()=>{ if(tv.conn&&tv.conn.open) tv.conn.send({t:'ctl',a}); else toast('TV disconnected'); if(a==='stop') close(); }; return x; };
+  const RT={prev:'Previous photo',pause:'Pause or resume',next:'Next photo',stop:'Stop the slideshow'};
+  const b=(t,a)=>{ const x=el('button',{textContent:t,title:RT[a]}); x.onclick=()=>{ if(tv.conn&&tv.conn.open) tv.conn.send({t:'ctl',a}); else toast('TV disconnected'); if(a==='stop') close(); }; return x; };
   sh.append(el('div',{className:'remote'}, b('⏮','prev'), b('⏯','pause'), b('⏭','next'), b('⏹','stop')));
   const x=el('button',{className:'ghost',textContent:'Close',style:'width:100%'}); x.onclick=()=>close(); sh.append(x);
 }); }
+
+/* ---------- hover tips ---------- */
+// Every button and link gets a hover tip; ones without a specific tip use their label.
+function addTips(root){ root.querySelectorAll('button:not([title]),a:not([title]),[role=button]:not([title])').forEach(b=>{
+  const t=(b.getAttribute('aria-label')||b.textContent||'').replace(/\s+/g,' ').trim(); if(t) b.title=t; }); }
+new MutationObserver(ms=>{ for(const m of ms) for(const n of m.addedNodes) if(n.nodeType===1){ if(n.matches&&n.matches('button,a')&&!n.title) addTips(n.parentNode||document); else addTips(n); } })
+  .observe(document.body,{childList:true,subtree:true});
+addTips(document);
 
 /* ---------- boot ---------- */
 (async function boot(){

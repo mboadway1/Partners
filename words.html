@@ -108,18 +108,18 @@ details summary{cursor:pointer;font-weight:700}
 </head>
 <body>
 <div class="wrap">
-  <div class="warn update" id="update" hidden><span>A newer version of Words is on the TV.</span><button class="btn" id="reload">Reload</button></div>
+  <div class="warn update" id="update" hidden><span>A newer version of Words is on the TV.</span><button class="btn" id="reload" title="Reload to get the newest version of Words">Reload</button></div>
   <header>
-    <div><a class="back" href="./">‹ Photos</a><h1 id="wordmark">Words</h1></div>
+    <div><a class="back" href="./" title="Back to your photos">‹ Photos</a><h1 id="wordmark">Words</h1></div>
     <div class="pills">
-      <span class="pill" id="micPill"><span class="dot"></span><span id="micText">Mic off</span></span>
-      <span class="pill" id="tvPill"><span class="dot"></span><span id="tvText">No TV</span></span>
+      <span class="pill" id="micPill" title="Microphone status"><span class="dot"></span><span id="micText">Mic off</span></span>
+      <span class="pill" id="tvPill" title="TV connection status"><span class="dot"></span><span id="tvText">No TV</span></span>
     </div>
   </header>
 
   <div class="warn" id="unsupported" hidden>This browser can't do speech recognition. On a computer, use Chrome or Edge. On iPhone, use Safari and turn on Siri or Dictation in Settings.</div>
 
-  <button class="go" id="toggle">Start listening</button>
+  <button class="go" id="toggle" title="Start or stop listening to the conversation">Start listening</button>
 
   <div class="cols">
     <div class="side">
@@ -127,10 +127,10 @@ details summary{cursor:pointer;font-weight:700}
     <div class="row"><h2>Turn timer</h2><span class="hint" id="timerState">Off</span></div>
     <div class="tsel">
       <label>Each turn gets
-        <select id="tLen"><option value="0">No timer</option><option value="30">30 seconds</option><option value="60">1 minute</option><option value="90">1½ minutes</option><option value="120">2 minutes</option><option value="180">3 minutes</option><option value="300">5 minutes</option></select>
+        <select id="tLen" title="How long each person gets per turn"><option value="0">No timer</option><option value="30">30 seconds</option><option value="60">1 minute</option><option value="90">1½ minutes</option><option value="120">2 minutes</option><option value="180">3 minutes</option><option value="300">5 minutes</option></select>
       </label>
       <label>When time is up
-        <select id="tMode"><option value="over">Keep going (overtime)</option><option value="next">Pass to next person</option></select>
+        <select id="tMode" title="What happens when someone’s time runs out"><option value="over">Keep going (overtime)</option><option value="next">Pass to next person</option></select>
       </label>
     </div>
     <div id="clockBox" hidden>
@@ -139,20 +139,20 @@ details summary{cursor:pointer;font-weight:700}
     </div>
     <div class="alert" id="alertBox" hidden></div>
     <div class="row" id="timerBtns" hidden>
-      <button class="btn" id="restartTurn">↺ Restart turn</button>
-      <button class="btn strong" id="floorBack" hidden></button>
+      <button class="btn" id="restartTurn" title="Restart the current speaker’s clock">↺ Restart turn</button>
+      <button class="btn strong" id="floorBack" title="Give the turn back to the person who was interrupted, with their remaining time" hidden></button>
     </div>
     <p class="hint" id="timerHint">Give everyone a set time to speak. Switching speakers before their time is up counts as an interruption.</p>
   </section>
 
   <section class="card">
-    <div class="row"><h2>Who's talking?</h2><button class="btn" id="editBtn">Edit names</button></div>
+    <div class="row"><h2>Who's talking?</h2><button class="btn" id="editBtn" title="Change the speakers’ names">Edit names</button></div>
     <p class="hint">Tap a person when they start talking<span class="kbd"> (or press 1–6)</span>. Tapping while someone is mid-sentence, or still has time on the clock, counts as an interruption.</p>
     <div class="pad" id="pad"></div>
     <div class="names" id="names" hidden></div>
     <div class="row">
-      <div class="row" style="gap:8px"><button class="btn" id="add">+ Person</button><button class="btn" id="remove">− Person</button></div>
-      <button class="btn" id="undo" disabled>Undo interruption</button>
+      <div class="row" style="gap:8px"><button class="btn" id="add" title="Add another speaker (up to 6)">+ Person</button><button class="btn" id="remove" title="Remove the last speaker">− Person</button></div>
+      <button class="btn" id="undo" title="Undo the most recent interruption" disabled>Undo interruption</button>
     </div>
     <div class="totals"><span>Total words</span><span id="total">0 words · 0 interruptions</span></div>
   </section>
@@ -161,25 +161,25 @@ details summary{cursor:pointer;font-weight:700}
     <h2>TV</h2>
     <p class="hint" id="tvHint">Open Peggy on the Fire TV. It shows the scoreboard as soon as you start listening. Uses the same TV code as your photos.</p>
     <div class="pair">
-      <input id="code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="TV code">
-      <button class="btn" id="connect">Connect</button>
+      <input id="code" title="The 4-letter code shown on Peggy on your Fire TV" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="TV code">
+      <button class="btn" id="connect" title="Connect to Peggy on your Fire TV">Connect</button>
     </div>
   </section>
 
   <details class="card">
     <summary>Settings</summary>
     <label class="hint" for="lang">Language</label>
-    <select id="lang">
+    <select id="lang" title="Language the conversation is in">
       <option value="en-US">English (US)</option><option value="en-GB">English (UK)</option>
       <option value="es-ES">Español</option><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option>
     </select>
     <label class="hint" for="win">Count a switch as an interruption if it comes within</label>
-    <select id="win"><option value="0">mid-sentence only</option><option value="500">0.5 s of speech</option><option value="1000" selected>1 s of speech</option><option value="2000">2 s of speech</option></select>
-    <button class="btn" id="reset">Reset counts</button>
+    <select id="win" title="How close to someone’s last words a switch counts as an interruption"><option value="0">mid-sentence only</option><option value="500">0.5 s of speech</option><option value="1000" selected>1 s of speech</option><option value="2000">2 s of speech</option></select>
+    <button class="btn" id="reset" title="Clear all counts and the transcript">Reset counts</button>
   </details>
     </div>
   <section class="card">
-    <div class="row"><h2>Transcript</h2><div class="row" style="gap:8px"><button class="btn" id="copy">Copy</button><button class="btn" id="save">Save .txt</button></div></div>
+    <div class="row"><h2>Transcript</h2><div class="row" style="gap:8px"><button class="btn" id="copy" title="Copy the totals and transcript">Copy</button><button class="btn" id="save" title="Download the totals and transcript as a text file">Save .txt</button></div></div>
     <div class="transcript" id="transcript"><p class="empty">Press Start listening and allow the microphone.</p></div>
   </section>
   </div>
@@ -259,6 +259,7 @@ function render(){
     b.innerHTML=`<span class="nm"><span class="sw"></span><span class="label"></span><span class="tm"></span></span><span class="ct">${s.words}</span>
       <span class="st">${pct}% · ${s.turns} turns · <b>${s.interrupts}</b> int${timerOn()?` (${s.timerCuts} on clock)`:''} · cut ${s.interrupted}×</span>`;
     b.querySelector('.label').textContent=s.name;
+    b.title=i===active?`${s.name} is talking`:`Tap when ${s.name} starts talking`;
     b.onclick=()=>setActive(i);
     pad.appendChild(b);
   });
@@ -452,6 +453,9 @@ if(startCode){$('code').value=startCode;window.addEventListener('load',()=>conne
 if(q)history.replaceState(null,'',location.pathname);
 
 document.getElementById('wordmark').innerHTML=butterfly({size:30,flutter:true})+'Words';
+// Every button and link gets a hover tip; ones without a specific tip use their label.
+function addTips(root){ root.querySelectorAll('button:not([title]),a:not([title])').forEach(b=>{ const t=(b.getAttribute('aria-label')||b.textContent||'').replace(/\s+/g,' ').trim(); if(t) b.title=t; }); }
+addTips(document);
 render();
 </script>
 </body>
