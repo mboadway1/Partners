@@ -231,7 +231,8 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 /* ---------- config ---------- */
 const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
 const cfg = {
-  get clientId(){ return (localStorage.getItem('peggy.clientId')||'').trim(); },
+  // Michael's Google OAuth client (not a secret); a value saved in Settings overrides it.
+  get clientId(){ return (localStorage.getItem('peggy.clientId')||'').trim() || '833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleusercontent.com'; },
   get relay(){ return (localStorage.getItem('peggy.relay')||'').trim().replace(/\/+$/,''); },
 };
 
