@@ -127,7 +127,8 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .progress div{height:100%;background:var(--accent);width:0;transition:width .2s}
 
 #btnTv{position:relative;padding:10px}
-.kiss{font-size:.8em;margin-left:5px;vertical-align:2px}
+.wm{white-space:nowrap}
+.kiss{font-size:.8em;margin-left:4px;vertical-align:2px}
 .favbtn{background:transparent;color:var(--text);margin-right:4px;white-space:nowrap}
 .favbtn.on{color:#B7791F}
 @media (max-width:420px){ .fl{display:none} .favbtn{font-size:22px;padding:8px} #edDl{padding:8px} .ohead{gap:4px} }
@@ -135,11 +136,15 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
   background:rgba(255,248,251,.82);color:var(--accent);font-size:20px;line-height:34px;text-align:center;box-shadow:0 1px 4px rgba(74,29,63,.25)}
 .favtap.on{background:var(--accent);color:#FFE3A3}
 .selecting .favtap{display:none}
+.bgphoto{position:fixed;inset:0;z-index:-2;background:25% 30%/cover no-repeat;pointer-events:none}
+.bgwash{position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(255,233,241,.72) 0%,rgba(255,233,241,.5) 40%,rgba(255,233,241,.62) 100%)}
+body.hasbg{background:transparent}
+body.hasbg .empty{background:rgba(255,248,251,.82);border-radius:20px;margin:24px auto;max-width:420px;padding:28px 20px}
 .tl{display:none;font-weight:700;font-size:15px}
 @media (min-width:700px){ .tl{display:inline} #btnWords,#btnTv,#btnSettings{display:inline-flex;align-items:center;gap:6px;padding:8px 12px} }
 .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 #sTv{display:inline-flex;align-items:center;gap:6px} #sTv .ic{width:20px;height:20px}
-#btnImport{white-space:nowrap}
+#btnImport{white-space:nowrap;flex:none}
 .selbar button{padding:10px 13px}
 .selbar .count{flex:none;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:var(--accent);color:#fff;font-weight:800;font-size:15px;display:inline-flex;align-items:center;justify-content:center;margin-right:auto}
 @media (max-width:420px){ .lbl{display:none} #btnImport{font-size:24px;line-height:1;width:44px;padding:0;border-radius:50%} }
@@ -362,12 +367,14 @@ $('#sAlbum').onclick=async()=>{
 $('#sMore').onclick=async()=>{
   const inAlbum=albums.find(a=>a.id===view), items=[];
   if(inAlbum) items.push([`Remove from “${inAlbum.name}”`,'unalbum']);
+  if(selected.size===1) items.push(['🦋 Use as background','bg']);
   items.push(['⬇ Download','download'],['Share…','share'],['Mark as posted','posted'],['Mark as not posted','unposted'],['Delete from Peggy','delete','danger']);
   const v=await actions(`${selected.size} selected`, items); if(!v) return;
   const sel=photos.filter(p=>selected.has(p.id));
   if(v==='unalbum'){ for(const p of sel){ p.albums=p.albums.filter(x=>x!==view); await dbPut('photos',p); } }
   if(v==='posted'||v==='unposted'){ for(const p of sel){ p.postedAt = v==='posted' ? Date.now() : null; await dbPut('photos',p); } }
   if(v==='share'){ openPost([...selected], true); return; }
+  if(v==='bg'){ await setBackground(sel[0]); selecting=false; selected.clear(); renderAll(); return; }
   if(v==='download'){ downloadPhotos(visible().filter(p=>selected.has(p.id))); return; }
   if(v==='delete'){
     if(!confirm(`Delete ${sel.length} photo(s) from Peggy? This doesn't touch Google Photos.`)) return;
@@ -520,6 +527,9 @@ async function openSettings(note){
       for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id);
       photos=[]; albums=[]; view='all'; close(); renderAll(); };
     const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
+    const bgOff=el('button',{textContent:'Remove background photo',title:'Go back to the plain pink background'});
+    bgOff.onclick=async()=>{ await setBackground(null); close(); };
+    if(document.body.classList.contains('hasbg')) st.append(bgOff);
     st.append(save,out,wipe,c); sh.append(st);
   });
 }
@@ -534,6 +544,23 @@ async function openEditor(p){
     selTab('crop'); syncControls(); syncFav(); draw(); buildPresets();
   }catch(err){ toast(err.message); }
 }
+/* ---------- background photo (kept only on this device) ---------- */
+let bgURL=null;
+function showBackground(blob){
+  if(bgURL){ URL.revokeObjectURL(bgURL); bgURL=null; }
+  document.querySelectorAll('.bgphoto,.bgwash').forEach(e=>e.remove());
+  document.body.classList.toggle('hasbg', !!blob);
+  if(!blob) return;
+  bgURL=URL.createObjectURL(blob);
+  const ph=el('div',{className:'bgphoto'}); ph.style.backgroundImage=`url("${bgURL}")`;
+  document.body.prepend(ph, el('div',{className:'bgwash'}));
+}
+async function setBackground(p){
+  if(!p){ await dbDel('meta','background'); showBackground(null); toast('Background removed'); return; }
+  const img=await loadImage(p.blob), blob=await toBlob(render(img, p.edits||DEF, 2400),'image/jpeg',.88);
+  await dbPut('meta',{id:'background', blob, from:p.id}); showBackground(blob); toast('Background set 🦋');
+}
+
 /* ---------- download ---------- */
 // Saves photos as JPEGs with their edits applied, at full size (up to 4096 px on the long edge).
 function fileBase(name){ return (name||'photo').replace(/\.[^.]+$/,'').replace(/[^\w\- ]+/g,'_')||'photo'; }
@@ -784,6 +811,7 @@ addTips(document);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>';
   db=await openDB();
+  try{ const bg=await tx('meta','readonly',st=>st.get('background')); if(bg && bg.blob) showBackground(bg.blob); }catch(_){}
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
   renderAll();

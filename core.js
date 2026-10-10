@@ -21,8 +21,9 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString
 
 /* ---------- IndexedDB ---------- */
 let db;
-function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('peggy',1);
-  r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('photos',{keyPath:'id'}); d.createObjectStore('albums',{keyPath:'id'}); };
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('peggy',2);
+  r.onupgradeneeded=()=>{ const d=r.result;
+    for(const s of ['photos','albums','meta']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id'}); };
   r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 function tx(store, mode, fn){ return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); let out;
   if(r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
