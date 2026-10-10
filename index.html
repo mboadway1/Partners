@@ -130,6 +130,10 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 .kiss{font-size:.8em;margin-left:5px;vertical-align:2px}
 .favbtn{background:transparent;color:var(--text);margin-right:4px;white-space:nowrap}
 .favbtn.on{color:#B7791F}
+.favtap{position:absolute;top:5px;left:5px;width:34px;height:34px;min-height:0;padding:0;border-radius:50%;
+  background:rgba(255,248,251,.82);color:var(--accent);font-size:20px;line-height:34px;text-align:center;box-shadow:0 1px 4px rgba(74,29,63,.25)}
+.favtap.on{background:var(--accent);color:#FFE3A3}
+.selecting .favtap{display:none}
 .tl{display:none;font-weight:700;font-size:15px}
 @media (min-width:700px){ .tl{display:inline} #btnWords,#btnTv,#btnSettings{display:inline-flex;align-items:center;gap:6px;padding:8px 12px} }
 .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
@@ -277,10 +281,12 @@ function renderGrid(){
     const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':''),title:(selecting?'Select ':'Edit ')+p.name+(p.fav?' · Favorite':'')+(p.postedAt?' · Posted':'')});
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
     const bd=el('div',{className:'badges'});
-    if(p.fav) bd.append(el('span',{className:'star',textContent:'★'}));
     if(edited(p)) bd.append(el('span',{textContent:'✎'}));
     if(p.postedAt) bd.append(el('span',{className:'posted',textContent:'✓'}));
-    c.append(bd, el('div',{className:'check'}));
+    const fv=el('button',{className:'favtap'+(p.fav?' on':''),textContent:p.fav?'★':'☆',title:p.fav?'Remove from Favorites':'Add to Favorites'});
+    fv.setAttribute('aria-pressed',!!p.fav);
+    fv.onclick=async e=>{ e.stopPropagation(); p.fav=!p.fav; await dbPut('photos',p); toast(p.fav?'Added to Favorites':'Removed from Favorites'); renderAll(); };
+    c.append(bd, el('div',{className:'check'}), fv);
     c.onclick=()=>{ if(selecting){ selected.has(p.id)?selected.delete(p.id):selected.add(p.id); c.classList.toggle('sel'); updateSelbar(); } else openEditor(p); };
     return c;
   }));
