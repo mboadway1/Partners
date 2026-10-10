@@ -1,4 +1,4 @@
-// PhotoPost relay — a tiny Cloudflare Worker.
+// Peggy relay — a tiny Cloudflare Worker.
 // Google Photos doesn't allow web pages to call it directly from the browser (no CORS),
 // so the app sends requests here and this forwards them to Google with your sign-in token.
 // It stores nothing and only talks to Google Photos hosts.
@@ -43,7 +43,7 @@ export default {
       target = u.toString();
       init = { headers: { Authorization: auth } };
     } else {
-      return new Response('PhotoPost relay is running.', { status: 200, headers: cors });
+      return new Response('Peggy relay is running.', { status: 200, headers: cors });
     }
 
     const r = await fetch(target, init);

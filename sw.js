@@ -1,5 +1,5 @@
-// PhotoPost service worker: lets the app open offline. Pages load network-first so updates arrive right away.
-const CACHE = 'photopost-v1';
+// Peggy service worker: lets the app open offline. Pages load network-first so updates arrive right away.
+const CACHE = 'peggy-v1';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

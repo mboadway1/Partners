@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PhotoPost">
+<meta name="apple-mobile-web-app-title" content="Peggy">
 <meta name="theme-color" content="#111214">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-512.png">
-<title>PhotoPost</title>
+<title>Peggy</title>
 <style>
 :root{
   --bg:#111214; --panel:#1b1d21; --panel2:#24272c; --line:#2f3238;
@@ -120,7 +120,7 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 
 <header>
   <div class="bar">
-    <h1>PhotoPost</h1>
+    <h1>Peggy</h1>
     <button id="btnImport" class="primary">＋ Import</button>
     <button id="btnSelect">Select</button>
     <button id="btnSettings" class="ghost" aria-label="Settings">⚙︎</button>
@@ -194,8 +194,8 @@ a.big{display:block;text-align:center;background:var(--accent);color:#fff;text-d
 /* ---------- config ---------- */
 const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
 const cfg = {
-  get clientId(){ return (localStorage.getItem('pp.clientId')||'').trim(); },
-  get relay(){ return (localStorage.getItem('pp.relay')||'').trim().replace(/\/+$/,''); },
+  get clientId(){ return (localStorage.getItem('peggy.clientId')||'').trim(); },
+  get relay(){ return (localStorage.getItem('peggy.relay')||'').trim().replace(/\/+$/,''); },
 };
 const DEF = {rot:0, flip:false, aspect:'orig', zoom:1, panX:0, panY:0, bright:0, contrast:0, sat:0, warmth:0, preset:'none'};
 const ASPECTS = [['orig','Original'],['1','Square'],['0.8','Portrait 4:5'],['1.7778','Wide 16:9'],['0.5625','Story 9:16']];
@@ -217,7 +217,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString
 
 /* ---------- IndexedDB ---------- */
 let db;
-function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('photopost',1);
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('peggy',1);
   r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('photos',{keyPath:'id'}); d.createObjectStore('albums',{keyPath:'id'}); };
   r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 function tx(store, mode, fn){ return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); let out;
@@ -317,7 +317,7 @@ function renderGrid(){
     empty.classList.remove('hidden');
     empty.replaceChildren(...(photos.length
       ? [el('h2',{textContent:'Nothing here yet'}), el('p',{textContent:'Select photos in All and use Album or ★ to fill this view.'})]
-      : [el('h2',{textContent:'Welcome to PhotoPost'}), el('p',{textContent:'Tap ＋ Import to bring in photos from Google Photos or this device. Then edit, organize, and post them to Facebook.'})]));
+      : [el('h2',{textContent:'Welcome to Peggy'}), el('p',{textContent:'Tap ＋ Import to bring in photos from Google Photos or this device. Then edit, organize, and post them to Facebook.'})]));
   }
 }
 function updateSelbar(){
@@ -380,14 +380,14 @@ $('#sAlbum').onclick=async()=>{
 $('#sMore').onclick=async()=>{
   const inAlbum=albums.find(a=>a.id===view), items=[];
   if(inAlbum) items.push([`Remove from “${inAlbum.name}”`,'unalbum']);
-  items.push(['Mark as posted','posted'],['Mark as not posted','unposted'],['Save to device / share…','share'],['Delete from PhotoPost','delete','danger']);
+  items.push(['Mark as posted','posted'],['Mark as not posted','unposted'],['Save to device / share…','share'],['Delete from Peggy','delete','danger']);
   const v=await actions(`${selected.size} selected`, items); if(!v) return;
   const sel=photos.filter(p=>selected.has(p.id));
   if(v==='unalbum'){ for(const p of sel){ p.albums=p.albums.filter(x=>x!==view); await dbPut('photos',p); } }
   if(v==='posted'||v==='unposted'){ for(const p of sel){ p.postedAt = v==='posted' ? Date.now() : null; await dbPut('photos',p); } }
   if(v==='share'){ openPost([...selected], true); return; }
   if(v==='delete'){
-    if(!confirm(`Delete ${sel.length} photo(s) from PhotoPost? This doesn't touch Google Photos.`)) return;
+    if(!confirm(`Delete ${sel.length} photo(s) from Peggy? This doesn't touch Google Photos.`)) return;
     for(const p of sel){ await dbDel('photos',p.id); dropURL(p.id); } photos=photos.filter(p=>!selected.has(p.id)); selected.clear();
   }
   renderAll();
@@ -422,9 +422,9 @@ function askPersist(){ if(!persistAsked && navigator.storage && navigator.storag
 
 /* ---------- import: Google Photos Picker API ---------- */
 const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/,'');
-function getToken(){ try{ const t=JSON.parse(localStorage.getItem('pp.token')||'null'); return t && t.exp>Date.now() ? t.v : null; }catch{ return null; } }
+function getToken(){ try{ const t=JSON.parse(localStorage.getItem('peggy.token')||'null'); return t && t.exp>Date.now() ? t.v : null; }catch{ return null; } }
 function signIn(after){
-  const state=uid(); localStorage.setItem('pp.state',state); localStorage.setItem('pp.after',after||'');
+  const state=uid(); localStorage.setItem('peggy.state',state); localStorage.setItem('peggy.after',after||'');
   location.href='https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({
     client_id:cfg.clientId, redirect_uri:redirectUri(), response_type:'token', scope:SCOPE, state, include_granted_scopes:'true' });
 }
@@ -432,9 +432,9 @@ function handleRedirect(){
   if(!location.hash.includes('access_token=') && !location.hash.includes('error=')) return null;
   const h=new URLSearchParams(location.hash.slice(1)); history.replaceState(null,'',location.pathname+location.search);
   if(h.get('error')){ toast('Google sign-in was cancelled ('+h.get('error')+')'); return null; }
-  if(h.get('state')!==localStorage.getItem('pp.state')){ toast('Sign-in check failed, please try again.'); return null; }
-  localStorage.setItem('pp.token', JSON.stringify({v:h.get('access_token'), exp:Date.now()+(parseInt(h.get('expires_in')||'3600',10)-120)*1000}));
-  const after=localStorage.getItem('pp.after'); localStorage.removeItem('pp.after'); return after;
+  if(h.get('state')!==localStorage.getItem('peggy.state')){ toast('Sign-in check failed, please try again.'); return null; }
+  localStorage.setItem('peggy.token', JSON.stringify({v:h.get('access_token'), exp:Date.now()+(parseInt(h.get('expires_in')||'3600',10)-120)*1000}));
+  const after=localStorage.getItem('peggy.after'); localStorage.removeItem('peggy.after'); return after;
 }
 async function api(method, path, body){
   const t=getToken(); if(!t){ const e=new Error('signed out'); e.status=401; throw e; }
@@ -443,7 +443,7 @@ async function api(method, path, body){
   return r.status===204 ? {} : r.json();
 }
 const secs = s => parseFloat(String(s||'').replace('s',''))||0;
-const pending = () => { try{ return JSON.parse(localStorage.getItem('pp.session')||'null'); }catch{ return null; } };
+const pending = () => { try{ return JSON.parse(localStorage.getItem('peggy.session')||'null'); }catch{ return null; } };
 function needsSetup(){
   if(cfg.clientId && cfg.relay) return false;
   openSettings('Google Photos import needs a one-time setup: paste your Google OAuth Client ID and your relay URL (see the README).'); return true;
@@ -453,7 +453,7 @@ async function startGoogleImport(){
   if(!getToken()) return signIn('import');
   try{
     const s=await api('POST','/v1/sessions',{});
-    localStorage.setItem('pp.session', JSON.stringify({id:s.id, uri:s.pickerUri,
+    localStorage.setItem('peggy.session', JSON.stringify({id:s.id, uri:s.pickerUri,
       interval:Math.max(2,secs(s.pollingConfig?.pollInterval)||4), until:Date.now()+(secs(s.pollingConfig?.timeoutIn)||1800)*1000}));
     showWaiting(); poll();
   }catch(e){ if(e.status===401) return signIn('import'); toast('Could not start Google Photos: '+e.message, 6000); }
@@ -464,23 +464,23 @@ function showWaiting(){
   sheet((sh,close)=>{
     waitClose=v=>{ waitClose=null; close(v); };
     sh.append(el('h3',{textContent:'Pick photos in Google Photos'}),
-      el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to PhotoPost. They\'ll import automatically.'}));
+      el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to Peggy. They\'ll import automatically.'}));
     const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos'});
     const status=el('p',{id:'pickStatus',textContent:'Waiting for your selection…'});
     const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:8px'});
-    cancel.onclick=()=>{ clearTimeout(pollT); api('DELETE','/v1/sessions/'+s.id).catch(()=>{}); localStorage.removeItem('pp.session'); waitClose(null); };
+    cancel.onclick=()=>{ clearTimeout(pollT); api('DELETE','/v1/sessions/'+s.id).catch(()=>{}); localStorage.removeItem('peggy.session'); waitClose(null); };
     sh.append(a, status, cancel);
   });
 }
 async function poll(){
   clearTimeout(pollT); const s=pending(); if(!s) return;
-  if(Date.now()>s.until){ localStorage.removeItem('pp.session'); waitClose&&waitClose(); return toast('The Google Photos picker timed out. Try Import again.'); }
+  if(Date.now()>s.until){ localStorage.removeItem('peggy.session'); waitClose&&waitClose(); return toast('The Google Photos picker timed out. Try Import again.'); }
   try{
     const r=await api('GET','/v1/sessions/'+s.id);
     if(r.mediaItemsSet){ waitClose&&waitClose(); return downloadPicked(s.id); }
   }catch(e){
-    if(e.status===401){ waitClose&&waitClose(); toast('Google sign-in expired — tap Import to continue.'); localStorage.removeItem('pp.token'); return; }
-    if(e.status===404){ localStorage.removeItem('pp.session'); waitClose&&waitClose(); return toast('That picker session ended. Tap Import to try again.'); }
+    if(e.status===401){ waitClose&&waitClose(); toast('Google sign-in expired — tap Import to continue.'); localStorage.removeItem('peggy.token'); return; }
+    if(e.status===404){ localStorage.removeItem('peggy.session'); waitClose&&waitClose(); return toast('That picker session ended. Tap Import to try again.'); }
   }
   pollT=setTimeout(poll, s.interval*1000);
 }
@@ -512,7 +512,7 @@ async function downloadPicked(sessionId){
     if(total-got.length) notes.push(`${total-got.length} failed to download`);
     if(notes.length) setTimeout(()=>toast(notes.join(' · '),5000),3300);
   }catch(e){ prog&&prog.close(); toast('Import failed: '+e.message, 6000); }
-  finally{ api('DELETE','/v1/sessions/'+sessionId).catch(()=>{}); localStorage.removeItem('pp.session'); }
+  finally{ api('DELETE','/v1/sessions/'+sessionId).catch(()=>{}); localStorage.removeItem('peggy.session'); }
 }
 
 /* ---------- settings ---------- */
@@ -523,17 +523,17 @@ async function openSettings(note){
     sh.append(el('h3',{textContent:'Settings'}));
     if(note) sh.append(el('p',{textContent:note}));
     const cid=el('input',{value:cfg.clientId,placeholder:'1234…apps.googleusercontent.com',autocapitalize:'off',autocorrect:'off',spellcheck:false});
-    const rel=el('input',{value:cfg.relay,placeholder:'https://photopost-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
+    const rel=el('input',{value:cfg.relay,placeholder:'https://peggy-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
     sh.append(el('label',{className:'f',textContent:'Google OAuth Client ID'}),cid, el('label',{className:'f',textContent:'Relay URL (Cloudflare Worker)'}),rel);
     const info=el('p'); info.append('Register these in Google Cloud → Credentials:', el('br'),'JavaScript origin: ', el('code',{textContent:location.origin}), el('br'),'Redirect URI: ', el('code',{textContent:redirectUri()}));
     sh.append(info);
     if(usage) sh.append(el('p',{textContent:usage}));
     const st=el('div',{className:'stack'});
     const save=el('button',{className:'primary',textContent:'Save'});
-    save.onclick=()=>{ localStorage.setItem('pp.clientId',cid.value.trim()); localStorage.setItem('pp.relay',rel.value.trim()); close(); toast('Saved'); };
-    const out=el('button',{textContent:'Sign out of Google'}); out.onclick=()=>{ localStorage.removeItem('pp.token'); toast('Signed out'); };
-    const wipe=el('button',{className:'danger',textContent:'Delete all PhotoPost data'});
-    wipe.onclick=async()=>{ if(!confirm('Delete every photo and album stored in PhotoPost on this device? Google Photos is not affected.')) return;
+    save.onclick=()=>{ localStorage.setItem('peggy.clientId',cid.value.trim()); localStorage.setItem('peggy.relay',rel.value.trim()); close(); toast('Saved'); };
+    const out=el('button',{textContent:'Sign out of Google'}); out.onclick=()=>{ localStorage.removeItem('peggy.token'); toast('Signed out'); };
+    const wipe=el('button',{className:'danger',textContent:'Delete all Peggy data'});
+    wipe.onclick=async()=>{ if(!confirm('Delete every photo and album stored in Peggy on this device? Google Photos is not affected.')) return;
       for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id);
       photos=[]; albums=[]; view='all'; close(); renderAll(); };
     const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
@@ -628,7 +628,7 @@ async function openPost(ids, plain){
   $('#post').classList.remove('hidden'); document.body.style.overflow='hidden';
   $('#caption').classList.toggle('hidden', post.plain);
   $('#postHint').classList.toggle('hidden', post.plain);
-  $('#caption').value=localStorage.getItem('pp.caption')||'';
+  $('#caption').value=localStorage.getItem('peggy.caption')||'';
   renderStrip(); setShare();
   const mine=post;
   for(const id of ids){
@@ -653,7 +653,7 @@ function renderStrip(){
     return el('div',{className:'pthumb'}, el('img',{src:urlFor(p),alt:''}), el('span',{className:'ord',textContent:i+1}), el('div',{className:'acts'},left,rm));
   }));
 }
-$('#caption').oninput=e=>localStorage.setItem('pp.caption',e.target.value);
+$('#caption').oninput=e=>localStorage.setItem('peggy.caption',e.target.value);
 $('#postBack').onclick=()=>{ $('#post').classList.add('hidden'); document.body.style.overflow=''; post=null; };
 $('#shareBtn').onclick=()=>{
   // Everything here must start synchronously inside the tap, or iOS blocks the share sheet.
@@ -664,7 +664,7 @@ $('#shareBtn').onclick=()=>{
     navigator.share(data).then(async()=>{
       if(plain){ toast('Shared'); return; }
       for(const id of ids){ const p=photos.find(x=>x.id===id); if(p){ p.postedAt=Date.now(); await dbPut('photos',p); } }
-      localStorage.removeItem('pp.caption'); $('#postBack').click(); selecting=false; selected.clear(); renderAll(); toast('Marked as posted ✓');
+      localStorage.removeItem('peggy.caption'); $('#postBack').click(); selecting=false; selected.clear(); renderAll(); toast('Marked as posted ✓');
     }).catch(err=>{ if(err.name!=='AbortError') toast('Share failed: '+err.message, 5000); });
   } else {
     for(const f of files){ const a=el('a',{href:URL.createObjectURL(f),download:f.name}); document.body.append(a); a.click(); a.remove(); }
@@ -681,7 +681,7 @@ $('#shareBtn').onclick=()=>{
   renderAll();
   const after=handleRedirect();
   if(after==='import') startGoogleImport();
-  else if(pending()){ if(getToken()){ showWaiting(); poll(); } else localStorage.removeItem('pp.session'); }
+  else if(pending()){ if(getToken()){ showWaiting(); poll(); } else localStorage.removeItem('peggy.session'); }
 })();
 </script>
 </body>

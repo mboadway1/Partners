@@ -1,6 +1,6 @@
 {
-  "name": "PhotoPost",
-  "short_name": "PhotoPost",
+  "name": "Peggy",
+  "short_name": "Peggy",
   "description": "Organize and edit your Google Photos, then post them to Facebook.",
   "start_url": "./",
   "scope": "./",
