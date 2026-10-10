@@ -57,6 +57,14 @@ header{position:sticky;top:0;z-index:5;background:var(--headerbg);backdrop-filte
 main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 4px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:4px}
 @media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}}
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.qchips button{min-height:36px;padding:6px 12px;border-radius:999px;font-size:14px}
+.qchips button.on{background:var(--text);color:var(--bg)}
+.daterow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.daterow label,.namel{display:flex;flex-direction:column;gap:4px;font-weight:800;font-size:13px;min-width:0}
+.daterow input{box-sizing:border-box;max-width:100%}
+.namel{margin-bottom:12px}
+.daterow input,.namel input{font:inherit;font-size:16px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);min-width:0;width:100%}
 .dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
 .dayh:first-child{padding-top:2px}
 .dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
@@ -382,22 +390,26 @@ function visible(){
   if(view==='fav') l=l.filter(p=>p.fav);
   else if(view==='todo') l=l.filter(p=>!p.postedAt);
   else if(view==='posted') l=l.filter(p=>p.postedAt);
+  else if(view==='new'){ const b=lastBatch(); l=l.filter(p=>p.batch && p.batch===b); }
   else if(view!=='all') l=l.filter(p=>p.albums.includes(view));
   return l.slice().sort((a,b)=>b.created-a.created);
 }
-const CHIP_TIPS={all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
+const lastBatch = () => { try{ return localStorage.getItem('peggy.lastBatch')||''; }catch(_){ return ''; } };
+const CHIP_TIPS={new:'Show the photos from your last import',all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
 function renderChips(){
   const box=$('#chips'); box.replaceChildren();
   const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':''),title:CHIP_TIPS[id]||`Show the “${label}” album (tap again to rename or delete)`},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
     b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b); };
   add('all','All',photos.length);
+  const nb0=photos.filter(p=>p.batch && p.batch===lastBatch()).length; if(nb0) add('new','🆕 Last import',nb0);
   add('fav','★ Favorites',photos.filter(p=>p.fav).length);
   add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
   add('posted','Posted',photos.filter(p=>p.postedAt).length);
   const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
   for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, a.name, photos.filter(p=>p.albums.includes(a.id)).length);
   const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
-  if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted'].includes(view)) view='all';
+  if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted','new'].includes(view)) view='all';
+  if(view==='new' && !nb0) view='all';
 }
 function renderGrid(){
   const grid=$('#grid'), list=visible();
@@ -562,7 +574,9 @@ $('#sPost').onclick=()=>{ const ids=visible().filter(p=>selected.has(p.id)).map(
 
 /* ---------- import: device ---------- */
 $('#btnImport').onclick=async()=>{
-  const v=await actions('Import photos',[['Google Photos','google','primary'],['Shared with me (Google Photos)','shared'],['This device (camera roll / files)','device']]);
+  const v=await actions('Import photos',[['📅 A day or event (birthday, trip, weekend…)','event','primary'],['Google Photos','google'],['Shared with me (Google Photos)','shared'],['This device (camera roll / files)','device']]);
+  if(v==='event') importEvent();
+  if(v==='google'||v==='shared'||v==='device') localStorage.removeItem('peggy.importEvent');
   if(v==='device') $('#fileIn').click();
   if(v==='google') startGoogleImport();
   if(v==='shared') sharedImport();
@@ -593,17 +607,98 @@ $('#fileIn').onchange=async e=>{
   await importBlobs(list);
 };
 async function importBlobs(list, prog){
-  askPersist(); let n=0, fail=0;
+  askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[];
+  // Skip photos already in Peggy (same file name, same moment taken, same size).
+  const seen=new Set(photos.filter(p=>p.src==='device').map(p=>p.name+'|'+p.created+'|'+(p.size||'')));
+  let bar=null;
+  if(!prog && list.length>6) sheet((sh,close)=>{ const b=el('div'), st=el('p',{textContent:`0 of ${list.length}`});
+    sh.append(el('h3',{textContent:'Bringing in your photos'}), st, el('div',{className:'progress'},b)); bar={b,st,close}; });
   for(const it of list){
     try{
+      const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
+      if(it.src==='device' && seen.has(key)){ dup++; continue; } seen.add(key);
       const thumb=await makeThumb(it.blob);
-      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb,
+      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch,
         edits:null, fav:false, albums: albums.some(a=>a.id===view)?[view]:[], postedAt:null};
-      await dbPut('photos',p); photos.push(p); n++;
+      await dbPut('photos',p); photos.push(p); added.push(p); n++;
     }catch(err){ console.error(err); fail++; }
-    prog && prog(n+fail, list.length);
+    const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; }
   }
-  renderAll(); toast(`Imported ${n} photo${n===1?'':'s'}`+(fail?` · ${fail} failed`:''));
+  bar && bar.close();
+  if(added.length){ try{ localStorage.setItem('peggy.lastBatch', batch); }catch(_){} }
+  const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} already here`:'')+(fail?` · ${fail} failed`:'');
+  if(await afterImport(added, msg)) return;
+  if(added.length>1 && view==='all'){ view='new'; }
+  renderAll(); toast(msg);
+}
+/* ---------- import an event (any day or range of days) ---------- */
+const pendingEvent = () => { try{ const e=JSON.parse(localStorage.getItem('peggy.importEvent')||'null'); return e && Date.now()-e.at<6*3600e3 ? e : null; }catch(_){ return null; } };
+// After an event import: the photos taken on those days go into the event's album.
+async function afterImport(added, msg){
+  const ev=pendingEvent(); if(!ev) return false;
+  localStorage.removeItem('peggy.importEvent');
+  const from=new Date(ev.from+'T00:00:00').getTime(), to=new Date(ev.to+'T23:59:59.999').getTime();
+  const inside=added.filter(p=>p.created>=from && p.created<=to), outside=added.length-inside.length;
+  let a=albums.find(x=>x.id===ev.album); if(!a){ a={id:ev.album, name:ev.name, created:Date.now()}; albums.push(a); await dbPut('albums',a); }
+  // Photos from those days that were already in Peggy join the album too.
+  const already=photos.filter(p=>!added.includes(p) && p.created>=from && p.created<=to && !p.albums.includes(a.id));
+  for(const p of [...inside, ...already]){ if(!p.albums.includes(a.id)){ p.albums.push(a.id); await dbPut('photos',p); } }
+  view=a.id; selecting=false; selected.clear(); renderAll();
+  const total=photos.filter(p=>p.albums.includes(a.id)).length;
+  toast(`${msg}. “${a.name}” has ${total} photo${total===1?'':'s'}`+(outside?` · ${outside} from other days kept in All`:''), 6500);
+  return true;
+}
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function rangeFor(k){
+  const t=new Date(); t.setHours(12,0,0,0); const d=n=>{ const x=new Date(t); x.setDate(t.getDate()+n); return x; }, dow=t.getDay();
+  if(k==='today') return [t,t];
+  if(k==='yesterday') return [d(-1),d(-1)];
+  const inWeekend = dow===5||dow===6||dow===0, thisFri = dow===5?0 : dow===6?-1 : -2;     // weekends are Friday to Sunday
+  if(k==='thiswk') return inWeekend ? [d(thisFri), d(thisFri+2)] : null;
+  if(k==='lastwk'){ const f = inWeekend ? thisFri-7 : -(dow+2); return [d(f), d(f+2)]; }
+  if(k==='week') return [d(-6), t];
+  return [t,t];
+}
+function rangeName(from, to){
+  const a=new Date(from+'T12:00:00'), b=new Date(to+'T12:00:00'), now=new Date();
+  const md=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'}), wd=d=>d.toLocaleDateString(undefined,{weekday:'short'}), yr=d=>d.getFullYear()!==now.getFullYear()?', '+d.getFullYear():'';
+  if(from===to) return `${a.toLocaleDateString(undefined,{weekday:'long'})}, ${md(a)}${yr(a)}`;
+  const sameMonth=a.getMonth()===b.getMonth();
+  if(a.getDay()===5 && b.getDay()===0 && Math.round((b-a)/864e5)===2) return `Weekend · ${md(a)}–${sameMonth?b.getDate():md(b)}${yr(b)}`;
+  return `${wd(a)}–${wd(b)}, ${md(a)}–${sameMonth?b.getDate():md(b)}${yr(b)}`;
+}
+function searchText(from, to){
+  const a=new Date(from+'T12:00:00'), b=new Date(to+'T12:00:00'), f=d=>d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  return from===to ? f(a) : a.getMonth()===b.getMonth() ? a.toLocaleDateString('en-US',{month:'long',year:'numeric'}) : f(a);
+}
+function importEvent(){
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'📅 Import a day or event'}),
+      el('p',{textContent:'Pick the days. Peggy puts every photo taken on them into one album, named for you. A birthday, a trip, a holiday, last weekend: anything.'}));
+    const quick=el('div',{className:'qchips'});
+    const Q=[['today','Today'],['yesterday','Yesterday'],['thiswk','This weekend'],['lastwk','Last weekend'],['week','Last 7 days']];
+    const from=el('input',{type:'date',title:'First day'}), to=el('input',{type:'date',title:'Last day'}), name=el('input',{type:'text',placeholder:'Album name',title:'What to call the album'});
+    let named=false; name.oninput=()=>{ named=!!name.value.trim(); };
+    const sync=()=>{ if(to.value<from.value) to.value=from.value; if(!named) name.value=rangeName(from.value,to.value);
+      quick.querySelectorAll('button').forEach(b=>{ const [a,z]=(rangeFor(b.dataset.k)||[]).map(isoDay); b.classList.toggle('on', a===from.value&&z===to.value); }); };
+    for(const [k,l] of Q){ if(!rangeFor(k)) continue; const b=el('button',{textContent:l,title:`Use ${l.toLowerCase()}`}); b.dataset.k=k; b.onclick=()=>{ const [a,z]=rangeFor(k); from.value=isoDay(a); to.value=isoDay(z); sync(); }; quick.append(b); }
+    const [a0,z0]=rangeFor('thiswk')||rangeFor('lastwk'); from.value=isoDay(a0); to.value=isoDay(z0);
+    from.onchange=sync; to.onchange=sync;
+    const row=el('div',{className:'daterow'}, el('label',{},'From',from), el('label',{},'To',to));
+    sync();
+    const go=src=>{ const ev={from:from.value, to:to.value, name:name.value.trim()||rangeName(from.value,to.value), album:uid(), at:Date.now()};
+      localStorage.setItem('peggy.importEvent', JSON.stringify(ev));
+      const q=searchText(ev.from, ev.to); if(navigator.clipboard) navigator.clipboard.writeText(q).catch(()=>{});
+      close(src);
+      if(src==='device'){ toast(`Copied “${q}”. In the photo picker, tap Search and paste it, then select the photos.`, 6000); $('#fileIn').click(); }
+      else startGoogleImport(`Search for ${q}`);
+    };
+    const g=el('button',{className:'primary',textContent:'From Google Photos',title:'Pick the photos in Google Photos'}); g.onclick=()=>go('google');
+    const dv=el('button',{textContent:'From this phone',title:'Pick the photos from this phone’s photo library'}); dv.onclick=()=>go('device');
+    const tip=el('p',{className:'tip',innerHTML:'Peggy copies the date for you. In the picker, tap <b>Search</b>, paste it, and select the photos. Anything you pick from other days still comes in, just not into this album.'});
+    const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:4px'}); c.onclick=()=>close(null);
+    sh.append(quick, row, el('label',{className:'namel'},'Album name',name), el('div',{className:'stack'},g,dv), tip, c);
+  });
 }
 let persistAsked=false;
 function askPersist(){ if(!persistAsked && navigator.storage && navigator.storage.persist){ persistAsked=true; navigator.storage.persist().catch(()=>{}); } }
@@ -638,7 +733,8 @@ function needsSetup(){
   if(cfg.clientId && cfg.relay) return false;
   openSettings('Google Photos import needs a one-time setup: paste your Google OAuth Client ID and your relay URL (see the README).'); return true;
 }
-async function startGoogleImport(){
+async function startGoogleImport(hint){
+  if(typeof hint==='string') localStorage.setItem('peggy.pickHint', hint); else localStorage.removeItem('peggy.pickHint');
   if(needsSetup()) return;
   if(!(await ensureToken())){ if(!acct.session) return signIn('import'); localStorage.setItem('peggy.after','import'); return peggySignIn('index.html'); }
   try{
@@ -655,6 +751,7 @@ function showWaiting(){
     waitClose=v=>{ waitClose=null; close(v); };
     sh.append(el('h3',{textContent:'Pick photos in Google Photos'}),
       el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to Peggy. They\'ll import automatically.'}));
+    const ph=localStorage.getItem('peggy.pickHint'); if(ph) sh.append(el('p',{className:'tip',innerHTML:`<b>${ph.replace(/</g,'&lt;')}</b>: it’s on your clipboard, so tap the search bar in Google Photos and paste.`}));
     const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos',title:'Opens Google Photos to pick photos for Peggy'});
     const status=el('p',{id:'pickStatus',textContent:'Waiting for your selection…'});
     const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:8px'});
