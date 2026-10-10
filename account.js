@@ -37,9 +37,10 @@ async function peggyFinishSignIn(){
   if (q.get('state') !== localStorage.getItem('peggy.authState')){ clean(); throw new Error('Sign-in check failed, please try again'); }
   const r = await fetch(acct.relay + '/api/auth/exchange', { method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ code: q.get('code'), redirect_uri: peggyRedirect() }) });
-  const d = await r.json().catch(()=>({}));
+  const raw = await r.text(); let d={}; try{ d=JSON.parse(raw); }catch(_){}
   clean();
-  if (!r.ok) throw new Error(d.error || 'Sign-in failed');
+  if (!r.ok) throw new Error(d.error || `Sign-in failed. The relay answered ${r.status}: ${raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,120) || '(no message)'}`);
+  if (!d.session) throw new Error('Sign-in failed. The relay is still running its old code: paste the new worker.js into Cloudflare and click Deploy.');
   acct.set(d.session, d.me);
   localStorage.setItem('peggy.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000 }));
   const back = localStorage.getItem('peggy.authReturn') || ''; localStorage.removeItem('peggy.authReturn');
