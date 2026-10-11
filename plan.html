@@ -139,6 +139,34 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 .fsave{font-size:13px;font-weight:800;color:var(--accent);margin-top:2px}
 .fnote2{font-size:12px;color:var(--dim);margin:14px 2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .tankin{width:56px;font:inherit;font-size:13px;padding:2px 6px;border-radius:8px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
+.sugg{display:block;width:100%;text-align:left;font-weight:600;line-height:1.4;background:var(--panel2);border-radius:12px;padding:10px 12px;margin-top:8px;white-space:pre-wrap}
+.sugg small{display:block;color:var(--dim);font-weight:700;margin-top:4px;font-size:12px}
+.card.pause{border:2px solid var(--lilac)} .card.pause .pt{font:600 20px var(--display)}
+.moods{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0 8px}
+.moods button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:12px;min-height:64px}
+.moods button span{font-size:26px} .moods button small{font-size:11px;font-weight:800;color:var(--dim)}
+.moods button.on{background:var(--text);color:var(--bg)} .moods button.on small{color:var(--bg)}
+textarea.ta{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);margin-bottom:8px;resize:vertical}
+.twoci{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ci{background:var(--panel2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.ci.wait{align-items:center;justify-content:center;color:var(--dim);font-weight:700;text-align:center}
+.cim{font-size:30px} .ciw{font-weight:800;font-size:13px;color:var(--dim)} .cia,.cin{line-height:1.35}
+.ustools{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
+@media (min-width:560px){.ustools{grid-template-columns:1fr 1fr}}
+.ustool{display:flex;gap:12px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;width:100%}
+.ue{font-size:24px;flex:none} .ustool small,.wkrow small{display:block;color:var(--dim);font-weight:600;font-size:13px}
+.unote{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 44px 10px 12px;margin-bottom:6px}
+.unote.mine{background:var(--panel2)} .unote .ut{font-weight:700;line-height:1.4} .unote .um{font-size:12px;color:var(--dim);font-weight:700;margin-top:4px}
+.unote .heart{position:absolute;right:6px;top:6px;min-height:34px;padding:4px 8px;background:none;font-size:18px}
+.pastci{display:flex;gap:10px;align-items:baseline;font-size:14px;padding:6px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pastci span:first-child{font-weight:800;min-width:52px}
+.card.support a.blk{display:block;font-weight:800;margin:6px 0}
+.talkwho{font-weight:800;text-align:center;margin-top:12px} .talkclock{font:600 56px var(--display);text-align:center;font-variant-numeric:tabular-nums}
+.talktips{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--dim);margin:10px 0}
+.wk{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.wkrow{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border-radius:12px;padding:10px}
+.wkrow input{width:22px;height:22px;margin-top:4px;accent-color:var(--accent);flex:none}
+a.linkbtn{display:block;text-align:center;text-decoration:none;padding:13px;border-radius:14px;color:#fff;font-weight:800;background:var(--accent)}
 .findfl{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
 .findfl > span:first-child{font-size:24px} .findfl small{display:block;color:var(--dim);font-weight:600;font-size:13px}
 .flight{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
@@ -283,9 +311,10 @@ const store = {
   links: { items:[], lists:[], v:0 },
   expenses: { items:[], lists:[], v:0 },
   flights: { items:[], lists:[], v:0 },
+  us: { items:[], lists:[], v:0 },
 };
-const pending = { tasks: [], links: [], expenses: [], flights: [] };
-function loadCache(){ for(const k of ['tasks','links','expenses','flights']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
+const pending = { tasks: [], links: [], expenses: [], flights: [], us: [] };
+function loadCache(){ for(const k of ['tasks','links','expenses','flights','us']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
 function saveCache(k){ try{ localStorage.setItem('peggy.cache.'+k, JSON.stringify(store[k])); localStorage.setItem('peggy.pending.'+k, JSON.stringify(pending[k])); }catch(_){} }
 function applyLocal(doc, op){
   const coll = op.kind==='list' ? doc.lists : doc.items;
@@ -314,27 +343,27 @@ async function pull(k){
 let membersAt=0;
 async function loadMembers(){ if(!acct.session) return; try{ members=(await peggyApi('members')).members||[]; membersAt=Date.now(); }catch(e){ if(e.status===401) toast('Please sign in again',4000); } }
 async function syncAll(){ if(acct.session && (!members.length || !partner() || !partner().signedIn || Date.now()-membersAt>600000)){ await loadMembers(); render(); }
-  for(const k of ['tasks','links','expenses','flights']){ await flush(k); await pull(k); } }
+  for(const k of ['tasks','links','expenses','flights','us']){ await flush(k); await pull(k); } }
 setInterval(()=>{ if(!document.hidden) syncAll(); }, 20000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(); });
 
 /* ================= routing ================= */
 let tab='tasks';
-const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Diesel'};
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Diesel',us:'Us'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
-  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':'Add a link';
+  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':tab==='us'?'Send an appreciation':'Add a link';
   render(); if(tab==='calendar') loadCalendar(); }
 window.addEventListener('hashchange', route);
-$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):editLink(null); };
+$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):tab==='us'?sendAppreciation():editLink(null); };
 $('#setBtn').onclick=()=>openSettings();
 
 function render(){
   const v=$('#view');
   if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
   $('#addBtn').classList.remove('hidden');
-  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else renderLinks(v);
+  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else if(tab==='us') renderUs(v); else renderLinks(v);
 }
 function renderSignIn(v){
   v.replaceChildren(el('div',{className:'card signin'},
@@ -1190,6 +1219,160 @@ function logFillUp(st, p){
     const b=[...document.querySelectorAll('.sheet .catchips button')].find(x=>/RV|Gas/.test(x.textContent) && (fuel.type==='DIESEL'?/RV/.test(x.textContent):/Gas/.test(x.textContent))); if(b) b.click(); }, 60);
 }
 setInterval(()=>{ if(tab==='fuel' && !document.hidden && fuel.res && fuel.mode==='near' && Date.now()-fuel.res.at>5*60000) findFuel(); }, 60000);
+
+/* ================= US: small daily habits for the two of you ================= */
+// items: checkin {date, mood, appreciate, need} · note {text} (appreciation) · pause {minutes, until, msg, ended}
+const MOODS=[['1','😞','Rough'],['2','😕','Meh'],['3','🙂','Okay'],['4','😊','Good'],['5','🥰','Great']];
+const usItems = k => store.us.items.filter(x=>x.kind===k);
+function myCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy===me().email); }
+function theirCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy!==me().email); }
+function streak(){ let n=0; for(let d=today();;d=addDays(d,-1)){ const k=ymd(d); const both=usItems('checkin').filter(x=>x.date===k).map(x=>x.createdBy); if(new Set(both).size>=2) n++; else if(k!==ymd(today())) break; if(n>400) break; } return n; }
+function renderUs(v){
+  $('#chips').replaceChildren();
+  const p=partner(), pn=(p&&p.name)||'your partner', d=ymd(today()), mine=myCheckin(d), theirs=theirCheckin(d);
+  const parts=[];
+  // Break in progress
+  const pause=usItems('pause').filter(x=>!x.ended && Date.parse(x.until)>Date.now()-3600e3).sort((a,b)=>Date.parse(b.until)-Date.parse(a.until))[0];
+  if(pause){ const byMe=pause.createdBy===me().email, left=Math.max(0,Math.round((Date.parse(pause.until)-Date.now())/60000));
+    const c=el('div',{className:'card pause'});
+    c.append(el('div',{className:'pt',textContent:byMe?`🌿 You asked for a break`:`🌿 ${nameOf(pause.createdBy)} asked for a break`}),
+      el('p',{textContent:(pause.msg?`“${pause.msg}” `:'')+(left?`Back at ${new Date(pause.until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})} (${left} min).`:'Time’s up: ready when you both are.')}),
+      el('p',{className:'hint',textContent:byMe?'Do something calming: a walk, a drink of water, slow breaths. Not rehearsing the argument helps most.':'This isn’t walking away from you; it’s so you can both come back calmer. Take a breather too.'}));
+    const done=el('button',{className:'primary',textContent:'I’m ready to talk'}); done.onclick=()=>change('us',[{op:'upsert',item:{...pause, ended:new Date().toISOString(), endedBy:me().email}}]);
+    c.append(done); parts.push(c); }
+  // Daily check-in
+  const ci=el('div',{className:'card'});
+  ci.append(el('div',{className:'cardh'},el('b',{textContent:'Today’s check-in'}),el('span',{className:'hint',textContent:streak()?`🔥 ${streak()} day${streak()>1?'s':''} in a row together`:'A minute a day, for both of you'})));
+  if(!mine){
+    const sel={mood:''}; const moods=el('div',{className:'moods'});
+    MOODS.forEach(([k,e,l])=>{ const b=el('button',{type:'button',title:l}); b.append(el('span',{textContent:e}),el('small',{textContent:l})); b.onclick=()=>{ sel.mood=k; moods.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); }; moods.append(b); });
+    const ap=el('textarea',{className:'ta',placeholder:`One thing I appreciated about ${pn} lately…`,rows:2});
+    const nd=el('textarea',{className:'ta',placeholder:'One thing I could use this week (optional)…',rows:2});
+    const send=el('button',{className:'primary',textContent:'Share my check-in'});
+    send.onclick=()=>{ if(!sel.mood) return toast('Pick how you’re feeling'); change('us',[{op:'upsert',item:{id:uid(),kind:'checkin',date:d,mood:sel.mood,appreciate:ap.value.trim(),need:nd.value.trim()}}]); toast('Shared 💞'); };
+    ci.append(el('div',{className:'lab2',textContent:'How are you feeling today?'}),moods,ap,nd,send);
+    if(theirs) ci.append(el('p',{className:'hint',textContent:`${pn} has checked in. Share yours to see it.`}));
+  } else {
+    const box=el('div',{className:'twoci'});
+    const show=(x,who)=>{ const m=MOODS.find(z=>z[0]===x.mood)||MOODS[2]; const c=el('div',{className:'ci'});
+      c.append(el('div',{className:'cim',textContent:m[1]}),el('div',{className:'ciw',textContent:`${who} · ${m[2]}`}));
+      if(x.appreciate) c.append(el('div',{className:'cia',textContent:'💗 '+x.appreciate}));
+      if(x.need) c.append(el('div',{className:'cin',textContent:'🙏 '+x.need}));
+      return c; };
+    box.append(show(mine,'You'), theirs?show(theirs,pn):el('div',{className:'ci wait',textContent:`Waiting for ${pn}…`}));
+    ci.append(box);
+    if(theirs && theirs.need) ci.append(el('p',{className:'hint',textContent:`Tip: pick one small way to help with what ${pn} needs, and maybe add it to Tasks.`}));
+  }
+  parts.push(ci);
+  // Tools
+  const tools=el('div',{className:'ustools'});
+  const tool=(e,t,s2,fn)=>{ const b=el('button',{className:'ustool'}); b.append(el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:s2}))); b.onclick=fn; tools.append(b); };
+  tool('💌','Send an appreciation','A quick note they’ll see here',sendAppreciation);
+  tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
+  tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
+  tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
+  tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
+  parts.push(tools);
+  // Appreciation wall
+  const notes=usItems('note').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,30);
+  if(notes.length){ parts.push(el('div',{className:'mhead',textContent:'💌 Appreciations'}));
+    notes.forEach(n=>{ const r=el('div',{className:'unote'+(n.createdBy===me().email?' mine':'')});
+      r.append(el('div',{className:'ut',textContent:n.text}),el('div',{className:'um',textContent:`${n.createdBy===me().email?'You':nameOf(n.createdBy)} · ${fmtShort(new Date(n.createdAt||Date.now()))}`}));
+      if(n.createdBy!==me().email){ const h=el('button',{className:'heart'+(n.hearted?' on':''),textContent:n.hearted?'❤️':'🤍',title:'Thank them'}); h.onclick=()=>change('us',[{op:'upsert',item:{...n,hearted:!n.hearted}}]); r.append(h); }
+      parts.push(r); }); }
+  // Recent check-ins
+  const past=usItems('checkin').filter(x=>x.date!==d && myCheckin(x.date)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14);
+  if(past.length){ parts.push(el('div',{className:'mhead',textContent:'Recent check-ins'}));
+    const days=[...new Set(past.map(x=>x.date))].slice(0,7);
+    days.forEach(day=>{ const a=myCheckin(day), b=theirCheckin(day), m=x=>x?(MOODS.find(z=>z[0]===x.mood)||MOODS[2])[1]:'·';
+      parts.push(el('div',{className:'pastci'},el('span',{textContent:fmtShort(parseYmd(day))}),el('span',{textContent:`You ${m(a)}`}),el('span',{textContent:`${pn} ${m(b)}`}),el('span',{className:'hint',textContent:(b&&b.appreciate)?'💗 '+b.appreciate:''}))); }); }
+  // Support
+  const sup=el('div',{className:'card support'});
+  sup.innerHTML=`<b>When you want more help</b><p class="hint">These tools are for everyday connection, not a replacement for therapy. A licensed couples therapist can help with the bigger stuff.</p>
+    <a class="blk" href="https://www.psychologytoday.com/us/therapists/marriage-couples-counseling" target="_blank" rel="noopener">Find a couples therapist near you</a>
+    <a class="blk" href="https://www.gottman.com/couples/" target="_blank" rel="noopener">The Gottman Institute: free articles for couples</a>
+    <p class="hint">If you ever feel unsafe, threatened or controlled at home: National Domestic Violence Hotline, <a href="tel:18007997233">1-800-799-7233</a>, or text <b>START</b> to <a href="sms:88788">88788</a>. Free and confidential, 24/7.</p>`;
+  parts.push(sup);
+  v.replaceChildren(...parts);
+}
+async function sendAppreciation(){
+  const p=partner(), pn=(p&&p.name)||'your partner';
+  const SPARK=[`Thank you for…`,`I loved it when you…`,`Something you do that makes my day:`,`I’m proud of you for…`,`I felt cared for when you…`];
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:`💌 For ${pn}`}), el('p',{textContent:'Small and specific works best. They’ll see it in Us.'}));
+    const ta=el('textarea',{className:'ta',rows:4,placeholder:'Write something kind…',autofocus:true});
+    const sp=el('div',{className:'catchips'}); SPARK.forEach(t=>{ const b=el('button',{type:'button',textContent:t}); b.onclick=()=>{ ta.value=t+' '; ta.focus(); }; sp.append(b); });
+    const send=el('button',{className:'primary',textContent:'Send'}); send.onclick=()=>{ const t=ta.value.trim(); if(!t) return ta.focus(); change('us',[{op:'upsert',item:{id:uid(),kind:'note',text:t}}]); close(); toast('Sent 💌'); };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
+    const btns=el('div',{className:'btns'}); btns.append(c,send); sh.append(sp,ta,btns);
+  });
+}
+async function askBreak(){
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'⏸️ Take a break'}), el('p',{textContent:'When a talk gets heated, a short pause helps you both calm down and come back kinder. It lets your partner know you’re coming back.'}));
+    const mins={v:20}; const seg=el('div',{className:'seg wide'});
+    for(const m of [20,30,60]){ const b=el('button',{type:'button',textContent:`${m} min`,className:m===20?'on':''}); b.onclick=()=>{ mins.v=m; seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); }; seg.append(b); }
+    const msg=el('input',{value:'I love you. I need a few minutes to calm down so I can listen better.',title:'A kind note for them'});
+    const go=el('button',{className:'primary',textContent:'Ask for a break'});
+    go.onclick=()=>{ change('us',[{op:'upsert',item:{id:uid(),kind:'pause',minutes:mins.v,until:new Date(Date.now()+mins.v*60000).toISOString(),msg:msg.value.trim()}}]); close(); toast('Break shared 🌿'); };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
+    const btns=el('div',{className:'btns'}); btns.append(c,go);
+    sh.append(...field('How long',seg), ...field('Note for them',msg), btns);
+  });
+}
+async function talkItThrough(){
+  const p=partner(), pn=(p&&p.name)||'Partner';
+  const st={speaker:me().name||'You', other:pn, secs:120, left:120, run:false, t:0, rounds:0};
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'🗣️ Talk it through'}), el('p',{textContent:'One person speaks, the other only listens and then repeats back what they heard. Then swap. It slows things down so you both feel heard.'}));
+    const topic=el('input',{placeholder:'What do you want to talk about? (one topic)'});
+    const who=el('div',{className:'talkwho'}), clock=el('div',{className:'talkclock'}), tips=el('div',{className:'talktips'});
+    const draw=()=>{ who.textContent=`🎤 ${st.speaker} speaks · 👂 ${st.other} listens`;
+      clock.textContent=`${Math.floor(st.left/60)}:${String(st.left%60).padStart(2,'0')}`;
+      tips.innerHTML=`<div><b>Speaker:</b> talk about your feelings, not their faults. “I feel… when… I’d like…” Keep it short.</div><div><b>Listener:</b> no defending or fixing yet. When time’s up, say back “What I heard is…” and ask “Did I get that right?”</div>`; };
+    const startB=el('button',{className:'primary',textContent:'Start'}), swap=el('button',{textContent:'⇄ Swap'}), reset=el('button',{className:'ghost',textContent:'Reset'});
+    const tick=()=>{ if(!st.run) return; st.left=Math.max(0,st.left-1); draw(); if(!st.left){ st.run=false; startB.textContent='Start'; try{ navigator.vibrate&&navigator.vibrate(300); }catch(_){} toast(`Time. ${st.other}: say back what you heard.`,5000); } };
+    startB.onclick=()=>{ st.run=!st.run; startB.textContent=st.run?'Pause':'Start'; clearInterval(st.t); if(st.run) st.t=setInterval(tick,1000); };
+    swap.onclick=()=>{ [st.speaker,st.other]=[st.other,st.speaker]; st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; st.rounds++; draw(); };
+    reset.onclick=()=>{ st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; draw(); };
+    const len=el('div',{className:'seg wide'}); for(const m of [1,2,3]){ const b=el('button',{type:'button',textContent:`${m} min turns`,className:m===2?'on':''}); b.onclick=()=>{ st.secs=st.left=m*60; len.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); }; len.append(b); }
+    const words=el('a',{href:'words.html',textContent:'Track turns with Words instead',className:'hint'});
+    const done=el('button',{className:'ghost',textContent:'Done',style:'width:100%;margin-top:8px'}); done.onclick=()=>{ clearInterval(st.t); close(); };
+    draw(); sh.append(topic,len,who,clock,el('div',{className:'btns'},reset,swap,startB),tips,words,done);
+  });
+}
+async function sayItKindly(){
+  const p=partner(), pn=(p&&p.name)||'your partner';
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'✨ Say it kindly'}), el('p',{textContent:`Write it how you feel it, even if it’s messy. Claude suggests calmer ways to say it. Only you see this until you copy and send it to ${pn}.`}));
+    const ta=el('textarea',{className:'ta',rows:5,placeholder:'e.g. You never help with the dishes and I’m sick of it'});
+    const out=el('div');
+    const go=el('button',{className:'primary',textContent:'✨ Suggest kinder words'});
+    go.onclick=async()=>{ if(!ta.value.trim()) return ta.focus(); go.disabled=true; go.textContent='Thinking…';
+      try{ const d=await peggyApi('rephrase',{method:'POST',body:JSON.stringify({text:ta.value, to:pn})});
+        out.replaceChildren(...(d.options||[]).map(o=>{ const b=el('button',{className:'sugg',title:'Copy this'}); b.append(o, el('small',{textContent:'Tap to copy'})); b.onclick=async()=>{ try{ await navigator.clipboard.writeText(o); toast('Copied. Send it however you like.'); }catch(_){ toast('Couldn’t copy'); } }; return b; }),
+          ...(d.tip?[el('p',{className:'hint',textContent:'💡 '+d.tip})]:[])); }
+      catch(e){ out.replaceChildren(el('p',{className:'hint',textContent:'Couldn’t get suggestions: '+e.message})); }
+      finally{ go.disabled=false; go.textContent='✨ Try again'; } };
+    const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:8px'}); c.onclick=()=>close();
+    sh.append(ta,go,out,c);
+  });
+}
+async function weeklyCheckin(){
+  const p=partner(), pn=(p&&p.name)||'your partner';
+  const STEPS=[['💗','Appreciations','Each say three things you appreciated this week. Be specific.'],['🌤️','What went well','Name a moment you enjoyed together.'],['🧩','One thing to work on','Each pick one small issue. Use “I feel… when… could we…”. Listen first, solve second.'],['🙏','What I need','Ask for one thing that would help you next week.'],['🎉','Plan something fun','Pick a date, an outing or a small treat, and put it on the calendar.']];
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'📅 Weekly check-in'}), el('p',{textContent:`About 20 minutes with ${pn}, same time each week, when you’re both relaxed. Tick through it together.`}));
+    const list=el('div',{className:'wk'});
+    STEPS.forEach(([e,t,d])=>{ const ck=el('input',{type:'checkbox'}); list.append(el('label',{className:'wkrow'},ck,el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:d})))); });
+    const next=addDays(today(),(7-new Date().getDay())%7||7); next.setHours(19,0,0,0);
+    const z=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+    const cal='https://calendar.google.com/calendar/render?'+new URLSearchParams({action:'TEMPLATE',text:'💞 Our weekly check-in',details:'Appreciations · What went well · One thing to work on · What I need · Plan something fun (open Peggy → More → Us)',dates:`${z(next)}/${z(new Date(next.getTime()+30*60000))}`,recur:'RRULE:FREQ=WEEKLY'});
+    const a=el('a',{className:'primary linkbtn',href:cal,target:'_blank',rel:'noopener',textContent:'📅 Put it on our calendar every week'});
+    const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:8px'}); c.onclick=()=>close();
+    sh.append(list,a,c);
+  });
+}
 
 /* ================= SETTINGS ================= */
 async function openSettings(){

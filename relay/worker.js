@@ -13,7 +13,7 @@
 //   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
 //   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
 
-const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights'];   // shared = shared photo albums (lists) and the photos in them (items)
+const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights', 'us'];   // shared = shared photo albums (lists) and the photos in them (items)
 
 export default {
   async fetch(req, env) {
@@ -293,6 +293,25 @@ async function api(req, env, url, cors) {
         detour: s ? { toMeters: s[0] && s[0].distanceMeters, toSecs: s[0] && parseInt(s[0].duration), restSecs: s[1] && parseInt(s[1].duration) } : null };
     });
     return json({ stations: out, route }, 200, cors);
+  }
+
+  // --- us: help put a hard feeling into kind, clear words (only the writer sees the result) ---
+  if (path === 'rephrase' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'This needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { text, to } = await body();
+    if (!text || typeof text !== 'string') return json({ error: 'Write what you want to say first' }, 400, cors);
+    const user = await KV.get('user:' + s.email, 'json');
+    const ask = [
+      `${(user && user.name) || 'Someone'} wants to raise something with their partner${to ? ' ' + String(to).slice(0, 40) : ''}. Below is what they wrote, possibly in the heat of the moment.`,
+      'Rewrite it as 3 short alternatives they could actually say or text. Use a gentle start-up: describe the situation without blame or "you always/never", say how they feel ("I feel…"), and ask for something specific and positive ("Could we…"). Keep their real concern and meaning; don’t water it down to nothing, and don’t add things they didn’t say. Warm, natural, first person, no therapy jargon.',
+      'If the message describes being hurt, threatened, controlled or unsafe, don’t rewrite it to be softer; instead make the first option a short, kind note that they deserve to feel safe and can call or text the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788).',
+      'Reply with only JSON: {"options": ["...", "...", "..."], "tip": "one sentence of advice for how to bring it up (timing, tone)"}.',
+      '---', String(text).slice(0, 3000),
+    ].join('\n');
+    const r = await claude(env, env.CAPTION_MODEL || 'claude-sonnet-5-5', [{ type: 'text', text: ask }], 900);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const d = jsonFrom(r.text, {});
+    return json({ options: Array.isArray(d.options) ? d.options.slice(0, 3).map(String) : [], tip: String(d.tip || '') }, 200, cors);
   }
 
   // --- flights: read a pasted confirmation email into flight details ---

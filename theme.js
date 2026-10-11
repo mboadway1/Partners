@@ -63,7 +63,7 @@ applyPeggyTheme(peggyThemeName());
 
 /* ---------- bottom menu: the "More" button opens Links and Words ---------- */
 (function(){
-  const MORE=[['plan.html#fuel','⛽','Diesel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites'],['words.html','🎙️','Words','Who talks, who interrupts']];
+  const MORE=[['plan.html#us','💞','Us','Check-ins, appreciations, talking it through'],['plan.html#fuel','⛽','Diesel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites'],['words.html','🎙️','Words','Who talks, who interrupts']];
   function setup(){
     const more=document.querySelector('.bnav a.more'); if(!more) return;
     const st=document.createElement('style');
@@ -75,7 +75,7 @@ applyPeggyTheme(peggyThemeName());
     more.addEventListener('click',e=>{ e.preventDefault(); menu.hidden=!menu.hidden; });
     document.addEventListener('click',e=>{ if(!menu.hidden && !menu.contains(e.target) && !more.contains(e.target)) menu.hidden=true; });
     const mark=()=>{ if(/(^|\/)(index\.html)?$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="photos"]').forEach(a=>a.classList.add('on'));
-      const inMore=/words\.html$/.test(location.pathname) || /plan\.html$/.test(location.pathname)&&(location.hash==='#links'||location.hash==='#fuel'); more.classList.toggle('on', inMore);
+      const inMore=/words\.html$/.test(location.pathname) || /plan\.html$/.test(location.pathname)&&['#links','#fuel','#us'].includes(location.hash); more.classList.toggle('on', inMore);
       if(/words\.html$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="words"]').forEach(a=>a.classList.remove('on')); };
     mark(); addEventListener('hashchange', mark);
   }
