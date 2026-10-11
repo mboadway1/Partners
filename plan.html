@@ -160,6 +160,11 @@ textarea.ta{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding
 .unote .heart{position:absolute;right:6px;top:6px;min-height:34px;padding:4px 8px;background:none;font-size:18px}
 .pastci{display:flex;gap:10px;align-items:baseline;font-size:14px;padding:6px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .pastci span:first-child{font-weight:800;min-width:52px}
+.talkcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:6px;display:flex;flex-direction:column;gap:6px}
+.talkbar{display:flex;height:26px;border-radius:8px;overflow:hidden;background:var(--panel2)}
+.talkbar span{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden}
+.talkbar .s0{background:var(--accent)} .talkbar .s1{background:var(--lilac)}
+.talkst{font-size:12px;color:var(--dim);font-weight:700}
 .card.support a.blk{display:block;font-weight:800;margin:6px 0}
 .talkwho{font-weight:800;text-align:center;margin-top:12px} .talkclock{font:600 56px var(--display);text-align:center;font-variant-numeric:tabular-nums}
 .talktips{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--dim);margin:10px 0}
@@ -259,7 +264,7 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="#more" data-k="more" class="more" title="More: links and Words"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="#more" data-k="more" class="more" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 
 <script src="core.js"></script>
@@ -1271,6 +1276,7 @@ function renderUs(v){
   tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
   tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
   tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
+  tool('🎙️','Words','Listens and shows who talks and who interrupts',()=>{ location.href='words.html'; });
   tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
   parts.push(tools);
   // Appreciation wall
@@ -1280,6 +1286,17 @@ function renderUs(v){
       r.append(el('div',{className:'ut',textContent:n.text}),el('div',{className:'um',textContent:`${n.createdBy===me().email?'You':nameOf(n.createdBy)} · ${fmtShort(new Date(n.createdAt||Date.now()))}`}));
       if(n.createdBy!==me().email){ const h=el('button',{className:'heart'+(n.hearted?' on':''),textContent:n.hearted?'❤️':'🤍',title:'Thank them'}); h.onclick=()=>change('us',[{op:'upsert',item:{...n,hearted:!n.hearted}}]); r.append(h); }
       parts.push(r); }); }
+  // Conversations measured with Words
+  const talks=usItems('talk').sort((a,b)=>(b.at||'').localeCompare(a.at||'')).slice(0,6);
+  if(talks.length){ parts.push(el('div',{className:'mhead',textContent:'🎙️ Recent talks (from Words)'}));
+    talks.forEach(t=>{ const c=el('div',{className:'talkcard'}), sp=t.speakers||[];
+      c.append(el('div',{className:'um',textContent:`${new Date(t.at).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})} · ${new Date(t.at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}`+(t.timer?` · ${Math.round(t.timer/60)||1} min turns`:'')}));
+      const bar=el('div',{className:'talkbar'}); sp.forEach((x,i)=>{ const seg=el('span',{className:'s'+(i%2),textContent:x.pct>=12?`${x.name} ${x.pct}%`:''}); seg.style.width=Math.max(2,x.pct)+'%'; seg.title=`${x.name}: ${x.words} words (${x.pct}%)`; bar.append(seg); }); c.append(bar);
+      c.append(el('div',{className:'talkst',textContent:sp.map(x=>`${x.name}: ${x.turns} turns, interrupted ${x.interrupts}×`).join(' · ')}));
+      const top=sp.slice().sort((a,b)=>b.pct-a.pct)[0];
+      if(top && top.pct>=65) c.append(el('div',{className:'hint',textContent:`${top.name} did most of the talking. Next time, try Talk it through to take even turns.`}));
+      else if(sp.length>1 && sp.every(x=>x.pct>=35)) c.append(el('div',{className:'hint',textContent:'Nicely balanced. You both got to be heard. 💞'}));
+      parts.push(c); }); }
   // Recent check-ins
   const past=usItems('checkin').filter(x=>x.date!==d && myCheckin(x.date)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14);
   if(past.length){ parts.push(el('div',{className:'mhead',textContent:'Recent check-ins'}));
@@ -1336,7 +1353,7 @@ async function talkItThrough(){
     swap.onclick=()=>{ [st.speaker,st.other]=[st.other,st.speaker]; st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; st.rounds++; draw(); };
     reset.onclick=()=>{ st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; draw(); };
     const len=el('div',{className:'seg wide'}); for(const m of [1,2,3]){ const b=el('button',{type:'button',textContent:`${m} min turns`,className:m===2?'on':''}); b.onclick=()=>{ st.secs=st.left=m*60; len.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); }; len.append(b); }
-    const words=el('a',{href:'words.html',textContent:'Track turns with Words instead',className:'hint'});
+    const words=el('a',{href:'words.html',textContent:'🎙️ Or let Words listen and track who talks, then Save to Us',className:'hint',style:'display:block;margin-top:6px'});
     const done=el('button',{className:'ghost',textContent:'Done',style:'width:100%;margin-top:8px'}); done.onclick=()=>{ clearInterval(st.t); close(); };
     draw(); sh.append(topic,len,who,clock,el('div',{className:'btns'},reset,swap,startB),tips,words,done);
   });

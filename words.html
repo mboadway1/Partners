@@ -116,7 +116,7 @@ details summary{cursor:pointer;font-weight:700}
 <div class="wrap">
   <div class="warn update" id="update" hidden><span>A newer version of Words is on the TV.</span><button class="btn" id="reload" title="Reload to get the newest version of Words">Reload</button></div>
   <header>
-    <div><a class="back" href="./" title="Back to your photos">‹ Photos</a><h1 id="wordmark">Words</h1></div>
+    <div><a class="back" href="plan.html#us" title="Back to Us">‹ Us</a><h1 id="wordmark">Words</h1></div>
     <div class="pills">
       <span class="pill" id="micPill" title="Microphone status"><span class="dot"></span><span id="micText">Mic off</span></span>
       <span class="pill" id="tvPill" title="TV connection status"><span class="dot"></span><span id="tvText">No TV</span></span>
@@ -185,7 +185,7 @@ details summary{cursor:pointer;font-weight:700}
   </details>
     </div>
   <section class="card">
-    <div class="row"><h2>Transcript</h2><div class="row" style="gap:8px"><button class="btn" id="copy" title="Copy the totals and transcript">Copy</button><button class="btn" id="save" title="Download the totals and transcript as a text file">Save .txt</button></div></div>
+    <div class="row"><h2>Transcript</h2><div class="row" style="gap:8px"><button class="btn" id="toUs" title="Save who talked how much to Us, so you can both see it">💞 Save to Us</button><button class="btn" id="copy" title="Copy the totals and transcript">Copy</button><button class="btn" id="save" title="Download the totals and transcript as a text file">Save .txt</button></div></div>
     <div class="transcript" id="transcript"><p class="empty">Press Start listening and allow the microphone.</p></div>
   </section>
   </div>
@@ -197,10 +197,11 @@ details summary{cursor:pointer;font-weight:700}
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="#more" data-k="more" class="more" title="More: links and Words"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="#more" data-k="more" class="more" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="words-version.js"></script>
+<script src="account.js"></script>
 <script src="core-butterfly.js"></script>
 <script>
 const PREFIX='peggy-tv-';           // same TV link as Peggy's photos
@@ -399,6 +400,18 @@ $('reset').onclick=()=>{
   if(!b.dataset.confirm){b.dataset.confirm=1;b.textContent='Tap again to clear';setTimeout(()=>{delete b.dataset.confirm;b.textContent='Reset counts'},3000);return}
   delete b.dataset.confirm;b.textContent='Reset counts';
   speakers.forEach(s=>Object.assign(s,{words:0,turns:0,interrupts:0,interrupted:0,timerCuts:0}));lines=[];cutLog=[];pendingCut=null;floor=null;alertMsg=null;interim={text:'',spk:active};startTurn();render();
+};
+// Save this conversation's balance (no transcript) to the Us tab, shared with your partner.
+$('toUs').onclick=async()=>{
+  const b=$('toUs'), total=speakers.reduce((a,s)=>a+s.words,0);
+  if(!total){ b.textContent='Nothing to save yet'; setTimeout(()=>{ b.textContent='💞 Save to Us'; },2000); return; }
+  if(!acct.session){ if(confirm('Sign in to Peggy to save this to Us?')) peggySignIn('words.html'); return; }
+  const item={id:(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)), kind:'talk', at:new Date().toISOString(), timer:T.len||0,
+    speakers:speakers.filter(x=>x.words||x.turns).map(x=>({name:x.name, words:x.words, pct:total?Math.round(x.words/total*100):0, turns:x.turns, interrupts:x.interrupts, interrupted:x.interrupted})), updatedAt:Date.now()};
+  b.disabled=true; b.textContent='Saving…';
+  try{ await peggyApi('data/us',{method:'POST',body:JSON.stringify({ops:[{op:'upsert',item}]})}); b.textContent='✓ Saved to Us'; }
+  catch(e){ b.textContent='Couldn’t save'; alert('Couldn’t save to Us: '+e.message); }
+  finally{ setTimeout(()=>{ b.disabled=false; b.textContent='💞 Save to Us'; },2500); }
 };
 function exportText(){
   const total=speakers.reduce((a,s)=>a+s.words,0);

@@ -63,7 +63,7 @@ applyPeggyTheme(peggyThemeName());
 
 /* ---------- bottom menu: the "More" button opens Links and Words ---------- */
 (function(){
-  const MORE=[['plan.html#us','💞','Us','Check-ins, appreciations, talking it through'],['plan.html#fuel','⛽','Diesel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites'],['words.html','🎙️','Words','Who talks, who interrupts']];
+  const MORE=[['plan.html#us','💞','Us','Check-ins, appreciations, talking it through, Words'],['plan.html#fuel','⛽','Diesel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites']];
   function setup(){
     const more=document.querySelector('.bnav a.more'); if(!more) return;
     const st=document.createElement('style');
