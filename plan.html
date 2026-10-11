@@ -1061,7 +1061,10 @@ async function openSettings(){
 /* ================= boot ================= */
 document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({size:30,flutter:true}); render(); });
 (async function boot(){
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
+    // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.
+    const t0=Date.now(); let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped) return; swapped=true;
+      if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Peggy was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
   $('#logo').innerHTML=butterfly({size:30,flutter:true});
   loadCache(); route();
   if(acct.session){
