@@ -355,6 +355,30 @@ async function api(req, env, url, cors) {
     return json(out, 200, cors);
   }
 
+  // --- photos: sort pictures into real photos vs screenshots, maps/papers and item shots ---
+  if (path === 'classify' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Sorting photos needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { images } = await body();
+    const pics = (Array.isArray(images) ? images : []).filter(x => x && typeof x.data === 'string' && x.data.length < 400000 && typeof x.id === 'string').slice(0, 12);
+    if (!pics.length) return json({ error: 'No photos sent' }, 400, cors);
+    const content = [];
+    pics.forEach((x, i) => { content.push({ type: 'text', text: `Picture ${i + 1} (id ${x.id}):` }); content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: x.data } }); });
+    content.push({ type: 'text', text: [
+      'Sort each picture into exactly one kind:',
+      '"photo": a memory worth keeping: people, pets, places, scenery, events, parties, costumes, food or moments, including photos of art or fire at an event.',
+      '"screenshot": a capture of a phone, tablet or computer screen (apps, web pages, forms, messages, settings), or a photo pointed at a screen.',
+      '"paper": maps, signs, printed schedules, documents, receipts, menus, labels, whiteboards, notes, or a photo taken mainly to read text.',
+      '"item": a close-up of an object or product taken for reference rather than as a memory: appliances, panels, parts, boxes, serial numbers, things to buy or fix.',
+      'When a person is clearly the subject, it is a "photo" even if there is text or an object too.',
+      'Reply with only JSON: an array of {"id": "...", "kind": "photo|screenshot|paper|item"} in order.',
+    ].join('\n') });
+    const r = await claude(env, env.SCAN_MODEL || 'claude-haiku-5-5', content, 800);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const arr = jsonFrom(r.text, []);
+    const ok = new Set(['photo', 'screenshot', 'paper', 'item']);
+    return json({ results: (Array.isArray(arr) ? arr : []).map(x => ({ id: String(x.id || ''), kind: ok.has(x.kind) ? x.kind : 'photo' })) }, 200, cors);
+  }
+
   // --- flights: read a pasted confirmation email into flight details ---
   if (path === 'flight-parse' && req.method === 'POST' && full) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'Reading confirmations needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);

@@ -96,6 +96,14 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .chips.uses span.have{color:var(--accent)}
 .cell.lost img{visibility:hidden}
 .lostmsg{position:absolute;inset:auto 6px 6px 6px;font-size:11px;font-weight:800;color:var(--dim);text-align:center;background:var(--panel);border-radius:8px;padding:4px}
+.tidygrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 10px}
+.tidycell{display:flex;flex-direction:column;gap:3px}
+.tidyc{position:relative;padding:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--panel2);min-height:0;opacity:.55}
+.tidyc img{width:100%;height:100%;object-fit:cover;display:block}
+.tidyc.on{opacity:1;outline:3px solid var(--danger,#c0392b);outline-offset:-3px}
+.tidyc .tk{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:#fff;color:#c0392b;font-weight:900;display:none;align-items:center;justify-content:center;font-size:13px}
+.tidyc.on .tk{display:flex}
+.keepbtn{min-height:28px;padding:2px 4px;font-size:11px;border-radius:8px;background:var(--panel2)}
 .dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
 .dayh:first-child{padding-top:2px}
 .dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
@@ -542,6 +550,36 @@ async function repairThumb(p, im, cell){
     if(!cell.querySelector('.lostmsg')) cell.append(el('div',{className:'lostmsg',textContent:'Couldn’t load · tap to remove'}));
     cell.onclick=async ev=>{ ev.stopPropagation(); if(confirm(`“${p.name}” couldn’t be read on this phone. Remove it from Peggy? You can import it again.`)){ await dbDel('photos',p.id); dropURL(p.id); photos=photos.filter(x=>x.id!==p.id); renderAll(); } }; }
 }
+/* ---------- clean up what's already here ---------- */
+async function openTidy(){
+  if(!acct.session){ toast('Sign in with Google first (Settings → Sign in).',5000); return; }
+  const todo=photos.filter(p=>!p.kind);
+  if(todo.length){ let bar;
+    sheet((sh,close)=>{ const b=el('div'), st=el('p',{textContent:`Looking at ${todo.length} photos…`}); sh.append(el('h3',{textContent:'🧹 Checking your photos'}), st, el('div',{className:'progress'},b)); bar={b,st,close}; });
+    try{ const m=await classifyBlobs(todo.map(p=>({key:p.id, blob:p.blob})), (d,t)=>{ bar.b.style.width=(100*d/t)+'%'; bar.st.textContent=`${d} of ${t}`; });
+      for(const p of todo){ const k=m.get(p.id); if(k){ p.kind=k; await dbPut('photos',p); } } }
+    catch(e){ bar.close(); return toast('Couldn’t check photos: '+e.message, 6000); }
+    bar.close(); }
+  const flagged=photos.filter(p=>p.kind && p.kind!=='photo');
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:flagged.length?`Found ${flagged.length} to tidy up`:'All tidy 🦋'}),
+      el('p',{textContent:flagged.length?'Ticked ones will be removed from Peggy (not from Google Photos or your phone). Untick anything you want to keep. Favorites start unticked.':'No screenshots, maps or item photos found.'}));
+    const pick=new Set(flagged.filter(p=>!p.fav).map(p=>p.id));
+    const btn=el('button',{className:'danger',style:'width:100%;margin-top:10px'}); const upd=()=>{ btn.textContent=`Remove ${pick.size} photo${pick.size===1?'':'s'}`; btn.disabled=!pick.size; };
+    for(const k of ['screenshot','paper','item']){ const ps=flagged.filter(p=>p.kind===k); if(!ps.length) continue;
+      sh.append(el('div',{className:'lab2',textContent:`${k==='screenshot'?'📱':k==='paper'?'🗺️':'🔧'} ${KIND_NAMES[k][1][0].toUpperCase()+KIND_NAMES[k][1].slice(1)} (${ps.length})`}));
+      const g=el('div',{className:'tidygrid'});
+      ps.forEach(p=>{ const c=el('button',{className:'tidyc'+(pick.has(p.id)?' on':''),title:'Tap to keep or remove'}); c.append(el('img',{src:urlFor(p),alt:''}),el('span',{className:'tk',textContent:'✓'}));
+        c.onclick=()=>{ pick.has(p.id)?pick.delete(p.id):pick.add(p.id); c.classList.toggle('on'); upd(); };
+        const keep=el('button',{className:'keepbtn',textContent:'It’s a photo',title:'Mark as a real photo so it isn’t flagged again'}); keep.onclick=async ev=>{ ev.stopPropagation(); p.kind='photo'; await dbPut('photos',p); pick.delete(p.id); c.parentElement.remove(); upd(); };
+        g.append(el('div',{className:'tidycell'},c,keep)); });
+      sh.append(g); }
+    btn.onclick=async()=>{ if(!confirm(`Remove ${pick.size} photo${pick.size===1?'':'s'} from Peggy?`)) return;
+      for(const id of pick){ await dbDel('photos',id); dropURL(id); } const n=pick.size; photos=photos.filter(p=>!pick.has(p.id)); selected.clear(); close(); renderAll(); toast(`Removed ${n} 🧹`); };
+    const c=el('button',{className:'ghost',textContent:flagged.length?'Cancel':'Close',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
+    if(flagged.length){ upd(); sh.append(btn); } sh.append(c);
+  });
+}
 /* ---------- duplicates ---------- */
 // Photos imported before fingerprints existed get one quietly in the background.
 let hashing=null;
@@ -759,15 +797,40 @@ $('#fileIn').onchange=async e=>{
   if(shots) setTimeout(()=>toast(`${shots} screenshot${shots>1?'s':''} skipped. Turn this off in Settings if you want them.`,5000), list.length?3400:0);
   if(list.length) await importBlobs(list);
 };
+/* ---------- sorting: real photos vs screenshots, maps/papers and item shots (Claude, through the relay) ---------- */
+const KIND_NAMES={screenshot:['screenshot','screenshots'],paper:['map or paper','maps & papers'],item:['item photo','item photos']};
+async function tinyB64(blob){ const img=await loadImage(blob); const b=await toBlob(render(img, DEF, 384),'image/jpeg',.7);
+  return new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(String(f.result).split(',')[1]); f.readAsDataURL(b); }); }
+// entries: [{key, blob}] → Map key → 'photo' | 'screenshot' | 'paper' | 'item'
+async function classifyBlobs(entries, onProgress){
+  const out=new Map();
+  for(let i=0;i<entries.length;i+=12){
+    const part=entries.slice(i,i+12);
+    const images=await Promise.all(part.map(async e=>({id:e.key, data:await tinyB64(e.blob)})));
+    const d=await peggyApi('classify',{method:'POST', body:JSON.stringify({images})});
+    (d.results||[]).forEach(r=>out.set(r.id, r.kind));
+    onProgress && onProgress(Math.min(entries.length,i+12), entries.length);
+  }
+  return out;
+}
+const kindSummary = c => Object.entries(c).filter(([,n])=>n).map(([k,n])=>`${n} ${KIND_NAMES[k][n>1?1:0]}`).join(', ');
 async function importBlobs(list, prog){
-  askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[];
+  askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[], skipped={screenshot:0,paper:0,item:0};
   // Skip photos already in Peggy (same file name, same moment taken, same size).
   const seen=new Set(photos.filter(p=>p.src==='device').map(p=>p.name+'|'+p.created+'|'+(p.size||'')));
   let bar=null;
   if(!prog && list.length>6) sheet((sh,close)=>{ const b=el('div'), st=el('p',{textContent:`0 of ${list.length}`});
     sh.append(el('h3',{textContent:'Bringing in your photos'}), st, el('div',{className:'progress'},b)); bar={b,st,close}; });
-  for(const it of list){
+  // Leave out screenshots, maps/papers and item shots before saving anything.
+  let kinds=null;
+  if(skipShots() && acct.session && list.length){
+    if(bar) bar.st.textContent='Sorting out screenshots, maps and item photos…';
+    try{ kinds=await classifyBlobs(list.map((it,i)=>({key:'i'+i, blob:it.blob})), (d,t)=>{ if(bar){ bar.b.style.width=(30*d/t)+'%'; bar.st.textContent=`Sorting ${d} of ${t}…`; } }); }
+    catch(e){ console.warn('classify',e); setTimeout(()=>toast('Couldn’t check for maps and item photos ('+e.message+'). Everything was imported.',5000),3500); }
+  }
+  for(const [idx,it] of list.entries()){
     try{
+      const kd=kinds&&kinds.get('i'+idx); if(kd && kd!=='photo'){ skipped[kd]++; continue; }
       const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
       if(it.src==='device' && seen.has(key)){ dup++; continue; } seen.add(key);
       // iPhone Safari can lose files picked from the photo library once they're saved, so keep a plain copy of the bytes instead.
@@ -775,7 +838,7 @@ async function importBlobs(list, prog){
       const img=await loadImage(it.blob), hash=photoHash(img);
       if(photos.some(q=>q.hash && sameShot({hash,created:it.created}, q))){ dup++; const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; } continue; }
       const thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
-      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch, hash,
+      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch, hash, kind:kd||undefined,
         edits:null, fav:false, albums: albums.some(a=>a.id===view)?[view]:[], postedAt:null};
       await dbPut('photos',p); photos.push(p); added.push(p); n++;
     }catch(err){ console.error(err); fail++; }
@@ -783,7 +846,8 @@ async function importBlobs(list, prog){
   }
   bar && bar.close();
   if(added.length){ try{ localStorage.setItem('peggy.lastBatch', batch); }catch(_){} }
-  const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} already here`:'')+(fail?` · ${fail} failed`:'');
+  const sk=kindSummary(skipped);
+  const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} already here`:'')+(sk?` · skipped ${sk}`:'')+(fail?` · ${fail} failed`:'');
   if(await afterImport(added, msg)) return;
   if(added.length>1 && view==='all'){ view='new'; }
   renderAll(); toast(msg);
@@ -1006,7 +1070,8 @@ async function openSettings(note){
     bgOff.onclick=async()=>{ await setBackground(null); close(); };
     if(document.body.classList.contains('hasbg')) st.append(bgOff);
     const sk=el('input',{type:'checkbox',checked:skipShots()}); sk.onchange=()=>{ try{ localStorage.setItem('peggy.skipShots', sk.checked?'1':'0'); }catch(_){} toast(sk.checked?'Screenshots will be skipped when importing':'Screenshots will be imported too'); };
-    sh.append(el('label',{className:'checkrow',title:'Leave out screenshots when bringing in photos from Google Photos or this phone'},sk,el('span',{textContent:'Skip screenshots when importing'})));
+    sh.append(el('label',{className:'checkrow',title:'Leave out screenshots, maps, papers and item photos when bringing in photos'},sk,el('span',{textContent:'Skip screenshots, maps, papers and item photos when importing'})));
+    const tidy=el('button',{textContent:'🧹 Clean up screenshots, maps & item photos',title:'Find ones already in Peggy and remove them'}); tidy.onclick=()=>{ close(); openTidy(); }; sh.append(tidy);
     const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
     st.append(dups,save,out,wipe,c); sh.append(st);
   });
