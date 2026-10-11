@@ -13,7 +13,7 @@
 //   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
 //   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
 
-const DOCS = ['tasks', 'links', 'shared'];   // shared = shared photo albums (lists) and the photos in them (items)
+const DOCS = ['tasks', 'links', 'shared', 'expenses'];   // shared = shared photo albums (lists) and the photos in them (items)
 
 export default {
   async fetch(req, env) {
