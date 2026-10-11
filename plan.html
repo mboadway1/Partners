@@ -136,6 +136,7 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 .fprice .pu{font-size:11px;color:var(--dim);font-weight:700}
 .fmid{flex:1;min-width:0}
 .fmid .t{font-weight:800} .fmid .m{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amen{font-size:13px;font-weight:700;margin-top:3px}
 .fsave{font-size:13px;font-weight:800;color:var(--accent);margin-top:2px}
 .fnote2{font-size:12px;color:var(--dim);margin:14px 2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .tankin{width:56px;font:inherit;font-size:13px;padding:2px 6px;border-radius:8px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
@@ -1149,7 +1150,8 @@ async function findFlights(){
 }
 
 /* ================= FUEL: cheapest diesel nearby or along the way ================= */
-const FUELS=[['DIESEL','Diesel'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
+const FUELS=[['DIESEL','Diesel'],['REST','🅿️ Rest stops'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
+const isRest = () => fuel.type==='REST';
 const LS=(k,d)=>{ try{ const v=localStorage.getItem('peggy.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
 const SS=(k,v)=>{ try{ localStorage.setItem('peggy.fuel.'+k, JSON.stringify(v)); }catch(_){} };
 const fuel={ type:LS('type','DIESEL'), mode:LS('mode','near'), miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
@@ -1160,17 +1162,18 @@ function here(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) retu
   navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}), e=>rej(new Error(e.code===1?'Location is off for Peggy. Allow it in Settings → Privacy → Location Services → Safari Websites (While Using).':'Couldn’t get your location. Try again.')), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); }); }
 async function findFuel(){
   if(fuel.busy) return; fuel.busy=true; fuel.err=''; if(tab==='fuel') render();
-  try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase();
+  try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase(), kind=isRest()?'rest':'fuel';
     const d = fuel.mode==='route'
-      ? await peggyApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word})})
-      : await peggyApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609)})});
-    fuel.res={...d, from:pos, mode:fuel.mode, at:Date.now()}; SS('last', fuel.res); }
+      ? await peggyApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word, kind})})
+      : await peggyApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609), kind})});
+    fuel.res={...d, from:pos, mode:fuel.mode, kind, at:Date.now()}; SS('last', fuel.res); }
   catch(e){ fuel.err=e.message; }
   finally{ fuel.busy=false; if(tab==='fuel') render(); }
 }
 function renderFuel(v){
   const chips=$('#chips'); chips.replaceChildren();
-  for(const [k,l] of FUELS){ const b=el('button',{className:'chip'+(fuel.type===k?' on':''),textContent:l,title:`Show ${l.toLowerCase()} prices`}); b.onclick=()=>{ fuel.type=k; SS('type',k); render(); }; chips.append(b); }
+  for(const [k,l] of FUELS){ const b=el('button',{className:'chip'+(fuel.type===k?' on':''),textContent:l,title:k==='REST'?'Find rest areas and truck stops':`Show ${l.toLowerCase()} prices`});
+    b.onclick=()=>{ const wasRest=isRest(); fuel.type=k; SS('type',k); render(); if(wasRest!==isRest() && fuel.res) findFuel(); }; chips.append(b); }
   const parts=[];
   const seg=el('div',{className:'seg wide'});
   for(const [k,l] of [['near','📍 Near me'],['route','🛣️ On my way']]){ const b=el('button',{textContent:l,className:fuel.mode===k?'on':''}); b.onclick=()=>{ fuel.mode=k; SS('mode',k); render(); }; seg.append(b); }
@@ -1185,12 +1188,20 @@ function renderFuel(v){
     dest.onchange=()=>{ fuel.dest=dest.value.trim(); SS('dest',fuel.dest); };
     ctl.append(dest);
   }
-  const go=el('button',{className:'primary bigbtn',textContent:fuel.busy?'Looking…':fuel.mode==='near'?`⛽ Find cheapest ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()}`:'⛽ Find cheapest on the way',disabled:fuel.busy});
+  const go=el('button',{className:'primary bigbtn',textContent:fuel.busy?'Looking…':isRest()?(fuel.mode==='near'?'🅿️ Find rest stops near me':'🅿️ Find rest stops on the way'):fuel.mode==='near'?`⛽ Find cheapest ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()}`:'⛽ Find cheapest on the way',disabled:fuel.busy});
   go.onclick=()=>{ if(fuel.mode==='route'){ const i=ctl.querySelector('input'); fuel.dest=(i&&i.value.trim())||fuel.dest; SS('dest',fuel.dest); if(!fuel.dest) return i&&i.focus(); } findFuel(); };
   ctl.append(go); parts.push(ctl);
   if(fuel.err) parts.push(el('div',{className:'card'},el('p',{textContent:fuel.err})));
   const R=fuel.res;
-  if(R && R.stations && R.mode===fuel.mode){
+  if(R && R.stations && R.mode===fuel.mode && (R.kind==='rest')===isRest() && isRest()){
+    const from=R.from||{}, base=R.route?parseInt(R.route.duration):0;
+    const list=R.stations.map(st=>({st, mi:(st.lat!=null&&from.lat!=null)?milesBetween(from.lat,from.lng,st.lat,st.lng):null,
+      ahead: st.detour ? Math.round((st.detour.toSecs||0)/60) : null, extra: st.detour&&base ? Math.max(0,Math.round(((st.detour.toSecs||0)+(st.detour.restSecs||0)-base)/60)) : null}))
+      .sort((a,b)=> R.route ? (a.ahead??1e9)-(b.ahead??1e9) : (a.mi??1e9)-(b.mi??1e9));
+    parts.push(el('div',{className:'fmeta',textContent:`${list.length} rest stop${list.length===1?'':'s'} ${R.route?'along the way, in driving order':'nearby, closest first'} · checked ${ago(new Date(R.at).toISOString())}`+(R.route?` · trip ${Math.round(R.route.meters/1609)} mi`:'')}));
+    list.forEach(x=>parts.push(restRow(x)));
+    if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No rest stops found. Try a bigger distance.':'No rest stops found along that route.'})));
+  } else if(R && R.stations && R.mode===fuel.mode && (R.kind==='rest')===isRest()){
     const from=R.from||{}, base=R.route?parseInt(R.route.duration):0;
     let list=R.stations.map(st=>({st, p:priceOf(st,fuel.type), mi:(st.lat!=null&&from.lat!=null)?milesBetween(from.lat,from.lng,st.lat,st.lng):null,
       extra: st.detour&&base ? Math.max(0,Math.round(((st.detour.toSecs||0)+(st.detour.restSecs||0)-base)/60)) : null}));
@@ -1200,9 +1211,11 @@ function renderFuel(v){
     priced.forEach((x,i)=>parts.push(fuelRow(x, i===0, nearest)));
     if(none.length){ parts.push(el('div',{className:'mhead',textContent:'No price listed'})); none.slice(0,6).forEach(x=>parts.push(fuelRow(x,false,null))); }
     if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No stations found. Try a bigger distance.':'No stations found along that route.'})));
-  } else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Peggy uses your location to find posted prices nearby, or along your route, cheapest first.'})));
+  } else if(!fuel.busy && !fuel.err && isRest()) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Rest stops'}),el('p',{textContent:'Rest areas and truck stops near you or along your route, with restrooms, pets and hours, and one tap to navigate.'})));
+  else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Peggy uses your location to find posted prices nearby, or along your route, cheapest first.'})));
   const tank=el('input',{type:'number',value:fuel.tank,min:5,max:200,className:'tankin',title:'How many gallons you usually buy'}); tank.onchange=()=>{ fuel.tank=Math.max(1,+tank.value||25); SS('tank',fuel.tank); render(); };
-  parts.push(el('div',{className:'fnote2'}, el('span',{textContent:'Savings figured on '}), tank, el('span',{textContent:' gallons · Prices come from Google Maps and can be a few hours old. Let a passenger tap while you’re driving.'})));
+  if(isRest()) parts.push(el('div',{className:'fnote2',textContent:'Places come from Google Maps. Let a passenger tap while you’re driving.'}));
+  else parts.push(el('div',{className:'fnote2'}, el('span',{textContent:'Savings figured on '}), tank, el('span',{textContent:' gallons · Prices come from Google Maps and can be a few hours old. Let a passenger tap while you’re driving.'})));
   v.replaceChildren(...parts);
 }
 function fuelRow(x, best, nearest){
@@ -1217,6 +1230,19 @@ function fuelRow(x, best, nearest){
   if(st.lat!=null){ nav('🧭 Apple',`https://maps.apple.com/?daddr=${st.lat},${st.lng}&dirflg=d`,'Directions in Apple Maps'); nav('🗺️ Google',`https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}&destination_place_id=${encodeURIComponent(st.id)}&travelmode=driving`,'Directions in Google Maps'); }
   const log=el('button',{textContent:'⛽ Log it',title:'Add this fill-up to Money'}); log.onclick=()=>logFillUp(st, x.p); acts.append(log);
   r.append(el('div',{className:'frow1'},price,mid), acts); return r;
+}
+function restRow(x){
+  const st=x.st, r=el('div',{className:'fuelrow'});
+  const kind = /truck/i.test(st.type+st.typeName) ? '🚛 Truck stop' : /rest/i.test(st.type+st.typeName) ? '🅿️ Rest area' : (st.typeName||'Stop');
+  const when = x.ahead!=null ? (x.ahead<60?`in ${x.ahead} min`:`in ${Math.floor(x.ahead/60)} h ${x.ahead%60} min`) : '';
+  const bits=[kind, x.mi!=null?`${x.mi<10?x.mi.toFixed(1):Math.round(x.mi)} mi`:'', when, x.extra!=null&&x.extra>2?`+${x.extra} min off route`:''].filter(Boolean).join(' · ');
+  const am=[st.restroom===true?'🚻 Restrooms':'', st.dogs===true?'🐕 Dogs OK':'', st.open===true?'🟢 Open now':st.open===false?'🔴 Closed now':'', st.rating?`⭐ ${st.rating.toFixed(1)}${st.ratings?` (${st.ratings})`:''}`:''].filter(Boolean);
+  const big=el('div',{className:'fprice'}, el('div',{className:'pv',style:'font-size:24px',textContent:x.ahead!=null?(x.ahead<60?`${x.ahead}m`:`${Math.floor(x.ahead/60)}h${String(x.ahead%60).padStart(2,'0')}`):x.mi!=null?`${x.mi<10?x.mi.toFixed(1):Math.round(x.mi)} mi`:'—'}), el('div',{className:'pu',textContent:x.ahead!=null?'away':'away'}));
+  const mid=el('div',{className:'fmid'}, el('div',{className:'t',textContent:st.name}), el('div',{className:'m',textContent:bits}), el('div',{className:'m',textContent:st.address}));
+  if(am.length) mid.append(el('div',{className:'amen',textContent:am.join('  ')}));
+  const acts=el('div',{className:'facts'}), nav=(t,href,title)=>acts.append(el('a',{href,target:'_blank',rel:'noopener',textContent:t,title}));
+  if(st.lat!=null){ nav('🧭 Apple',`https://maps.apple.com/?daddr=${st.lat},${st.lng}&dirflg=d`,'Directions in Apple Maps'); nav('🗺️ Google',`https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}&destination_place_id=${encodeURIComponent(st.id)}&travelmode=driving`,'Directions in Google Maps'); }
+  r.append(el('div',{className:'frow1'},big,mid), acts); return r;
 }
 function logFillUp(st, p){
   editExpense(null);
