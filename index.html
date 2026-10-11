@@ -372,6 +372,7 @@ body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
 <script src="core-butterfly.js"></script>
 <script src="account.js"></script>
 <script src="magic.js"></script>
+<script src="share.js"></script>
 <script>
 'use strict';
 /* ---------- config ---------- */
@@ -414,7 +415,7 @@ function renderChips(){
   add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
   add('posted','Posted',photos.filter(p=>p.postedAt).length);
   const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
-  for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, a.name, photos.filter(p=>p.albums.includes(a.id)).length);
+  for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, (a.shared?'👥 ':'')+a.name, photos.filter(p=>p.albums.includes(a.id)).length);
   const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
   if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted','new'].includes(view)) view='all';
   if(view==='new' && !nb0) view='all';
@@ -552,7 +553,7 @@ function updateSelbar(){
   $('#sTv').classList.toggle('hidden', !tv.code);
   $('#sAll').textContent = n && n===visible().length ? 'Select none' : 'Select all';
 }
-function renderAll(){ renderChips(); renderGrid(); updateSelbar(); }
+function renderAll(fromSync){ renderChips(); renderGrid(); updateSelbar(); if(!fromSync && albums.some(a=>a.shared)) sharedSoon(); }
 
 /* ---------- sheets ---------- */
 function sheet(build){ return new Promise(resolve=>{
@@ -581,9 +582,16 @@ async function addToAlbum(aid){
 }
 async function albumMenu(aid){
   const a=albums.find(x=>x.id===aid);
-  const v=await actions(a.name,[['Rename','rename'],['Delete album (keeps photos)','del','danger']]);
-  if(v==='rename'){ const n=(prompt('Album name',a.name)||'').trim(); if(n){ a.name=n; await dbPut('albums',a); renderAll(); } }
-  if(v==='del' && confirm(`Delete album “${a.name}”? Photos stay in your library.`)){
+  const who=(acct.session && await sharedPartner())||null, pn=(who&&who.name)||'your partner';
+  const v=await actions((a.shared?'👥 ':'')+a.name,[
+    a.shared?['Stop sharing','unshare']:[`👥 Share with ${pn}`,'share','primary'],
+    ['Rename','rename'],['Delete album (keeps photos)','del','danger']],
+    a.shared?`Shared with ${pn}. Photos either of you add show up for both.`:null);
+  if(v==='share') return shareAlbum(a);
+  if(v==='unshare'){ if(confirm(`Stop sharing “${a.name}”? You both keep the photos you already have.`)){ try{ await unshareAlbum(a); toast('Album isn’t shared any more'); }catch(e){ toast('Couldn’t stop sharing: '+e.message,5000); } } return; }
+  if(v==='rename'){ const n=(prompt('Album name',a.name)||'').trim(); if(n){ a.name=n; await dbPut('albums',a); await renameShared(a); renderAll(); } }
+  if(v==='del' && confirm(a.shared?`Delete “${a.name}”? This also stops sharing it. Photos stay in your library, and ${pn} keeps their copy.`:`Delete album “${a.name}”? Photos stay in your library.`)){
+    if(a.shared){ try{ await unshareAlbum(a); }catch(e){ toast('Couldn’t stop sharing: '+e.message,5000); return; } }
     albums=albums.filter(x=>x.id!==aid); await dbDel('albums',aid);
     for(const p of photos) if(p.albums.includes(aid)){ p.albums=p.albums.filter(x=>x!==aid); await dbPut('photos',p); }
     view='all'; renderAll();
@@ -1303,7 +1311,7 @@ addTips(document);
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
   renderAll();
-  setTimeout(fillHashes, 2500);
+  setTimeout(fillHashes, 2500); setTimeout(sharedSync, 1200);
   const tvParam=new URLSearchParams(location.search).get('tv');
   if(tvParam){ history.replaceState(null,'',location.pathname+location.hash); tvPair(tvParam); }
   try{ const back=await peggyFinishSignIn(); if(back){ toast(`Signed in as ${acct.me.name}`); if(!/^(index\.html)?$/.test(back)){ location.href=back; return; } } }

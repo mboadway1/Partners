@@ -13,7 +13,7 @@
 //   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
 //   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
 
-const DOCS = ['tasks', 'links'];
+const DOCS = ['tasks', 'links', 'shared'];   // shared = shared photo albums (lists) and the photos in them (items)
 
 export default {
   async fetch(req, env) {
@@ -145,6 +145,28 @@ async function api(req, env, url, cors) {
       await KV.put(key, JSON.stringify(doc));
       return json(doc, 200, cors);
     }
+  }
+
+  // --- shared album photos, kept in Cloudflare R2 (binding PEGGY_R2) ---
+  const pm = path.match(/^photo\/([\w-]{8,64})(?:\/(full))?$/);
+  if (pm) {
+    if (!env.PEGGY_R2) return json({ error: 'Shared albums need the PEGGY_R2 photo storage connected to the relay.' }, 500, cors);
+    const key = 'photos/' + pm[1] + '/full';
+    if (req.method === 'GET') {
+      const o = await env.PEGGY_R2.get(key);
+      if (!o) return json({ error: 'Photo not found' }, 404, cors);
+      return new Response(o.body, { status: 200, headers: { ...cors, 'Content-Type': (o.httpMetadata && o.httpMetadata.contentType) || 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' } });
+    }
+    if (req.method === 'PUT' && full) {
+      const len = +(req.headers.get('Content-Length') || 0);
+      if (len > 20e6) return json({ error: 'Photo too big' }, 413, cors);
+      const buf = await req.arrayBuffer();
+      if (!buf.byteLength || buf.byteLength > 20e6) return json({ error: 'Photo missing or too big' }, 400, cors);
+      await env.PEGGY_R2.put(key, buf, { httpMetadata: { contentType: req.headers.get('Content-Type') || 'image/jpeg' }, customMetadata: { by: s.email } });
+      return json({ ok: true, size: buf.byteLength }, 200, cors);
+    }
+    if (req.method === 'DELETE' && full) { await env.PEGGY_R2.delete(key); return json({ ok: true }, 200, cors); }
+    return json({ error: 'Not allowed' }, 405, cors);
   }
 
   // --- AI captions: Claude looks at the photos and suggests Facebook captions ---

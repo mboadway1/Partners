@@ -12,3 +12,7 @@ GOOGLE_CLIENT_ID = "833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleuse
 [[kv_namespaces]]
 binding = "PEGGY_KV"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"   # only needed when deploying with wrangler from a computer
+
+[[r2_buckets]]
+binding = "PEGGY_R2"            # photos in shared albums
+bucket_name = "peggy-photos"
