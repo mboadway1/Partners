@@ -1158,7 +1158,8 @@ async function smallJpeg(file){ const img=await loadImage(file); return (await t
 const b64=blob=>new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(String(f.result).split(',')[1]); f.readAsDataURL(blob); });
 $('#aiGo').onclick=async()=>{
   const out=$('#aiOut'), btn=$('#aiGo');
-  if(!acct.session){ out.replaceChildren(el('p',{className:'hint',textContent:'Sign in with Google first (Settings → Sign in), then try again.'})); return; }
+  if(!acct.session){ const si=el('button',{className:'primary',textContent:'Sign in with Google',title:'Sign in once so Peggy can ask Claude for captions'}); si.onclick=()=>peggySignIn('index.html');
+    out.replaceChildren(el('p',{className:'hint',textContent:'Caption ideas need you signed in to Peggy. You only do this once on each phone.'}), si); return; }
   const ids=post.ids.filter(id=>post.files.has(id)).slice(0,4); if(!ids.length) return;
   btn.disabled=true; btn.textContent='✨ Looking at your photos…'; out.replaceChildren();
   try{
