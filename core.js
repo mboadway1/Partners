@@ -129,5 +129,28 @@ async function photoTaken(blob){
   }catch(_){}
   return null;
 }
+/* ---------- duplicate detection ---------- */
+// A "looks like" fingerprint: the photo shrunk to 16×16 grey dots (one hex digit each) plus its overall colour.
+// The same photo saved at another size, quality or name gives almost the same fingerprint.
+function photoHash(img){
+  const c=document.createElement('canvas'); c.width=16; c.height=16; const x=c.getContext('2d',{willReadFrequently:true});
+  x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high'; x.drawImage(img,0,0,16,16);
+  const d=x.getImageData(0,0,16,16).data; let hex='', r=0, g=0, b=0;
+  for(let i=0;i<256;i++){ const R=d[i*4], G=d[i*4+1], B=d[i*4+2]; r+=R; g+=G; b+=B; hex+=Math.min(15,Math.round((R*.299+G*.587+B*.114)/17)).toString(16); }
+  return 'v2'+hex+[r,g,b].map(v=>Math.min(15,Math.round(v/256/17)).toString(16)).join('');
+}
+// Average difference per dot (0 = identical, 15 = opposite); 99 when the colours or versions don't match.
+function hashDist(a,b){
+  if(!a||!b||a.length!==b.length||!a.startsWith('v2')) return 99;
+  for(let i=258;i<261;i++) if(Math.abs(parseInt(a[i],16)-parseInt(b[i],16))>1) return 99;
+  let d=0; for(let i=2;i<258;i++) d+=Math.abs(parseInt(a[i],16)-parseInt(b[i],16)); return d/256;
+}
+// Same photo: nearly identical fingerprint, or a close one taken at the same moment.
+function sameShot(a, b){
+  const d=hashDist(a.hash,b.hash);
+  // Measured: a re-saved or resized copy differs by about 0.02; quick burst shots of a moving scene by 0.14 or more.
+  if(d<=.08) return true;
+  return d<=.11 && a.created && b.created && Math.abs(a.created-b.created)<=2000;
+}
 const PEER_PREFIX='peggy-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';

@@ -65,6 +65,10 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .daterow input{box-sizing:border-box;max-width:100%}
 .namel{margin-bottom:12px}
 .daterow input,.namel input{font:inherit;font-size:16px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);min-width:0;width:100%}
+.thumbs.dup{display:flex;gap:6px;overflow-x:auto}
+.dupc{flex:none;width:76px;display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:800;color:var(--dim);text-align:center}
+.dupc img{width:76px;height:76px;object-fit:cover;border-radius:8px;opacity:.55}
+.dupc.keep{color:var(--accent)} .dupc.keep img{opacity:1;outline:3px solid var(--accent);outline-offset:-3px}
 .dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
 .dayh:first-child{padding-top:2px}
 .dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
@@ -219,7 +223,10 @@ body.selecting-mode .bnav{display:none}
 .ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 #sTv{display:inline-flex;align-items:center;gap:6px} #sTv .ic{width:20px;height:20px}
 #btnImport{white-space:nowrap;flex:none}
+#sAll{white-space:nowrap;flex:none;background:var(--panel2)}
+body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
 .selbar button{padding:10px 13px}
+@media (max-width:360px){ .selbar{gap:5px} .selbar button{padding:10px 9px} }
 .selbar .count{flex:none;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:var(--accent);color:#fff;font-weight:800;font-size:15px;display:inline-flex;align-items:center;justify-content:center;margin-right:auto}
 @media (max-width:500px){ .lbl{display:none} #btnImport{font-size:24px;line-height:1;width:44px;padding:0;border-radius:50%} }
 @media (max-width:360px){ .wm{display:none} .iconlink{min-width:38px!important;padding:8px 6px} .lbl{display:none} .bar h1{font-size:18px!important} .bar button{padding:10px 8px!important} }
@@ -240,6 +247,7 @@ body.selecting-mode .bnav{display:none}
   <div class="bar">
     <h1 id="wordmark">Peggy</h1>
     <button id="btnImport" title="Import photos from Google Photos or this device" class="primary" aria-label="Import">＋<span class="lbl"> Import</span></button>
+    <button id="sAll" class="hidden" title="Select every photo in this view, or none">Select all</button>
     <button id="btnSelect" title="Select photos to favorite, add to an album, post or send to the TV">Select</button>
     <button id="btnTv" title="Connect to Peggy on your Fire TV" class="ghost" aria-label="TV"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span class="tl">TV</span><span class="tvdot" id="tvDot"></span></button>
     <button id="btnSettings" title="Settings: Google sign-in, storage, delete data" class="ghost" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg><span class="tl">Settings</span></button>
@@ -261,7 +269,6 @@ body.selecting-mode .bnav{display:none}
 </nav>
 <div class="selbar hidden" id="selbar">
   <span class="count" id="selCount">0</span>
-  <button id="sAll" title="Select all or none in this view">All</button>
   <button id="sFav" title="Add to or remove from Favorites">★</button>
   <button id="sAlbum" title="Add the selected photos to an album">Album</button>
   <button id="sMore" title="More: remove from album, mark posted, save, delete">More</button>
@@ -399,7 +406,8 @@ const CHIP_TIPS={new:'Show the photos from your last import',all:'Show all photo
 function renderChips(){
   const box=$('#chips'); box.replaceChildren();
   const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':''),title:CHIP_TIPS[id]||`Show the “${label}” album (tap again to rename or delete)`},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
-    b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b); };
+    b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b);
+    if(view===id && albums.some(a=>a.id===id)){ const m=el('button',{className:'chip',textContent:'⋯',title:`Rename or delete the “${label}” album`,ariaLabel:'Album options'}); m.onclick=()=>albumMenu(id); box.append(m); } };
   add('all','All',photos.length);
   const nb0=photos.filter(p=>p.batch && p.batch===lastBatch()).length; if(nb0) add('new','🆕 Last import',nb0);
   add('fav','★ Favorites',photos.filter(p=>p.fav).length);
@@ -441,6 +449,47 @@ function renderGrid(){
       ? [el('h2',{textContent:'Nothing here yet'}), el('p',{textContent:'Select photos in All and use Album or ★ to fill this view.'})]
       : [Object.assign(el('div',{className:'trail'}),{innerHTML:butterfly({size:30})+butterfly({size:40})+butterfly({size:64,flutter:true})}), el('h2',{textContent:'Welcome to Peggy'}), el('p',{textContent:'Tap ＋ to bring in photos from Google Photos or this phone. Then make them pretty and share them on Facebook.'})]));
   }
+}
+/* ---------- duplicates ---------- */
+// Photos imported before fingerprints existed get one quietly in the background.
+let hashing=null;
+function fillHashes(){
+  if(hashing) return hashing;
+  hashing=(async()=>{ for(const p of photos.filter(p=>!(p.hash&&p.hash.startsWith('v2')))){
+    try{ const img=await loadImage(p.orig||p.blob); p.hash=photoHash(img); await dbPut('photos',p); }catch(_){}
+    await sleep(30); } })().finally(()=>{ hashing=null; });
+  return hashing;
+}
+// Groups of copies of the same photo. The one to keep is the most "loved": favorite, edited, posted, in albums, then the biggest.
+function duplicateGroups(){
+  const l=photos.filter(p=>p.hash).sort((a,b)=>a.created-b.created), used=new Set(), groups=[];
+  for(let i=0;i<l.length;i++){ if(used.has(l[i].id)) continue; const g=[l[i]];
+    for(let j=i+1;j<l.length;j++){ if(used.has(l[j].id)) continue; if(sameShot(l[i],l[j])){ g.push(l[j]); used.add(l[j].id); } }
+    if(g.length>1){ used.add(l[i].id); const score=p=>(p.fav?8:0)+(edited(p)?4:0)+(p.postedAt?2:0)+p.albums.length*.5+(p.size||0)/1e8;
+      g.sort((a,b)=>score(b)-score(a)||a.added-b.added); groups.push(g); } }
+  return groups;
+}
+async function openDuplicates(){
+  let wait=null;
+  if(photos.some(p=>!(p.hash&&p.hash.startsWith('v2')))){ sheet((sh,close)=>{ sh.append(el('h3',{textContent:'Checking for duplicates…'}), el('p',{textContent:'Looking at each photo once. This only happens the first time.'})); wait=close; }); await fillHashes(); wait&&wait(); }
+  const groups=duplicateGroups(), extra=groups.reduce((n,g)=>n+g.length-1,0);
+  sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:extra?`${extra} duplicate${extra>1?'s':''} found`:'No duplicates 🦋'}),
+      el('p',{textContent:extra?'Each row is one photo that’s in Peggy more than once. Peggy keeps the starred copy (favorites, edits, albums and “posted” move onto it) and removes the rest. Google Photos and your phone aren’t touched.':'Every photo in Peggy is one of a kind. New imports skip copies automatically.'}));
+    const box=el('div',{className:'evs'});
+    for(const g of groups){ const row=el('div',{className:'thumbs dup'});
+      g.forEach((p,i)=>{ const w=el('div',{className:'dupc'+(i===0?' keep':'')}, el('img',{src:urlFor(p),alt:''}), el('span',{textContent:i===0?'★ Keep':'Remove'})); row.append(w); });
+      box.append(row); }
+    const go=el('button',{className:'danger',textContent:`Remove ${extra} duplicate${extra>1?'s':''}`,style:'width:100%;margin-top:10px',title:'Keep one copy of each photo and remove the others from Peggy'});
+    go.onclick=async()=>{ for(const g of groups){ const keep=g[0];
+        for(const p of g.slice(1)){ keep.fav=keep.fav||p.fav; keep.postedAt=keep.postedAt||p.postedAt; p.albums.forEach(a=>{ if(!keep.albums.includes(a)) keep.albums.push(a); });
+          await dbDel('photos',p.id); dropURL(p.id); }
+        await dbPut('photos',keep); }
+      const gone=new Set(groups.flatMap(g=>g.slice(1).map(p=>p.id))); photos=photos.filter(p=>!gone.has(p.id)); selected.clear();
+      close(); renderAll(); toast(`Removed ${gone.size} duplicate${gone.size>1?'s':''}`); };
+    const c=el('button',{className:'ghost',textContent:extra?'Cancel':'Close',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
+    sh.append(box); if(extra) sh.append(go); sh.append(c);
+  });
 }
 /* ---------- days and events ---------- */
 const dayKey = t => { const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
@@ -496,11 +545,12 @@ function openEvents(){
 const pickSpread=(l,n)=>l.length<=n?l:Array.from({length:n},(_,i)=>l[Math.round(i*(l.length-1)/(n-1))]);
 function updateSelbar(){
   $('#selbar').classList.toggle('hidden', !selecting); document.body.classList.toggle('selecting-mode', selecting);
+  $('#sAll').classList.toggle('hidden', !selecting);
   $('#btnSelect').textContent = selecting ? 'Done' : 'Select';
   const n=selected.size; $('#selCount').textContent = n; $('#selCount').setAttribute('aria-label', n+' selected');
   for(const id of ['#sFav','#sAlbum','#sMore','#sPost','#sTv']) $(id).disabled = !n;
   $('#sTv').classList.toggle('hidden', !tv.code);
-  $('#sAll').textContent = n && n===visible().length ? 'None' : 'All';
+  $('#sAll').textContent = n && n===visible().length ? 'Select none' : 'Select all';
 }
 function renderAll(){ renderChips(); renderGrid(); updateSelbar(); }
 
@@ -617,8 +667,10 @@ async function importBlobs(list, prog){
     try{
       const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
       if(it.src==='device' && seen.has(key)){ dup++; continue; } seen.add(key);
-      const thumb=await makeThumb(it.blob);
-      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch,
+      const img=await loadImage(it.blob), hash=photoHash(img);
+      if(photos.some(q=>q.hash && sameShot({hash,created:it.created}, q))){ dup++; const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; } continue; }
+      const thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
+      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch, hash,
         edits:null, fav:false, albums: albums.some(a=>a.id===view)?[view]:[], postedAt:null};
       await dbPut('photos',p); photos.push(p); added.push(p); n++;
     }catch(err){ console.error(err); fail++; }
@@ -830,7 +882,8 @@ async function openSettings(note){
     const bgOff=el('button',{textContent:'Remove background photo',title:'Go back to the plain pink background'});
     bgOff.onclick=async()=>{ await setBackground(null); close(); };
     if(document.body.classList.contains('hasbg')) st.append(bgOff);
-    st.append(save,out,wipe,c); sh.append(st);
+    const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
+    st.append(dups,save,out,wipe,c); sh.append(st);
   });
 }
 
@@ -1250,6 +1303,7 @@ addTips(document);
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
   renderAll();
+  setTimeout(fillHashes, 2500);
   const tvParam=new URLSearchParams(location.search).get('tv');
   if(tvParam){ history.replaceState(null,'',location.pathname+location.hash); tvPair(tvParam); }
   try{ const back=await peggyFinishSignIn(); if(back){ toast(`Signed in as ${acct.me.name}`); if(!/^(index\.html)?$/.test(back)){ location.href=back; return; } } }
