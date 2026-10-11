@@ -235,6 +235,27 @@ async function api(req, env, url, cors) {
     return json({ ideas: Array.isArray(arr) ? arr.slice(0, 8) : [] }, 200, cors);
   }
 
+  // --- money: read receipts and screenshots (bank, card, Venmo, orders) into expenses ---
+  if (path === 'receipt-scan' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Scanning receipts needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { images, today } = await body();
+    const pics = (Array.isArray(images) ? images : []).filter(x => typeof x === 'string' && x.length < 3000000).slice(0, 4);
+    if (!pics.length) return json({ error: 'No pictures sent' }, 400, cors);
+    const content = pics.map(d => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: d } }));
+    content.push({ type: 'text', text: [
+      `Today is ${String(today || '').slice(0, 10) || 'unknown'}. These pictures are receipts or screenshots (a store receipt, a restaurant bill, an order confirmation, or a list of transactions from a bank, card or payment app).`,
+      'List the money spent. A single receipt or bill is ONE expense: use the final total actually paid (with tax and tip). A list of transactions gives one expense per purchase. Skip deposits, refunds, credits, transfers between own accounts, and pending holds that are duplicated.',
+      'For each: "what" = the store or merchant in plain words (e.g. "Costco", "Rosa’s Cantina"), plus a 2–4 word hint of what was bought when the receipt shows it; "amount" = positive number in dollars; "date" = YYYY-MM-DD (use today’s year if the year isn’t shown); "cat" = one of groceries, food, home, bills, gas, rv, travel, fun, gifts, health, other; "note" = anything useful like the card last 4 or order number, else "".',
+      'Reply with only JSON: an array of {"what": "...", "amount": 0, "date": "YYYY-MM-DD", "cat": "...", "note": "..."}. Use [] if there is no spending.',
+    ].join('\n') });
+    const r = await claude(env, env.CAPTION_MODEL || 'claude-sonnet-5-5', content, 2000);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const arr = jsonFrom(r.text, []);
+    const items = (Array.isArray(arr) ? arr : []).map(x => ({ what: String(x.what || '').slice(0, 80), amount: Math.round(Math.abs(+x.amount || 0) * 100) / 100,
+      date: /^\d{4}-\d\d-\d\d$/.test(x.date || '') ? x.date : '', cat: String(x.cat || 'other'), note: String(x.note || '').slice(0, 120) })).filter(x => x.amount > 0).slice(0, 60);
+    return json({ items }, 200, cors);
+  }
+
   // --- flights: read a pasted confirmation email into flight details ---
   if (path === 'flight-parse' && req.method === 'POST' && full) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'Reading confirmations needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);

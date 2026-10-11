@@ -114,6 +114,15 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 /* links */
 .search{margin-bottom:10px}
 .diag{font-size:12px!important;color:var(--dim);margin-top:12px!important;word-break:break-word}
+.scanlist{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.srow{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border-radius:12px;padding:10px}
+.srow.dupe{opacity:.6}
+.srow > input[type=checkbox]{width:22px;height:22px;margin-top:8px;flex:none;accent-color:var(--accent)}
+.sfields{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.sline{display:flex;gap:6px} .sline > *{min-width:0}
+.sline input,.sline select{font:inherit;font-size:15px;padding:7px 9px;border-radius:10px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);flex:1}
+.sline .samt{flex:none;width:96px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.snote{font-size:12px;color:var(--dim);font-weight:700}
 .findfl{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
 .findfl > span:first-child{font-size:24px} .findfl small{display:block;color:var(--dim);font-weight:600;font-size:13px}
 .flight{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
@@ -784,7 +793,10 @@ function renderMoney(v){
   if(bal) card.append(el('div',{className:'ba',textContent:money(Math.abs(bal))}));
   if(bal){ const st=el('button',{className:'primary',textContent:'Settle up',title:'Record a payment that evens things out'}); st.onclick=()=>settleUp(bal); card.append(st); }
   const list=store.expenses.items.filter(x=>mview==='all' || monthKey(x.date||'')===(mview==='this'?nowK:lastK)).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
-  const parts=[card];
+  const scan=el('button',{className:'findfl',title:'Take a photo of a receipt, or pick a screenshot from a bank, card or Venmo app'});
+  scan.append(el('span',{textContent:'📷'}), el('span',{},el('b',{textContent:'Scan a receipt or screenshot'}),el('small',{textContent:'Claude reads the store, total and date for you'})));
+  scan.onclick=()=>scanExpenses();
+  const parts=[card, scan];
   // This month at a glance
   const mo=store.expenses.items.filter(x=>x.kind!=='payment' && monthKey(x.date||'')===(mview==='last'?lastK:nowK));
   if(mo.length){ const tot=mo.reduce((n,x)=>n+x.amount,0), byMe=mo.filter(x=>x.paidBy===mine).reduce((n,x)=>n+x.amount,0);
@@ -850,6 +862,62 @@ async function editExpense(x){
     const btns=el('div',{className:'btns'});
     if(!isNew){ const del=el('button',{className:'danger',textContent:'Delete',title:'Delete this expense for both of you'}); del.onclick=()=>{ if(confirm('Delete this expense?')){ change('expenses',[{op:'delete',id:x.id}]); close(); } }; btns.append(del); }
     const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(); btns.append(c,save); sh.append(btns);
+  });
+}
+// Pick receipt photos or screenshots, let Claude read them, review, then save as expenses.
+function pickImages(){ return new Promise(res=>{ const i=el('input',{type:'file',accept:'image/*',multiple:true}); i.style.display='none';
+  i.onchange=()=>{ res([...i.files]); i.remove(); }; document.body.append(i); i.click(); }); }
+async function receiptJpeg(f){ const img=await loadImage(f), k=Math.min(1,1800/Math.max(img.naturalWidth,img.naturalHeight));
+  const c=document.createElement('canvas'); c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+  const x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(img,0,0,c.width,c.height); const b=await toBlob(c,'image/jpeg',.85);
+  return new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); }); }
+async function scanExpenses(){
+  if(!acct.session) return peggySignIn('plan.html#money');
+  const files=(await pickImages()).slice(0,4); if(!files.length) return;
+  let closeWait;
+  sheet((sh,close)=>{ closeWait=close; sh.append(el('h3',{textContent:'📷 Reading…'}), el('p',{textContent:`Claude is reading ${files.length>1?files.length+' pictures':'the picture'} for prices, stores and dates. This takes a few seconds.`}), el('div',{className:'spin',textContent:'✨'})); });
+  let items=[];
+  try{ const images=await Promise.all(files.map(receiptJpeg));
+    const d=await peggyApi('receipt-scan',{method:'POST', body:JSON.stringify({images, today:ymd(new Date())})}); items=d.items||[]; }
+  catch(e){ closeWait&&closeWait(); return toast('Couldn’t read it: '+e.message, 6000); }
+  closeWait&&closeWait();
+  if(!items.length) return toast('No purchases found in that picture. Try a clearer photo, or add it by hand with ＋.', 6000);
+  reviewScanned(items);
+}
+async function reviewScanned(items){
+  const p=partner(), pn=(p&&p.name)||'your partner', mine=me().email;
+  const opts={paidBy:mine, split:'half'};
+  const rows=items.map(x=>({...x, on:true, cat:CATS.some(c=>c[0]===x.cat)?x.cat:'other', date:x.date||ymd(new Date())}));
+  // Already logged? (same amount within 3 days)
+  const dupe=x=>store.expenses.items.some(e=>e.kind!=='payment' && e.amount===Math.round(x.amount*100) && x.date && e.date && Math.abs(parseYmd(e.date)-parseYmd(x.date))<=3*864e5);
+  rows.forEach(r=>{ if(dupe(r)){ r.on=false; r.dupe=true; } });
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:`Found ${rows.length} expense${rows.length>1?'s':''}`}), el('p',{textContent:'Check the amounts, untick anything that isn’t shared, then save.'}));
+    const list=el('div',{className:'scanlist'});
+    const total=el('p',{className:'owep'});
+    const draw=()=>{ list.replaceChildren(...rows.map(r=>{
+      const ck=el('input',{type:'checkbox',checked:r.on,title:'Include this one'}); ck.onchange=()=>{ r.on=ck.checked; sum(); };
+      const what=el('input',{value:r.what,title:'What it was'}); what.oninput=()=>{ r.what=what.value; };
+      const amt=el('input',{value:r.amount.toFixed(2),inputMode:'decimal',className:'samt',title:'Amount'}); amt.oninput=()=>{ r.amount=toCents(amt.value)/100||0; sum(); };
+      const cat=el('select',{title:'Category'}); CATS.forEach(([k,e,l])=>cat.append(el('option',{value:k,textContent:`${e} ${l}`}))); cat.value=r.cat; cat.onchange=()=>{ r.cat=cat.value; };
+      const date=el('input',{type:'date',value:r.date,title:'Date'}); date.onchange=()=>{ r.date=date.value; };
+      const row=el('div',{className:'srow'+(r.dupe?' dupe':'')}, ck, el('div',{className:'sfields'}, el('div',{className:'sline'},what,amt), el('div',{className:'sline'},cat,date),
+        r.dupe?el('div',{className:'snote',textContent:'Looks already logged, so it’s unticked'}):r.note?el('div',{className:'snote',textContent:r.note}):''));
+      return row; })); };
+    const sum=()=>{ const on=rows.filter(r=>r.on), t=on.reduce((n,r)=>n+Math.round(r.amount*100),0), o=opts.split==='full'?t:Math.round(t/2);
+      total.textContent = on.length ? `${on.length} to save · ${money(t)} · ${opts.paidBy===mine?pn+' owes you':'you owe '+pn} ${money(o)}` : 'Nothing ticked'; };
+    const segP=el('div',{className:'seg wide'}), segS=el('div',{className:'seg wide'});
+    for(const [v,l] of [[mine,'I paid'],[(p&&p.email)||'',`${pn} paid`]]){ const b=el('button',{type:'button',textContent:l}); b.onclick=()=>{ opts.paidBy=v; segP.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); sum(); }; if(v===mine) b.classList.add('on'); segP.append(b); }
+    for(const [v,l] of [['half','Split 50/50'],['full','They owe it all']]){ const b=el('button',{type:'button',textContent:l}); b.onclick=()=>{ opts.split=v; segS.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); sum(); }; if(v==='half') b.classList.add('on'); segS.append(b); }
+    draw(); sum();
+    const save=el('button',{className:'primary',textContent:'Save'});
+    save.onclick=()=>{ const on=rows.filter(r=>r.on && r.amount>0); if(!on.length) return toast('Nothing ticked');
+      if(!p && opts.paidBy!==mine) return toast('Your partner needs to sign in to Peggy first.');
+      change('expenses', on.map(r=>({op:'upsert', item:{id:uid(), kind:'expense', what:r.what.trim()||catOf(r.cat)[2], amount:Math.round(r.amount*100), paidBy:opts.paidBy, split:opts.split, cat:r.cat, date:r.date||ymd(new Date()), note:(r.note||'')+(r.note?' · ':'')+'scanned'}})));
+      close(); toast(`Saved ${on.length} expense${on.length>1?'s':''} 🧾`); };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
+    const btns=el('div',{className:'btns'}); btns.append(c,save);
+    sh.append(list, ...field('Who paid',segP), ...field('Split',segS), total, btns);
   });
 }
 async function settleUp(bal, x){
@@ -1063,7 +1131,7 @@ document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({siz
 (async function boot(){
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
     // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.
-    const t0=Date.now(); let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped) return; swapped=true;
+    const t0=Date.now(), hadOld=!!navigator.serviceWorker.controller; let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped || !hadOld) return; swapped=true;
       if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Peggy was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
   $('#logo').innerHTML=butterfly({size:30,flutter:true});
   loadCache(); route();

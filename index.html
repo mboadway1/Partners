@@ -1339,7 +1339,7 @@ addTips(document);
 (async function boot(){
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
     // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.
-    const t0=Date.now(); let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped) return; swapped=true;
+    const t0=Date.now(), hadOld=!!navigator.serviceWorker.controller; let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped || !hadOld) return; swapped=true;
       if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Peggy was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
   $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>';
   db=await openDB();
