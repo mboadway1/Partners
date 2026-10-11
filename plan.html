@@ -508,7 +508,10 @@ async function loadCalendar(force){
       calLoaded=true; calErr=''; if(!prefs.calendars) savePrefs();
     }
     await loadEvents();
-  }catch(e){ calErr = e.status===403 ? 'Peggy doesn’t have calendar access yet. Turn on the Google Calendar API (see setup) and sign in again from Settings.' : e.message; }
+  }catch(e){ const m=String(e.message||'');
+    calErr = /insufficient|scope/i.test(m) ? 'Google didn’t give Peggy permission to see your calendar. Tap Sign in again, and on Google’s screen tick the box for Google Calendar (tick every box) before tapping Continue.'
+      : /has not been used|disabled|not enabled|accessNotConfigured/i.test(m) ? 'The Google Calendar API is turned off for Peggy’s Google Cloud project. Turn it on in Google Cloud (APIs → Google Calendar API → Enable), wait a minute, then tap Sign in again.'
+      : e.status===403 ? 'Google refused calendar access: '+m : m; }
   if(tab==='calendar') render();
 }
 function savePrefs(){ prefs.calendars=calendars.map(c=>({id:c.id,name:c.name,color:c.color,show:c.show})); return peggyApi('prefs',{method:'PUT',body:JSON.stringify(prefs)}).catch(()=>{}); }
