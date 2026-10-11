@@ -82,6 +82,8 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .idea p{margin:2px 0;font-size:14px}
 .chips.uses span,.chips.need span{font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--panel)}
 .chips.uses span.have{color:var(--accent)}
+.cell.lost img{visibility:hidden}
+.lostmsg{position:absolute;inset:auto 6px 6px 6px;font-size:11px;font-weight:800;color:var(--dim);text-align:center;background:var(--panel);border-radius:8px;padding:4px}
 .dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
 .dayh:first-child{padding-top:2px}
 .dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
@@ -447,7 +449,7 @@ function renderGrid(){
     const out=[], k=dayKey(p.created);
     if(showDays && k!==lastDay){ lastDay=k; out.push(dayHeader(k, list.filter(x=>dayKey(x.created)===k), byDay.get(k))); }
     const c=el('div',{className:'cell'+(selected.has(p.id)?' sel':''),title:(selecting?'Select ':'Edit ')+p.name+(p.fav?' · Favorite':'')+(p.postedAt?' · Posted':'')});
-    c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
+    const im=el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}); im.onerror=()=>repairThumb(p, im, c); c.append(im);
     const bd=el('div',{className:'badges'});
     if(edited(p)) bd.append(el('span',{textContent:'✎'}));
     if(p.costume&&p.costume.is) bd.append(el('span',{textContent:'🎭',title:p.costume.name}));
@@ -468,6 +470,16 @@ function renderGrid(){
       ? [el('h2',{textContent:'Nothing here yet'}), el('p',{textContent:'Select photos in All and use Album or ★ to fill this view.'})]
       : [Object.assign(el('div',{className:'trail'}),{innerHTML:butterfly({size:30})+butterfly({size:40})+butterfly({size:64,flutter:true})}), el('h2',{textContent:'Welcome to Peggy'}), el('p',{textContent:'Tap ＋ to bring in photos from Google Photos or this phone. Then make them pretty and share them on Facebook.'})]));
   }
+}
+/* ---------- repair a photo whose picture won't show ---------- */
+const repairing=new Set();
+async function repairThumb(p, im, cell){
+  if(repairing.has(p.id)) return; repairing.add(p.id);
+  try{ const img=await loadImage(p.blob); p.thumb=await toBlob(render(img, p.edits||DEF, 480),'image/jpeg',.82); await dbPut('photos',p); dropURL(p.id); im.src=urlFor(p); }
+  catch(e){ console.warn('lost photo', p.name, e);
+    cell.classList.add('lost'); cell.title='This photo couldn’t be read. Tap to remove it, then import it again.';
+    if(!cell.querySelector('.lostmsg')) cell.append(el('div',{className:'lostmsg',textContent:'Couldn’t load · tap to remove'}));
+    cell.onclick=async ev=>{ ev.stopPropagation(); if(confirm(`“${p.name}” couldn’t be read on this phone. Remove it from Peggy? You can import it again.`)){ await dbDel('photos',p.id); dropURL(p.id); photos=photos.filter(x=>x.id!==p.id); renderAll(); } }; }
 }
 /* ---------- duplicates ---------- */
 // Photos imported before fingerprints existed get one quietly in the background.
@@ -693,6 +705,8 @@ async function importBlobs(list, prog){
     try{
       const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
       if(it.src==='device' && seen.has(key)){ dup++; continue; } seen.add(key);
+      // iPhone Safari can lose files picked from the photo library once they're saved, so keep a plain copy of the bytes instead.
+      if(typeof File!=='undefined' && it.blob instanceof File) it.blob=new Blob([await it.blob.arrayBuffer()],{type:it.blob.type||'image/jpeg'});
       const img=await loadImage(it.blob), hash=photoHash(img);
       if(photos.some(q=>q.hash && sameShot({hash,created:it.created}, q))){ dup++; const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; } continue; }
       const thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
