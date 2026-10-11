@@ -1150,8 +1150,9 @@ async function findFlights(){
 }
 
 /* ================= FUEL: cheapest diesel nearby or along the way ================= */
-const FUELS=[['DIESEL','Diesel'],['REST','🅿️ Rest stops'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
-const isRest = () => fuel.type==='REST';
+const FUELS=[['DIESEL','Diesel'],['REST','🅿️ Rest stops'],['ELKS','🫎 Elks Lodges'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
+const isRest = () => fuel.type==='REST' || fuel.type==='ELKS';    // place lists (no prices)
+const placeKind = () => fuel.type==='ELKS' ? 'elks' : fuel.type==='REST' ? 'rest' : 'fuel';
 const LS=(k,d)=>{ try{ const v=localStorage.getItem('peggy.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
 const SS=(k,v)=>{ try{ localStorage.setItem('peggy.fuel.'+k, JSON.stringify(v)); }catch(_){} };
 const fuel={ type:LS('type','DIESEL'), mode:LS('mode','near'), miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
@@ -1162,7 +1163,7 @@ function here(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) retu
   navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}), e=>rej(new Error(e.code===1?'Location is off for Peggy. Allow it in Settings → Privacy → Location Services → Safari Websites (While Using).':'Couldn’t get your location. Try again.')), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); }); }
 async function findFuel(){
   if(fuel.busy) return; fuel.busy=true; fuel.err=''; if(tab==='fuel') render();
-  try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase(), kind=isRest()?'rest':'fuel';
+  try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase(), kind=placeKind();
     const d = fuel.mode==='route'
       ? await peggyApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word, kind})})
       : await peggyApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609), kind})});
@@ -1173,7 +1174,7 @@ async function findFuel(){
 function renderFuel(v){
   const chips=$('#chips'); chips.replaceChildren();
   for(const [k,l] of FUELS){ const b=el('button',{className:'chip'+(fuel.type===k?' on':''),textContent:l,title:k==='REST'?'Find rest areas and truck stops':`Show ${l.toLowerCase()} prices`});
-    b.onclick=()=>{ const wasRest=isRest(); fuel.type=k; SS('type',k); render(); if(wasRest!==isRest() && fuel.res) findFuel(); }; chips.append(b); }
+    b.onclick=()=>{ const was=placeKind(); fuel.type=k; SS('type',k); render(); if(was!==placeKind() && fuel.res) findFuel(); }; chips.append(b); }
   const parts=[];
   const seg=el('div',{className:'seg wide'});
   for(const [k,l] of [['near','📍 Near me'],['route','🛣️ On my way']]){ const b=el('button',{textContent:l,className:fuel.mode===k?'on':''}); b.onclick=()=>{ fuel.mode=k; SS('mode',k); render(); }; seg.append(b); }
@@ -1188,20 +1189,22 @@ function renderFuel(v){
     dest.onchange=()=>{ fuel.dest=dest.value.trim(); SS('dest',fuel.dest); };
     ctl.append(dest);
   }
-  const go=el('button',{className:'primary bigbtn',textContent:fuel.busy?'Looking…':isRest()?(fuel.mode==='near'?'🅿️ Find rest stops near me':'🅿️ Find rest stops on the way'):fuel.mode==='near'?`⛽ Find cheapest ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()}`:'⛽ Find cheapest on the way',disabled:fuel.busy});
+  const go=el('button',{className:'primary bigbtn',textContent:fuel.busy?'Looking…':fuel.type==='ELKS'?(fuel.mode==='near'?'🫎 Find Elks Lodges near me':'🫎 Find Elks Lodges on the way'):isRest()?(fuel.mode==='near'?'🅿️ Find rest stops near me':'🅿️ Find rest stops on the way'):fuel.mode==='near'?`⛽ Find cheapest ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()}`:'⛽ Find cheapest on the way',disabled:fuel.busy});
   go.onclick=()=>{ if(fuel.mode==='route'){ const i=ctl.querySelector('input'); fuel.dest=(i&&i.value.trim())||fuel.dest; SS('dest',fuel.dest); if(!fuel.dest) return i&&i.focus(); } findFuel(); };
   ctl.append(go); parts.push(ctl);
   if(fuel.err) parts.push(el('div',{className:'card'},el('p',{textContent:fuel.err})));
   const R=fuel.res;
-  if(R && R.stations && R.mode===fuel.mode && (R.kind==='rest')===isRest() && isRest()){
+  if(R && R.stations && R.mode===fuel.mode && R.kind===placeKind() && isRest()){
     const from=R.from||{}, base=R.route?parseInt(R.route.duration):0;
     const list=R.stations.map(st=>({st, mi:(st.lat!=null&&from.lat!=null)?milesBetween(from.lat,from.lng,st.lat,st.lng):null,
       ahead: st.detour ? Math.round((st.detour.toSecs||0)/60) : null, extra: st.detour&&base ? Math.max(0,Math.round(((st.detour.toSecs||0)+(st.detour.restSecs||0)-base)/60)) : null}))
       .sort((a,b)=> R.route ? (a.ahead??1e9)-(b.ahead??1e9) : (a.mi??1e9)-(b.mi??1e9));
-    parts.push(el('div',{className:'fmeta',textContent:`${list.length} rest stop${list.length===1?'':'s'} ${R.route?'along the way, in driving order':'nearby, closest first'} · checked ${ago(new Date(R.at).toISOString())}`+(R.route?` · trip ${Math.round(R.route.meters/1609)} mi`:'')}));
+    const noun=R.kind==='elks'?['Elks Lodge','Elks Lodges']:['rest stop','rest stops'];
+    if(R.kind==='elks') parts.push(el('div',{className:'card'},el('p',{className:'hint',textContent:'Many Elks Lodges let members park RVs, often with hookups, but Google doesn’t list that. Call ahead or check the lodge’s site with the buttons below. You’ll usually need your Elks membership card.'})));
+    parts.push(el('div',{className:'fmeta',textContent:`${list.length} ${list.length===1?noun[0]:noun[1]} ${R.route?'along the way, in driving order':'nearby, closest first'} · checked ${ago(new Date(R.at).toISOString())}`+(R.route?` · trip ${Math.round(R.route.meters/1609)} mi`:'')}));
     list.forEach(x=>parts.push(restRow(x)));
-    if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No rest stops found. Try a bigger distance.':'No rest stops found along that route.'})));
-  } else if(R && R.stations && R.mode===fuel.mode && (R.kind==='rest')===isRest()){
+    if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?`No ${noun[1]} found. Try a bigger distance.`:`No ${noun[1]} found along that route.`})));
+  } else if(R && R.stations && R.mode===fuel.mode && R.kind===placeKind()){
     const from=R.from||{}, base=R.route?parseInt(R.route.duration):0;
     let list=R.stations.map(st=>({st, p:priceOf(st,fuel.type), mi:(st.lat!=null&&from.lat!=null)?milesBetween(from.lat,from.lng,st.lat,st.lng):null,
       extra: st.detour&&base ? Math.max(0,Math.round(((st.detour.toSecs||0)+(st.detour.restSecs||0)-base)/60)) : null}));
@@ -1211,7 +1214,8 @@ function renderFuel(v){
     priced.forEach((x,i)=>parts.push(fuelRow(x, i===0, nearest)));
     if(none.length){ parts.push(el('div',{className:'mhead',textContent:'No price listed'})); none.slice(0,6).forEach(x=>parts.push(fuelRow(x,false,null))); }
     if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No stations found. Try a bigger distance.':'No stations found along that route.'})));
-  } else if(!fuel.busy && !fuel.err && isRest()) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Rest stops'}),el('p',{textContent:'Rest areas and truck stops near you or along your route, with restrooms, pets and hours, and one tap to navigate.'})));
+  } else if(!fuel.busy && !fuel.err && fuel.type==='ELKS') parts.push(el('div',{className:'empty'},el('h3',{textContent:'Elks Lodges'}),el('p',{textContent:'Find Elks Lodges near you or along your route, then call or check their site about RV parking for members.'})));
+  else if(!fuel.busy && !fuel.err && isRest()) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Rest stops'}),el('p',{textContent:'Rest areas and truck stops near you or along your route, with restrooms, pets and hours, and one tap to navigate.'})));
   else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Peggy uses your location to find posted prices nearby, or along your route, cheapest first.'})));
   const tank=el('input',{type:'number',value:fuel.tank,min:5,max:200,className:'tankin',title:'How many gallons you usually buy'}); tank.onchange=()=>{ fuel.tank=Math.max(1,+tank.value||25); SS('tank',fuel.tank); render(); };
   if(isRest()) parts.push(el('div',{className:'fnote2',textContent:'Places come from Google Maps. Let a passenger tap while you’re driving.'}));
@@ -1233,7 +1237,8 @@ function fuelRow(x, best, nearest){
 }
 function restRow(x){
   const st=x.st, r=el('div',{className:'fuelrow'});
-  const kind = /truck/i.test(st.type+st.typeName) ? '🚛 Truck stop' : /rest/i.test(st.type+st.typeName) ? '🅿️ Rest area' : (st.typeName||'Stop');
+  const elk = fuel.type==='ELKS';
+  const kind = elk ? '🫎 Elks Lodge' : /truck/i.test(st.type+st.typeName) ? '🚛 Truck stop' : /rest/i.test(st.type+st.typeName) ? '🅿️ Rest area' : (st.typeName||'Stop');
   const when = x.ahead!=null ? (x.ahead<60?`in ${x.ahead} min`:`in ${Math.floor(x.ahead/60)} h ${x.ahead%60} min`) : '';
   const bits=[kind, x.mi!=null?`${x.mi<10?x.mi.toFixed(1):Math.round(x.mi)} mi`:'', when, x.extra!=null&&x.extra>2?`+${x.extra} min off route`:''].filter(Boolean).join(' · ');
   const am=[st.restroom===true?'🚻 Restrooms':'', st.dogs===true?'🐕 Dogs OK':'', st.open===true?'🟢 Open now':st.open===false?'🔴 Closed now':'', st.rating?`⭐ ${st.rating.toFixed(1)}${st.ratings?` (${st.ratings})`:''}`:''].filter(Boolean);
@@ -1242,6 +1247,11 @@ function restRow(x){
   if(am.length) mid.append(el('div',{className:'amen',textContent:am.join('  ')}));
   const acts=el('div',{className:'facts'}), nav=(t,href,title)=>acts.append(el('a',{href,target:'_blank',rel:'noopener',textContent:t,title}));
   if(st.lat!=null){ nav('🧭 Apple',`https://maps.apple.com/?daddr=${st.lat},${st.lng}&dirflg=d`,'Directions in Apple Maps'); nav('🗺️ Google',`https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}&destination_place_id=${encodeURIComponent(st.id)}&travelmode=driving`,'Directions in Google Maps'); }
+  if(elk){ const a2=el('div',{className:'facts'}), lk=(t,href,title)=>a2.append(el('a',{href,target:href.startsWith('tel:')?'_self':'_blank',rel:'noopener',textContent:t,title}));
+    if(st.phone) lk('📞 Call',`tel:${st.phone.replace(/[^\d+]/g,'')}`,`Call ${st.phone} to ask about RV parking`);
+    if(st.web) lk('🌐 Website',st.web,'The lodge’s website');
+    lk('🔎 RV parking?',`https://www.google.com/search?q=${encodeURIComponent(`"${st.name}" RV parking hookups`)}`,'Search for this lodge’s RV parking details');
+    r.append(el('div',{className:'frow1'},big,mid), a2, acts); return r; }
   r.append(el('div',{className:'frow1'},big,mid), acts); return r;
 }
 function logFillUp(st, p){

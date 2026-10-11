@@ -261,9 +261,11 @@ async function api(req, env, url, cors) {
     if (!env.GOOGLE_MAPS_KEY) return json({ error: 'Fuel prices need a GOOGLE_MAPS_KEY secret in the relay’s settings.' }, 500, cors);
     const q = await body(), lat = +q.lat, lng = +q.lng;
     if (!isFinite(lat) || !isFinite(lng)) return json({ error: 'Location missing' }, 400, cors);
-    const rest = q.kind === 'rest';   // rest areas and truck stops instead of fuel prices
+    const rest = q.kind === 'rest' || q.kind === 'elks';   // rest areas / truck stops, or Elks lodges, instead of fuel prices
+    const elks = q.kind === 'elks';
     const F = 'places.id,places.displayName,places.formattedAddress,places.location,places.currentOpeningHours.openNow,places.googleMapsUri'
-      + (rest ? ',places.primaryType,places.primaryTypeDisplayName,places.restroom,places.allowsDogs,places.rating,places.userRatingCount' : ',places.fuelOptions');
+      + (rest ? ',places.primaryType,places.primaryTypeDisplayName,places.restroom,places.allowsDogs,places.rating,places.userRatingCount' : ',places.fuelOptions')
+      + (elks ? ',places.nationalPhoneNumber,places.websiteUri' : '');
     const g = (url, mask, payload) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY, 'X-Goog-FieldMask': mask }, body: JSON.stringify(payload) })
       .then(async r => ({ ok: r.ok, d: await r.json().catch(() => ({})) }));
     let places = [], route = null, summaries = [];
@@ -271,8 +273,11 @@ async function api(req, env, url, cors) {
       const radius = Math.min(50000, Math.max(1000, +q.radius || 16000));
       const near = types => g('https://places.googleapis.com/v1/places:searchNearby', F, { includedTypes: types, maxResultCount: 20, rankPreference: 'DISTANCE',
         locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } } });
-      let r = await near(rest ? ['rest_stop', 'truck_stop'] : ['gas_station', 'truck_stop']);
-      if (!r.ok) r = await near(rest ? ['rest_stop'] : ['gas_station']);
+      let r;
+      if (elks) r = await g('https://places.googleapis.com/v1/places:searchText', F, { textQuery: 'Elks Lodge', maxResultCount: 20, rankPreference: 'DISTANCE',
+        locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius } } });
+      else { r = await near(rest ? ['rest_stop', 'truck_stop'] : ['gas_station', 'truck_stop']);
+        if (!r.ok) r = await near(rest ? ['rest_stop'] : ['gas_station']); }
       if (!r.ok) return json({ error: (r.d.error && r.d.error.message) || 'Google Places refused the request' }, 502, cors);
       places = r.d.places || [];
     } else {
@@ -282,7 +287,7 @@ async function api(req, env, url, cors) {
       const rt = rr.ok && rr.d.routes && rr.d.routes[0];
       if (!rt) return json({ error: (rr.d.error && rr.d.error.message) || 'Couldn’t find a route there' }, 502, cors);
       route = { meters: rt.distanceMeters, duration: rt.duration };
-      const ts = await g('https://places.googleapis.com/v1/places:searchText', F + ',routingSummaries', { textQuery: rest ? 'rest area or truck stop' : (q.fuelWord || 'diesel') + ' gas station', maxResultCount: 20,
+      const ts = await g('https://places.googleapis.com/v1/places:searchText', F + ',routingSummaries', { textQuery: elks ? 'Elks Lodge' : rest ? 'rest area or truck stop' : (q.fuelWord || 'diesel') + ' gas station', maxResultCount: 20,
         searchAlongRouteParameters: { polyline: { encodedPolyline: rt.polyline.encodedPolyline } }, routingParameters: { origin: { latitude: lat, longitude: lng } } });
       if (!ts.ok) return json({ error: (ts.d.error && ts.d.error.message) || 'Google Places refused the request' }, 502, cors);
       places = ts.d.places || []; summaries = ts.d.routingSummaries || [];
@@ -291,11 +296,14 @@ async function api(req, env, url, cors) {
       const s = summaries[i] && summaries[i].legs;   // leg 0: here → station; leg 1: station → destination
       return { id: p.id, name: (p.displayName && p.displayName.text) || 'Station', address: p.formattedAddress || '', lat: p.location && p.location.latitude, lng: p.location && p.location.longitude,
         open: p.currentOpeningHours ? p.currentOpeningHours.openNow : null, maps: p.googleMapsUri || '',
+        phone: p.nationalPhoneNumber || '', web: p.websiteUri || '',
         type: p.primaryType || '', typeName: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || '', restroom: p.restroom, dogs: p.allowsDogs, rating: p.rating, ratings: p.userRatingCount,
         prices: ((p.fuelOptions && p.fuelOptions.fuelPrices) || []).map(f => ({ type: f.type, price: f.price ? (+f.price.units || 0) + (f.price.nanos || 0) / 1e9 : null, currency: f.price && f.price.currencyCode, updated: f.updateTime })),
         detour: s ? { toMeters: s[0] && s[0].distanceMeters, toSecs: s[0] && parseInt(s[0].duration), restSecs: s[1] && parseInt(s[1].duration) } : null };
     });
-    return json({ stations: out, route }, 200, cors);
+    // Elks searches can return nearby businesses too: keep only actual lodges.
+    const keep = elks ? out.filter(x => /\belks\b|b\.?\s?p\.?\s?o\.?\s?e/i.test(x.name)) : out;
+    return json({ stations: keep, route }, 200, cors);
   }
 
   // --- us: help put a hard feeling into kind, clear words (only the writer sees the result) ---
