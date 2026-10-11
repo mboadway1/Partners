@@ -113,6 +113,7 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 
 /* links */
 .search{margin-bottom:10px}
+.diag{font-size:12px!important;color:var(--dim);margin-top:12px!important;word-break:break-word}
 .findfl{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
 .findfl > span:first-child{font-size:24px} .findfl small{display:block;color:var(--dim);font-weight:600;font-size:13px}
 .flight{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
@@ -494,6 +495,15 @@ async function importGoogleTasks(){
 let cview=matchMedia('(min-width:700px)').matches?'month':'schedule', cdate=today(), calendars=[], events={}, calLoaded=false, calErr='', showTasksOnCal=true;
 try{ showTasksOnCal=localStorage.getItem('peggy.calTasks')!=='0'; }catch(_){}
 let prefs={};
+// What this sign-in is actually allowed to do, straight from Google, to explain a refusal.
+let calRaw='';
+async function calDiag(){
+  try{ const t=await googleAccess(); const r=await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo?access_token='+encodeURIComponent(t)); const d=await r.json();
+    const sc=String(d.scope||''), has=k=>sc.includes(k);
+    return `Signed in as ${d.email||me().email||'?'} · calendar ${has('auth/calendar')?'✓':'✗ not allowed'} · tasks ${has('tasks')?'✓':'✗'} · photos ${has('photospicker')?'✓':'✗'}`+(calRaw?` · Google said: ${calRaw.slice(0,160)}`:'')+` · page v${PAGE_V}`; }
+  catch(e){ return 'Details: couldn’t check ('+e.message+')'+(calRaw?` · Google said: ${calRaw.slice(0,160)}`:'')+` · page v${PAGE_V}`; }
+}
+const PAGE_V='18';
 async function loadCalendar(force){
   if(!acct.session) return;
   try{
@@ -508,7 +518,7 @@ async function loadCalendar(force){
       calLoaded=true; calErr=''; if(!prefs.calendars) savePrefs();
     }
     await loadEvents();
-  }catch(e){ const m=String(e.message||'');
+  }catch(e){ const m=String(e.message||''); calRaw=m;
     calErr = /insufficient|scope/i.test(m) ? 'Google didn’t give Peggy permission to see your calendar. Tap Sign in again, and on Google’s screen tick the box for Google Calendar (tick every box) before tapping Continue.'
       : /has not been used|disabled|not enabled|accessNotConfigured/i.test(m) ? 'The Google Calendar API is turned off for Peggy’s Google Cloud project. Turn it on in Google Cloud (APIs → Google Calendar API → Enable), wait a minute, then tap Sign in again.'
       : e.status===403 ? 'Google refused calendar access: '+m : m; }
@@ -545,7 +555,9 @@ function sortKey(x){ if(x.type==='task') return '1'+(x.t.time||'99'); const ev=x
 const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 function renderCalendar(v){
   $('#chips').replaceChildren();
-  if(calErr){ v.replaceChildren(el('div',{className:'card'},el('p',{textContent:calErr}),Object.assign(el('button',{className:'primary',textContent:'Sign in again'}),{onclick:()=>peggySignIn('plan.html#calendar')}))); return; }
+  if(calErr){ const det=el('p',{className:'diag',textContent:'Checking what Google allowed…'});
+    v.replaceChildren(el('div',{className:'card'},el('p',{textContent:calErr}),Object.assign(el('button',{className:'primary',textContent:'Sign in again'}),{onclick:()=>{ try{ localStorage.removeItem('peggy.gtoken'); }catch(_){} peggySignIn('plan.html#calendar'); }}),det));
+    calDiag().then(t=>{ det.textContent=t; }); return; }
   const [s,e]=range();
   const title = cview==='month' ? cdate.toLocaleDateString(undefined,{month:'long',year:'numeric'}) : cview==='week' ? `${fmtShort(s)} – ${fmtShort(addDays(e,-1))}` : 'Coming up';
   const step = d => { if(cview==='month') cdate=new Date(cdate.getFullYear(),cdate.getMonth()+d,1); else cdate=addDays(cdate,(cview==='week'?7:30)*d); loadCalendar(); };
