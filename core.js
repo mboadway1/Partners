@@ -108,6 +108,7 @@ async function downscale(blob, max){
 }
 // When a JPEG was taken, from its EXIF data (DateTimeOriginal), or null.
 async function photoTaken(blob){
+  photoTaken.make='';
   try{
     const b=new DataView(await blob.slice(0, 262144).arrayBuffer());
     if(b.getUint16(0)!==0xFFD8) return null;
@@ -119,6 +120,7 @@ async function photoTaken(blob){
         const str=(off,n)=>{ let r=''; for(let i=0;i<n-1;i++) r+=String.fromCharCode(b.getUint8(t+off+i)); return r; };
         const find=(ifd,tag)=>{ const n=u16(ifd); for(let i=0;i<n;i++){ const e=ifd+2+i*12; if(u16(e)===tag) return e; } return 0; };
         const ifd0=u32(4); let when='';
+        const mk=find(ifd0,0x010F); if(mk){ const n=u32(mk+4); photoTaken.make = n>4 ? str(u32(mk+8),Math.min(n,40)) : str(mk+8,n); }
         const ex=find(ifd0,0x8769); if(ex){ const sub=u32(ex+8), e=find(sub,0x9003)||find(sub,0x9004); if(e) when=str(u32(e+8),20); }
         if(!when){ const e=find(ifd0,0x0132); if(e) when=str(u32(e+8),20); }
         const m2=when.match(/^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)/);
@@ -152,5 +154,10 @@ function sameShot(a, b){
   if(d<=.08) return true;
   return d<=.11 && a.created && b.created && Math.abs(a.created-b.created)<=2000;
 }
+// Screenshots: named like one, or a PNG with no camera information. Real photos and exports from
+// Lightroom or the camera carry the camera's make.
+const SHOT_NAME=/screen ?shot|screenshot|screen_shot|scrnli|^simulator/i;
+const skipShots = () => { try{ return localStorage.getItem('peggy.skipShots')!=='0'; }catch(_){ return true; } };
+function looksLikeScreenshot({name, type, make}){ return SHOT_NAME.test(name||'') || (/png/i.test(type||'') && !make); }
 const PEER_PREFIX='peggy-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';

@@ -752,8 +752,12 @@ async function sharedImport(){
 }
 $('#fileIn').onchange=async e=>{
   const files=[...e.target.files]; e.target.value=''; if(!files.length) return;
-  const list=[]; for(const f of files) list.push({blob:f, name:f.name, created:(await photoTaken(f))||f.lastModified||Date.now(), src:'device'});
-  await importBlobs(list);
+  const list=[]; let shots=0;
+  for(const f of files){ const taken=await photoTaken(f), make=photoTaken.make;
+    if(skipShots() && looksLikeScreenshot({name:f.name, type:f.type, make})){ shots++; continue; }
+    list.push({blob:f, name:f.name, created:taken||f.lastModified||Date.now(), src:'device'}); }
+  if(shots) setTimeout(()=>toast(`${shots} screenshot${shots>1?'s':''} skipped. Turn this off in Settings if you want them.`,5000), list.length?3400:0);
+  if(list.length) await importBlobs(list);
 };
 async function importBlobs(list, prog){
   askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[];
@@ -953,6 +957,9 @@ async function downloadPicked(sessionId){
     const have=new Set(photos.map(p=>p.gid).filter(Boolean));
     const vids=items.filter(i=>i.type!=='PHOTO').length, dup=items.filter(i=>i.type==='PHOTO' && have.has(i.id)).length;
     items=items.filter(i=>i.type==='PHOTO' && !have.has(i.id));
+    const md=i=>(i.mediaFile&&i.mediaFile.mediaFileMetadata)||{};
+    const shots=skipShots()?items.filter(i=>looksLikeScreenshot({name:i.mediaFile&&i.mediaFile.filename, type:i.mediaFile&&i.mediaFile.mimeType, make:md(i).cameraMake||md(i).cameraModel})).length:0;
+    if(shots) items=items.filter(i=>!looksLikeScreenshot({name:i.mediaFile&&i.mediaFile.filename, type:i.mediaFile&&i.mediaFile.mimeType, make:md(i).cameraMake||md(i).cameraModel}));
     const t=getToken(), got=[], total=items.length; let done=0; prog.set(0,total);
     const worker=async()=>{ while(items.length){ const it=items.shift();
       try{ const r=await fetch(cfg.relay+'/media?u='+encodeURIComponent(it.mediaFile.baseUrl+'=w2560-h2560'),{headers:{Authorization:'Bearer '+t}});
@@ -963,7 +970,7 @@ async function downloadPicked(sessionId){
     await Promise.all([worker(),worker(),worker()]);
     prog.close();
     await importBlobs(got);
-    const notes=[]; if(vids) notes.push(`${vids} video${vids>1?'s':''} skipped`); if(dup) notes.push(`${dup} already here`);
+    const notes=[]; if(vids) notes.push(`${vids} video${vids>1?'s':''} skipped`); if(dup) notes.push(`${dup} already here`); if(shots) notes.push(`${shots} screenshot${shots>1?'s':''} skipped`);
     if(total-got.length) notes.push(`${total-got.length} failed to download`);
     if(notes.length) setTimeout(()=>toast(notes.join(' · '),5000),3300);
   }catch(e){ prog&&prog.close(); toast('Import failed: '+e.message, 6000); }
@@ -998,6 +1005,8 @@ async function openSettings(note){
     const bgOff=el('button',{textContent:'Remove background photo',title:'Go back to the plain pink background'});
     bgOff.onclick=async()=>{ await setBackground(null); close(); };
     if(document.body.classList.contains('hasbg')) st.append(bgOff);
+    const sk=el('input',{type:'checkbox',checked:skipShots()}); sk.onchange=()=>{ try{ localStorage.setItem('peggy.skipShots', sk.checked?'1':'0'); }catch(_){} toast(sk.checked?'Screenshots will be skipped when importing':'Screenshots will be imported too'); };
+    sh.append(el('label',{className:'checkrow',title:'Leave out screenshots when bringing in photos from Google Photos or this phone'},sk,el('span',{textContent:'Skip screenshots when importing'})));
     const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
     st.append(dups,save,out,wipe,c); sh.append(st);
   });
