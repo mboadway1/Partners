@@ -60,6 +60,7 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .qchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .qchips button{min-height:36px;padding:6px 12px;border-radius:999px;font-size:14px}
 .qchips button.on{background:var(--text);color:var(--bg)}
+.albsel{font:inherit;font-size:16px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);width:100%}
 .daterow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .daterow label,.namel{display:flex;flex-direction:column;gap:4px;font-weight:800;font-size:13px;min-width:0}
 .daterow input{box-sizing:border-box;max-width:100%}
@@ -736,6 +737,7 @@ async function afterImport(added, msg){
   const already=photos.filter(p=>!added.includes(p) && p.created>=from && p.created<=to && !p.albums.includes(a.id));
   for(const p of [...inside, ...already]){ if(!p.albums.includes(a.id)){ p.albums.push(a.id); await dbPut('photos',p); } }
   view=a.id; selecting=false; selected.clear(); renderAll();
+  if(ev.share && !a.shared && acct.session) shareAlbum(a); else if(a.shared) sharedSoon(300);
   const total=photos.filter(p=>p.albums.includes(a.id)).length;
   toast(`${msg}. “${a.name}” has ${total} photo${total===1?'':'s'}`+(outside?` · ${outside} from other days kept in All`:''), 6500);
   return true;
@@ -778,7 +780,8 @@ function importEvent(){
     from.onchange=sync; to.onchange=sync;
     const row=el('div',{className:'daterow'}, el('label',{},'From',from), el('label',{},'To',to));
     sync();
-    const go=src=>{ const ev={from:from.value, to:to.value, name:name.value.trim()||rangeName(from.value,to.value), album:uid(), at:Date.now()};
+    const go=src=>{ const pick=albSel.value, ex=albums.find(a=>a.id===pick);
+      const ev={from:from.value, to:to.value, name:ex?ex.name:(name.value.trim()||rangeName(from.value,to.value)), album:ex?ex.id:uid(), at:Date.now(), share:!ex && shareCk.checked};
       localStorage.setItem('peggy.importEvent', JSON.stringify(ev));
       const q=searchText(ev.from, ev.to); if(navigator.clipboard) navigator.clipboard.writeText(q).catch(()=>{});
       close(src);
@@ -789,7 +792,20 @@ function importEvent(){
     const dv=el('button',{textContent:'From this phone',title:'Pick the photos from this phone’s photo library'}); dv.onclick=()=>go('device');
     const tip=el('p',{className:'tip',innerHTML:'Peggy copies the date for you. In the picker, tap <b>Search</b>, paste it, and select the photos. Anything you pick from other days still comes in, just not into this album.'});
     const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:4px'}); c.onclick=()=>close(null);
-    sh.append(quick, row, el('label',{className:'namel'},'Album name',name), el('div',{className:'stack'},g,dv), tip, c);
+    // Put them in a new album, or add to one that's already there (like the shared album your partner made for the same weekend).
+    const albSel=el('select',{className:'albsel',title:'Which album these photos go into'});
+    const fillAlb=()=>{ const cur=albSel.value; albSel.replaceChildren(el('option',{value:'',textContent:'＋ New album'}),
+        ...albums.slice().sort((a,b)=>(b.shared?1:0)-(a.shared?1:0)||a.name.localeCompare(b.name)).map(a=>el('option',{value:a.id,textContent:(a.shared?'👥 ':'')+a.name})));
+      const same=albums.find(a=>a.name===name.value.trim()) || albums.find(a=>a.shared && a.name===rangeName(from.value,to.value));
+      albSel.value = cur && albums.some(a=>a.id===cur) ? cur : (same?same.id:''); albSync(); };
+    const shareCk=el('input',{type:'checkbox',checked:!!acct.session}); const shareRow=el('label',{className:'checkrow'},shareCk,el('span',{textContent:'👥 Share this album with your partner, so their photos from these days can join it'}));
+    const albSync=()=>{ const ex=albums.find(a=>a.id===albSel.value); nameL.classList.toggle('hidden',!!ex); shareRow.classList.toggle('hidden',!!ex || !acct.session);
+      albHint.textContent = ex ? (ex.shared?`Your photos join “${ex.name}”, shared with your partner. Theirs are already in it.`:`Your photos join “${ex.name}”.`) : ''; };
+    albSel.onchange=albSync; const albHint=el('p',{className:'hint'});
+    const nameL=el('label',{className:'namel'},'Album name',name);
+    const oldSync=sync; from.onchange=to.onchange=()=>{ oldSync(); fillAlb(); };
+    fillAlb(); quick.addEventListener('click',()=>setTimeout(fillAlb,0)); name.addEventListener('input',()=>{ if(!albSel.value) return; });
+    sh.append(quick, row, el('label',{className:'namel'},'Put them in',albSel), albHint, nameL, shareRow, el('div',{className:'stack'},g,dv), tip, c);
   });
 }
 let persistAsked=false;
