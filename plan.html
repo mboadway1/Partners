@@ -137,6 +137,8 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 .fmid{flex:1;min-width:0}
 .fmid .t{font-weight:800} .fmid .m{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .amen{font-size:13px;font-weight:700;margin-top:3px}
+.rvline{font-size:13px;font-weight:700;margin-top:4px;color:var(--dim);white-space:normal}
+.rvline.yes{color:var(--accent)} .rvline .rvlink{font-weight:800}
 .fsave{font-size:13px;font-weight:800;color:var(--accent);margin-top:2px}
 .fnote2{font-size:12px;color:var(--dim);margin:14px 2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .tankin{width:56px;font:inherit;font-size:13px;padding:2px 6px;border-radius:8px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
@@ -1235,6 +1237,10 @@ function fuelRow(x, best, nearest){
   const log=el('button',{textContent:'⛽ Log it',title:'Add this fill-up to Money'}); log.onclick=()=>logFillUp(st, x.p); acts.append(log);
   r.append(el('div',{className:'frow1'},price,mid), acts); return r;
 }
+// Elks lodge number from the name Google shows ("Elks Lodge #201", "BPOE 2459", "Lodge No. 122").
+function lodgeNo(name){ const m=String(name||'').match(/(?:#|no\.?\s*|lodge\s+|b\.?p\.?o\.?e\.?\s*)(\d{1,4})\b/i) || String(name||'').match(/\b(\d{2,4})\b/); return m?m[1]:''; }
+const elksCache={};
+function elksRV(n){ return elksCache[n] || (elksCache[n]=peggyApi('elks-rv?lodge='+n).catch(e=>{ delete elksCache[n]; throw e; })); }
 function restRow(x){
   const st=x.st, r=el('div',{className:'fuelrow'});
   const elk = fuel.type==='ELKS';
@@ -1248,6 +1254,10 @@ function restRow(x){
   const acts=el('div',{className:'facts'}), nav=(t,href,title)=>acts.append(el('a',{href,target:'_blank',rel:'noopener',textContent:t,title}));
   if(st.lat!=null){ nav('🧭 Apple',`https://maps.apple.com/?daddr=${st.lat},${st.lng}&dirflg=d`,'Directions in Apple Maps'); nav('🗺️ Google',`https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}&destination_place_id=${encodeURIComponent(st.id)}&travelmode=driving`,'Directions in Google Maps'); }
   if(elk){ const a2=el('div',{className:'facts'}), lk=(t,href,title)=>a2.append(el('a',{href,target:href.startsWith('tel:')?'_self':'_blank',rel:'noopener',textContent:t,title}));
+    const no=lodgeNo(st.name); const rv=el('div',{className:'rvline',textContent:no?'🚐 Checking elks.org for RV parking…':'🚐 Lodge number not shown. Use elks.org to look it up.'}); mid.append(rv);
+    if(no) elksRV(no).then(d=>{ rv.classList.toggle('yes',!!d.rv); rv.textContent = d.rv ? `🚐 ${d.summary||'RV parking listed on elks.org'}` : d.found ? '🚐 elks.org page doesn’t mention RV parking. Call to ask.' : '🚐 Couldn’t reach elks.org. Call to ask.';
+      if(d.rvUrl){ const a=el('a',{href:d.rvUrl,target:'_blank',rel:'noopener',textContent:'RV page ›',className:'rvlink'}); rv.append(' ',a); } }).catch(()=>{ rv.textContent='🚐 Couldn’t check elks.org. Call to ask.'; });
+    lk('🫎 elks.org', no?`https://www.elks.org/lodges/home.cfm?lodge=${no}`:'https://www.elks.org/lodges/default.cfm', no?`Lodge ${no} on elks.org`:'Elks lodge locator');
     if(st.phone) lk('📞 Call',`tel:${st.phone.replace(/[^\d+]/g,'')}`,`Call ${st.phone} to ask about RV parking`);
     if(st.web) lk('🌐 Website',st.web,'The lodge’s website');
     lk('🔎 RV parking?',`https://www.google.com/search?q=${encodeURIComponent(`"${st.name}" RV parking hookups`)}`,'Search for this lodge’s RV parking details');

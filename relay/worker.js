@@ -325,6 +325,36 @@ async function api(req, env, url, cors) {
     return json({ options: Array.isArray(d.options) ? d.options.slice(0, 3).map(String) : [], tip: String(d.tip || '') }, 200, cors);
   }
 
+  // --- Elks lodges: read the lodge's own elks.org page for RV parking details (cached a week) ---
+  if (path === 'elks-rv' && req.method === 'GET') {
+    const n = (url.searchParams.get('lodge') || '').replace(/\D/g, '').slice(0, 5);
+    if (!n) return json({ error: 'Lodge number missing' }, 400, cors);
+    const ck = 'elksrv:' + n, hit = await KV.get(ck, 'json');
+    if (hit && Date.now() - hit.at < 7 * 864e5) return json(hit, 200, cors);
+    const home = 'https://www.elks.org/lodges/home.cfm?lodge=' + n;
+    const get = async u => { try { const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Peggy RV lookup)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(7000) }); return r.ok ? (await r.text()).slice(0, 400000) : ''; } catch { return ''; } };
+    const html = await get(home);
+    if (!html) return json({ lodge: n, url: home, found: false, rv: false, summary: '', at: Date.now() }, 200, cors);
+    // A link to the lodge's RV page, if it has one.
+    let rvUrl = '';
+    const lm = [...html.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]{0,80}?)<\/a>/gi)].find(m => /\bRV\b|camp/i.test(m[2].replace(/<[^>]+>/g, '')));
+    if (lm) { try { const u = new URL(lm[1], home); if (/(^|\.)elks\.org$/.test(u.hostname)) rvUrl = u.toString(); } catch {} }
+    const text = h => decodeEntities(h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
+    let body = text(html); if (rvUrl && rvUrl !== home) body += ' ' + text(await get(rvUrl));
+    const RVW = /\bRVs?\b|hook ?-?ups?|\b(30|50)\s?-?amps?\b|sewer|dump station|dry camp|boondock|camp ?sites?/i;
+    const lines = [...new Set(body.split(/(?<=[.!?])\s+/).filter(x => RVW.test(x) && x.length > 8 && x.length < 260 && !/^\s*RV Parking\s*$/i.test(x)).map(x => x.trim()))].slice(0, 8);
+    const name = (body.match(/([A-Z][A-Za-z .'-]+,\s?[A-Z]{2})\s+(?:Lodge\s+)?(?:No\.?|#)\s*\d+/) || [])[0] || '';
+    let summary = '';
+    if (lines.length && env.ANTHROPIC_API_KEY) {
+      const r = await claude(env, env.SCAN_MODEL || 'claude-haiku-5-5', [{ type: 'text', text: 'From these lines on an Elks Lodge website, summarize its RV parking in under 18 words: number of sites, power (amps), water/sewer, price per night, who may stay, how to reserve. Only use facts stated. Reply with just the summary.\n\n' + lines.join('\n') }], 120);
+      summary = (r.text || '').trim().slice(0, 200);
+    }
+    if (!summary && lines.length) summary = lines.slice(0, 2).join(' ').slice(0, 200);
+    const out = { lodge: n, name, url: home, rvUrl, found: true, rv: lines.length > 0, summary, lines, at: Date.now() };
+    await KV.put(ck, JSON.stringify(out));
+    return json(out, 200, cors);
+  }
+
   // --- flights: read a pasted confirmation email into flight details ---
   if (path === 'flight-parse' && req.method === 'POST' && full) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'Reading confirmations needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
