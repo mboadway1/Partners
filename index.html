@@ -47,7 +47,10 @@ header{position:sticky;top:0;z-index:5;background:var(--headerbg);backdrop-filte
 .bfly.flutter .wing{animation:flap 1.6s ease-in-out infinite}
 @keyframes flap{0%,70%,100%{transform:scaleX(1)}80%{transform:scaleX(.45)}90%{transform:scaleX(.9)}}
 @media (prefers-reduced-motion:reduce){.bfly .wing{animation:none!important}}
-.chips{display:flex;gap:8px;overflow-x:auto;padding-top:10px;scrollbar-width:none}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-top:10px;scrollbar-width:none;align-items:center}
+.viewsel{flex:1;min-width:0;max-width:340px;font:inherit;font-weight:800;font-size:16px;padding:8px 34px 8px 14px;border-radius:999px;border:0;background:var(--text);color:var(--bg);
+  -webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 18px) 55%,calc(100% - 12px) 55%;background-size:6px 6px;background-repeat:no-repeat;min-height:38px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border-radius:999px;padding:6px 14px;min-height:34px;font-size:14px;background:var(--panel2);color:var(--dim)}
 .chip.on{background:var(--text);color:var(--bg);font-weight:800}
@@ -425,20 +428,30 @@ const lastBatch = () => { try{ return localStorage.getItem('peggy.lastBatch')||'
 const CHIP_TIPS={costume:'Photos with costumes (tap again for the closet and ideas)',new:'Show the photos from your last import',all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
 function renderChips(){
   const box=$('#chips'); box.replaceChildren();
-  const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':''),title:CHIP_TIPS[id]||`Show the “${label}” album (tap again to rename or delete)`},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
-    b.onclick=()=>{ if(id==='costume' && (view==='costume' || !photos.some(p=>p.costume&&p.costume.is))) return openCostumes(); if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b);
-    if(view===id && albums.some(a=>a.id===id)){ const m=el('button',{className:'chip',textContent:'⋯',title:`Rename or delete the “${label}” album`,ariaLabel:'Album options'}); m.onclick=()=>albumMenu(id); box.append(m); } };
-  add('all','All',photos.length);
-  const nb0=photos.filter(p=>p.batch && p.batch===lastBatch()).length; if(nb0) add('new','🆕 Last import',nb0);
-  add('fav','★ Favorites',photos.filter(p=>p.fav).length);
-  add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
-  add('posted','Posted',photos.filter(p=>p.postedAt).length);
-  add('costume','🎭 Costumes',photos.filter(p=>p.costume&&p.costume.is).length);
-  const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
-  for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, (a.shared?'👥 ':'')+a.name, photos.filter(p=>p.albums.includes(a.id)).length);
-  const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
+  const nb0=photos.filter(p=>p.batch && p.batch===lastBatch()).length;
   if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted','new','costume'].includes(view)) view='all';
   if(view==='new' && !nb0) view='all';
+  // One drop-down for every view and album, instead of a long row to swipe through.
+  const sel=el('select',{className:'viewsel',title:'Choose what to show: all photos, a filter, or an album',ariaLabel:'Show'});
+  const opt=(v,l,n)=>el('option',{value:v,textContent:n!=null?`${l} (${n})`:l});
+  const g1=el('optgroup',{label:'Photos'});
+  g1.append(opt('all','All photos',photos.length));
+  if(nb0) g1.append(opt('new','🆕 Last import',nb0));
+  g1.append(opt('fav','★ Favorites',photos.filter(p=>p.fav).length), opt('todo','Not posted',photos.filter(p=>!p.postedAt).length),
+    opt('posted','Posted',photos.filter(p=>p.postedAt).length), opt('costume','🎭 Costumes',photos.filter(p=>p.costume&&p.costume.is).length));
+  sel.append(g1);
+  const al=albums.slice().sort((x,y)=>(y.shared?1:0)-(x.shared?1:0)||x.name.localeCompare(y.name));
+  const g2=el('optgroup',{label:al.length?'Albums':'Albums (none yet)'});
+  al.forEach(a=>g2.append(opt(a.id,(a.shared?'👥 ':'📁 ')+a.name,photos.filter(p=>p.albums.includes(a.id)).length)));
+  g2.append(el('option',{value:'__new',textContent:'＋ New album…'}));
+  sel.append(g2);
+  sel.value=view;
+  sel.onchange=async()=>{ if(sel.value==='__new'){ sel.value=view; await newAlbum(); return; } view=sel.value; selected.clear(); renderAll(); };
+  box.append(sel);
+  const isAlb=albums.find(a=>a.id===view);
+  if(isAlb){ const m=el('button',{className:'chip',textContent:'⋯',title:`Share, rename or delete “${isAlb.name}”`,ariaLabel:'Album options'}); m.onclick=()=>albumMenu(isAlb.id); box.append(m); }
+  if(view==='costume'){ const c=el('button',{className:'chip',textContent:'🎭 Closet & ideas',title:'Find costumes, see your closet, get ideas'}); c.onclick=()=>openCostumes(); box.append(c); }
+  const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
 }
 function renderGrid(){
   const grid=$('#grid'), list=visible();
