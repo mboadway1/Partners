@@ -60,3 +60,24 @@ function peggyThemePicker(){
   draw(); return wrap;
 }
 applyPeggyTheme(peggyThemeName());
+
+/* ---------- bottom menu: the "More" button opens Links and Words ---------- */
+(function(){
+  const MORE=[['plan.html#links','🔗','Links','Shared link favorites'],['words.html','🎙️','Words','Who talks, who interrupts']];
+  function setup(){
+    const more=document.querySelector('.bnav a.more'); if(!more) return;
+    const st=document.createElement('style');
+    st.textContent='.bnav{gap:0}.bnav a{min-width:0}.moremenu{position:fixed;right:max(10px,env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));z-index:40;background:var(--panel,#fff);border:1px solid var(--line,#eee);border-radius:16px;box-shadow:0 8px 30px rgba(40,16,40,.22);padding:6px;display:flex;flex-direction:column;min-width:190px}.moremenu a{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;color:var(--text,#333);text-decoration:none;font-weight:800}.moremenu a:hover,.moremenu a:focus-visible{background:var(--panel2,#fde)}.moremenu small{display:block;font-weight:600;color:var(--dim,#888);font-size:12px}.moremenu[hidden]{display:none}';
+    document.head.append(st);
+    const menu=document.createElement('div'); menu.className='moremenu'; menu.hidden=true;
+    for(const [href,e,l,t] of MORE){ const a=document.createElement('a'); a.href=href; a.title=t; a.innerHTML=`<span style="font-size:20px">${e}</span><span>${l}<small>${t}</small></span>`; a.onclick=()=>{ menu.hidden=true; }; menu.append(a); }
+    document.body.append(menu);
+    more.addEventListener('click',e=>{ e.preventDefault(); menu.hidden=!menu.hidden; });
+    document.addEventListener('click',e=>{ if(!menu.hidden && !menu.contains(e.target) && !more.contains(e.target)) menu.hidden=true; });
+    const mark=()=>{ if(/(^|\/)(index\.html)?$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="photos"]').forEach(a=>a.classList.add('on'));
+      const inMore=/words\.html$/.test(location.pathname) || /plan\.html$/.test(location.pathname)&&location.hash==='#links'; more.classList.toggle('on', inMore);
+      if(/words\.html$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="words"]').forEach(a=>a.classList.remove('on')); };
+    mark(); addEventListener('hashchange', mark);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', setup); else setup();
+})();

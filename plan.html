@@ -113,6 +113,25 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 
 /* links */
 .search{margin-bottom:10px}
+.findfl{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
+.findfl > span:first-child{font-size:24px} .findfl small{display:block;color:var(--dim);font-weight:600;font-size:13px}
+.flight{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
+.flight.past{opacity:.6}
+.ftop{display:flex;align-items:center;gap:8px}
+.fcode{font-weight:800;flex:1}
+.fbadge{font-size:12px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--dim)}
+.fbadge.soon{background:var(--accent);color:#fff} .fbadge.live{background:var(--lilac);color:#fff}
+.froute{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.froute .ap{font:600 30px var(--display);letter-spacing:.02em}
+.froute .tm{font-size:14px;color:var(--dim);font-weight:700}
+.froute .line{color:var(--accent);font-size:20px}
+.finfo{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;color:var(--dim);font-weight:700;align-items:center}
+.finfo .conf{min-height:28px;padding:2px 10px;font-size:13px;border-radius:999px;font-family:ui-monospace,Menlo,monospace}
+.fnote{font-size:13px;color:var(--dim)}
+.facts{display:flex;gap:6px;flex-wrap:wrap}
+.facts a,.facts button{flex:1;min-width:0;white-space:nowrap;text-align:center;min-height:36px;padding:7px 8px;border-radius:10px;font-size:13px;font-weight:800;background:var(--panel2);color:var(--text);text-decoration:none}
+textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;font-size:14px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
+.fprev{font-size:14px;font-weight:700;padding:8px 10px;background:var(--panel2);border-radius:10px;margin-top:6px}
 .balance{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
 .balance .bt{font-weight:800;color:var(--dim)}
 .balance .ba{font:600 40px var(--display);font-variant-numeric:tabular-nums;color:var(--accent)}
@@ -184,9 +203,9 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
   <a href="./" data-k="photos" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
   <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
-  <a href="plan.html#links" data-k="links" title="Shared link favorites"><svg class="ic" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Links</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
-  <a href="words.html" data-k="words" title="Words: who talks, who interrupts"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Words</a>
+  <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
+  <a href="#more" data-k="more" class="more" title="More: links and Words"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 
 <script src="core.js"></script>
@@ -237,9 +256,10 @@ const store = {
   tasks: { items:[], lists:[], v:0 },
   links: { items:[], lists:[], v:0 },
   expenses: { items:[], lists:[], v:0 },
+  flights: { items:[], lists:[], v:0 },
 };
-const pending = { tasks: [], links: [], expenses: [] };
-function loadCache(){ for(const k of ['tasks','links','expenses']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
+const pending = { tasks: [], links: [], expenses: [], flights: [] };
+function loadCache(){ for(const k of ['tasks','links','expenses','flights']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
 function saveCache(k){ try{ localStorage.setItem('peggy.cache.'+k, JSON.stringify(store[k])); localStorage.setItem('peggy.pending.'+k, JSON.stringify(pending[k])); }catch(_){} }
 function applyLocal(doc, op){
   const coll = op.kind==='list' ? doc.lists : doc.items;
@@ -268,27 +288,27 @@ async function pull(k){
 let membersAt=0;
 async function loadMembers(){ if(!acct.session) return; try{ members=(await peggyApi('members')).members||[]; membersAt=Date.now(); }catch(e){ if(e.status===401) toast('Please sign in again',4000); } }
 async function syncAll(){ if(acct.session && (!members.length || !partner() || !partner().signedIn || Date.now()-membersAt>600000)){ await loadMembers(); render(); }
-  for(const k of ['tasks','links','expenses']){ await flush(k); await pull(k); } }
+  for(const k of ['tasks','links','expenses','flights']){ await flush(k); await pull(k); } }
 setInterval(()=>{ if(!document.hidden) syncAll(); }, 20000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(); });
 
 /* ================= routing ================= */
 let tab='tasks';
-const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money'};
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
-  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':'Add a link';
+  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':'Add a link';
   render(); if(tab==='calendar') loadCalendar(); }
 window.addEventListener('hashchange', route);
-$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):editLink(null); };
+$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():editLink(null); };
 $('#setBtn').onclick=()=>openSettings();
 
 function render(){
   const v=$('#view');
   if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
   $('#addBtn').classList.remove('hidden');
-  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else renderLinks(v);
+  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else renderLinks(v);
 }
 function renderSignIn(v){
   v.replaceChildren(el('div',{className:'card signin'},
@@ -837,6 +857,161 @@ async function settleUp(bal, x){
     const btns=el('div',{className:'btns'});
     if(!isNew){ const del=el('button',{className:'danger',textContent:'Delete'}); del.onclick=()=>{ if(confirm('Delete this payment?')){ change('expenses',[{op:'delete',id:x.id}]); close(); } }; btns.append(del); }
     const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(); btns.append(c,save); sh.append(btns);
+  });
+}
+
+/* ================= FLIGHTS ================= */
+// Each flight: who's flying (an email or 'both'), airline code + number, airports, local date/times, confirmation and seat.
+const AIRLINES={AA:['American','https://www.aa.com/reservation/view/find-your-trip'],DL:['Delta','https://www.delta.com/mytrips/'],UA:['United','https://www.united.com/en/us/checkin'],
+  WN:['Southwest','https://www.southwest.com/air/check-in/'],B6:['JetBlue','https://www.jetblue.com/check-in'],AS:['Alaska','https://www.alaskaair.com/booking/check-in'],
+  F9:['Frontier','https://www.flyfrontier.com/travel/my-trips/check-in/'],NK:['Spirit','https://www.spirit.com/check-in'],G4:['Allegiant','https://www.allegiantair.com/check-in'],
+  HA:['Hawaiian','https://www.hawaiianairlines.com/manage/check-in'],SY:['Sun Country','https://www.suncountry.com/check-in'],AC:['Air Canada','https://www.aircanada.com/checkin'],
+  BA:['British Airways','https://www.britishairways.com/travel/olcilandingpageauthreq/public/en_us'],AF:['Air France','https://wwws.airfrance.us/check-in'],LH:['Lufthansa','https://www.lufthansa.com/us/en/online-check-in']};
+let fview='upcoming';
+const fWhen = f => new Date(`${f.date}T${f.depart||'00:00'}`);
+const fLand = f => new Date(`${f.arriveDate||f.date}T${f.arrive||f.depart||'23:59'}`);
+const fCode = f => `${(f.airline||'').toUpperCase()} ${f.number||''}`.trim();
+const hm = t => { if(!t) return ''; const [h,m]=t.split(':').map(Number); const d=new Date(); d.setHours(h,m,0,0); return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); };
+function flightBadge(f){
+  const now=Date.now(), a=fWhen(f).getTime(), b=fLand(f).getTime();
+  if(now>b) return ['past','Done'];
+  if(now>=a) return ['live','✈️ In the air'];
+  const days=Math.round((parseYmd(f.date)-today())/864e5);
+  if(days<=0){ const h=Math.max(0,Math.round((a-now)/36e5)); return ['soon', h<1?'Leaving soon':`In ${h} hour${h>1?'s':''}`]; }
+  if(days===1) return ['soon','Tomorrow'];
+  return ['', `In ${days} days`];
+}
+function renderFlights(v){
+  const p=partner(), mine=me().email, pn=(p&&p.name)||'Partner';
+  const chips=$('#chips'); chips.replaceChildren();
+  for(const [k,l] of [['upcoming','Upcoming'],['mine','Mine'],['theirs',`${pn}’s`],['past','Past']]){ const b=el('button',{className:'chip'+(fview===k?' on':''),textContent:l,title:`Show ${l.toLowerCase()} flights`}); b.onclick=()=>{ fview=k; render(); }; chips.append(b); }
+  const now=Date.now();
+  let list=store.flights.items.slice();
+  if(fview==='past') list=list.filter(f=>fLand(f).getTime()<now).sort((a,b)=>fWhen(b)-fWhen(a));
+  else { list=list.filter(f=>fLand(f).getTime()>=now).sort((a,b)=>fWhen(a)-fWhen(b));
+    if(fview==='mine') list=list.filter(f=>f.traveler===mine||f.traveler==='both');
+    if(fview==='theirs') list=list.filter(f=>f.traveler!==mine); }
+  const find=el('button',{className:'findfl',title:'Search for flights on Google Flights or Kayak'}); find.append(el('span',{textContent:'🔎'}), el('span',{},el('b',{textContent:'Find flights'}),el('small',{textContent:'Compare prices on Google Flights and Kayak'})));
+  find.onclick=()=>findFlights();
+  const parts=[find]; let lastD='';
+  for(const f of list){ if(f.date!==lastD){ lastD=f.date; parts.push(el('div',{className:'mhead',textContent:fmtDay(parseYmd(f.date))})); } parts.push(flightCard(f)); }
+  if(!list.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:fview==='past'?'No past flights':'No flights coming up'}),el('p',{textContent:'Tap ＋ to add one, or paste a confirmation email and Peggy fills it in. You both see each other’s flights.'})));
+  v.replaceChildren(...parts);
+}
+function flightCard(f){
+  const [cls,txt]=flightBadge(f), al=AIRLINES[(f.airline||'').toUpperCase()];
+  const c=el('div',{className:'flight'+(cls==='past'?' past':'')});
+  const top=el('div',{className:'ftop'}, whoBubble(f.traveler)||el('span'), el('span',{className:'fcode',textContent:`${al?al[0]:(f.airlineName||f.airline||'')} ${f.number||''}`.trim()}), el('span',{className:'fbadge '+cls,textContent:txt}));
+  const route=el('div',{className:'froute'},
+    el('div',{},el('div',{className:'ap',textContent:(f.from||'???').toUpperCase()}),el('div',{className:'tm',textContent:hm(f.depart)})),
+    el('div',{className:'line',textContent:'✈'}),
+    el('div',{style:'text-align:right'},el('div',{className:'ap',textContent:(f.to||'???').toUpperCase()}),el('div',{className:'tm',textContent:hm(f.arrive)+(f.arriveDate&&f.arriveDate!==f.date?' +1':'')})));
+  const info=el('div',{className:'finfo'});
+  info.append(el('span',{textContent:f.traveler==='both'?'Both of you':nameOf(f.traveler)}));
+  if(f.conf){ const cb=el('button',{className:'conf',title:'Copy the confirmation code',textContent:`Conf ${f.conf} ⧉`}); cb.onclick=async e=>{ e.stopPropagation(); try{ await navigator.clipboard.writeText(f.conf); toast('Confirmation code copied'); }catch(_){ toast(f.conf); } }; info.append(cb); }
+  if(f.seat) info.append(el('span',{textContent:'Seat '+f.seat}));
+  const acts=el('div',{className:'facts'});
+  const link=(t,href,title)=>{ const a=el('a',{href,target:'_blank',rel:'noopener',textContent:t,title}); acts.append(a); };
+  if(f.airline&&f.number) link('Status',`https://www.google.com/search?q=${encodeURIComponent(fCode(f).replace(' ','')+' flight status')}`,'See live flight status');
+  if(al) link('Check in',al[1],`Check in on ${al[0]}’s website`);
+  link('📅 Add',calLink(f),'Add this flight to your Google Calendar');
+  const ed=el('button',{textContent:'Edit',title:'Edit or delete this flight'}); ed.onclick=()=>editFlight(f); acts.append(ed);
+  if(f.notes) c.append(top,route,info,el('div',{className:'fnote',textContent:f.notes}),acts); else c.append(top,route,info,acts);
+  return c;
+}
+function calLink(f){
+  const d=(x,t)=>(x||f.date).replace(/-/g,'')+'T'+(t||'00:00').replace(':','')+'00';
+  const al=AIRLINES[(f.airline||'').toUpperCase()];
+  return 'https://calendar.google.com/calendar/render?'+new URLSearchParams({action:'TEMPLATE', text:`✈️ ${(f.from||'').toUpperCase()} → ${(f.to||'').toUpperCase()} · ${al?al[0]:f.airline||''} ${f.number||''}`.trim(),
+    dates:`${d(f.date,f.depart)}/${d(f.arriveDate||f.date,f.arrive||f.depart)}`, details:[f.traveler==='both'?'Both of you':nameOf(f.traveler), f.conf?'Confirmation '+f.conf:'', f.seat?'Seat '+f.seat:'', f.notes||''].filter(Boolean).join('\n')});
+}
+function travelerSeg(x){
+  const p=partner(), mine=me().email, seg=el('div',{className:'seg wide'});
+  const opts=[[mine,'Me'],...(p?[[p.email,p.name||'Partner']]:[]),['both','Both of us']];
+  const upd=()=>seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===x.traveler));
+  for(const [v,l] of opts){ const b=el('button',{type:'button',textContent:l}); b.dataset.v=v; b.onclick=()=>{ x.traveler=v; upd(); }; seg.append(b); }
+  upd(); return seg;
+}
+async function addFlight(){
+  const v=await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Add a flight'}), el('p',{textContent:'Paste the confirmation email and Peggy fills everything in, or type it yourself.'}));
+    const st=el('div',{className:'stack'});
+    const a=el('button',{className:'primary',textContent:'📋 Paste a confirmation email'}); a.onclick=()=>close('paste');
+    const b=el('button',{textContent:'✏️ Type it in'}); b.onclick=()=>close('manual');
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(null);
+    st.append(a,b,c); sh.append(st);
+  });
+  if(v==='manual') editFlight(null); if(v==='paste') pasteFlights();
+}
+async function pasteFlights(){
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Paste the confirmation'}), el('p',{textContent:'Open the airline’s email, select all the text, copy it, and paste it here. Claude picks out each flight.'}));
+    const ta=el('textarea',{className:'paste',placeholder:'Paste the email here…'});
+    const who={traveler:me().email}; const seg=travelerSeg(who);
+    const out=el('div');
+    const go=el('button',{className:'primary',textContent:'Read it'});
+    go.onclick=async()=>{ if(!ta.value.trim()) return ta.focus(); go.disabled=true; go.textContent='Reading…';
+      try{ const d=await peggyApi('flight-parse',{method:'POST',body:JSON.stringify({text:ta.value})});
+        const fl=(d.flights||[]).filter(f=>f.date && (f.from||f.to));
+        if(!fl.length){ out.replaceChildren(el('p',{textContent:'No flights found in that text. Try copying the whole email, or type it in instead.'})); return; }
+        out.replaceChildren(el('p',{className:'owep',textContent:`Found ${fl.length} flight${fl.length>1?'s':''}:`}), ...fl.map(f=>el('div',{className:'fprev',textContent:`${fmtShort(parseYmd(f.date))} · ${f.airline||''} ${f.number||''} · ${(f.from||'').toUpperCase()} → ${(f.to||'').toUpperCase()} · ${hm(f.depart)}${f.conf?' · '+f.conf:''}`})));
+        const save=el('button',{className:'primary',textContent:`Save ${fl.length} flight${fl.length>1?'s':''}`,style:'width:100%;margin-top:8px'});
+        save.onclick=()=>{ change('flights', fl.map(f=>({op:'upsert',item:{id:uid(), traveler:who.traveler, airline:(f.airline||'').toUpperCase().slice(0,3), airlineName:f.airlineName||'', number:String(f.number||'').replace(/\D/g,'').slice(0,5),
+          from:(f.from||'').toUpperCase().slice(0,4), to:(f.to||'').toUpperCase().slice(0,4), date:f.date, depart:f.depart||'', arrive:f.arrive||'', arriveDate:f.arriveDate||'', conf:(f.conf||'').toUpperCase(), seat:f.seat||'', notes:(f.passengers||[]).join(', ')}})));
+          close(); toast('Flights saved ✈️'); };
+        out.append(save);
+      }catch(e){ out.replaceChildren(el('p',{textContent:'Couldn’t read it: '+e.message})); }
+      finally{ go.disabled=false; go.textContent='Read it again'; } };
+    const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
+    sh.append(...field('Who’s flying',seg), ...field('Confirmation email',ta), go, out, c);
+  });
+}
+async function editFlight(f){
+  const isNew=!f; f=f?{...f}:{id:uid(), traveler:me().email, airline:'', number:'', from:'', to:'', date:ymd(addDays(today(),7)), depart:'', arrive:'', arriveDate:'', conf:'', seat:'', notes:''};
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:isNew?'Add a flight':'Edit flight'}));
+    const up=i=>{ i.autocapitalize='characters'; i.oninput=()=>{ const p=i.selectionStart; i.value=i.value.toUpperCase(); i.setSelectionRange(p,p); }; return i; };
+    const air=up(el('input',{value:f.airline,placeholder:'DL',maxLength:3,title:'Two-letter airline code, e.g. DL for Delta'})), num=el('input',{value:f.number,placeholder:'1234',inputMode:'numeric',title:'Flight number'});
+    const from=up(el('input',{value:f.from,placeholder:'ATL',maxLength:4,title:'From airport code'})), to=up(el('input',{value:f.to,placeholder:'LAX',maxLength:4,title:'To airport code'}));
+    const date=el('input',{type:'date',value:f.date}), dep=el('input',{type:'time',value:f.depart,title:'Departs (local time)'}), arr=el('input',{type:'time',value:f.arrive,title:'Arrives (local time)'});
+    const nextDay=el('input',{type:'checkbox',checked:!!(f.arriveDate&&f.arriveDate!==f.date)});
+    const conf=up(el('input',{value:f.conf,placeholder:'ABC123',title:'Confirmation code'})), seat=up(el('input',{value:f.seat,placeholder:'14C'})), notes=el('input',{value:f.notes||'',placeholder:'Notes (optional)'});
+    const two=(a,b)=>el('div',{className:'two'},el('div',{},...a),el('div',{},...b));
+    sh.append(...field('Who’s flying',travelerSeg(f)), two(field('Airline',air),field('Flight number',num)), two(field('From',from),field('To',to)), ...field('Date',date),
+      two(field('Departs',dep),field('Arrives',arr)), el('label',{className:'checkrow'},nextDay,el('span',{textContent:'Arrives the next day'})), two(field('Confirmation',conf),field('Seat',seat)), ...field('Notes',notes));
+    const save=el('button',{className:'primary',textContent:'Save',title:'Save this flight for both of you'});
+    save.onclick=()=>{ if(!from.value.trim()||!to.value.trim()) return toast('Add where it’s from and to');
+      const item={...f, airline:air.value.trim(), number:num.value.replace(/\D/g,''), from:from.value.trim(), to:to.value.trim(), date:date.value||f.date, depart:dep.value, arrive:arr.value,
+        arriveDate:nextDay.checked?ymd(addDays(parseYmd(date.value||f.date),1)):'', conf:conf.value.trim(), seat:seat.value.trim(), notes:notes.value.trim()};
+      change('flights',[{op:'upsert',item}]); close(); toast(isNew?'Flight added ✈️':'Saved'); };
+    const btns=el('div',{className:'btns'});
+    if(!isNew){ const del=el('button',{className:'danger',textContent:'Delete'}); del.onclick=()=>{ if(confirm('Delete this flight?')){ change('flights',[{op:'delete',id:f.id}]); close(); } }; btns.append(del); }
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(); btns.append(c,save); sh.append(btns);
+  });
+}
+async function findFlights(){
+  const home=(()=>{ try{ return localStorage.getItem('peggy.homeAirport')||''; }catch(_){ return ''; } })();
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'🔎 Find flights'}), el('p',{textContent:'Peggy opens the search for you. When you book, paste the confirmation email here with ＋ so you both have it.'}));
+    const up=i=>{ i.autocapitalize='characters'; i.oninput=()=>{ i.value=i.value.toUpperCase(); }; return i; };
+    const from=up(el('input',{value:home,placeholder:'ATL',maxLength:4})), to=up(el('input',{placeholder:'Where to? (e.g. MCO)',maxLength:4}));
+    const go=el('input',{type:'date',value:ymd(addDays(today(),14))}), back=el('input',{type:'date',value:ymd(addDays(today(),18))});
+    const oneWay=el('input',{type:'checkbox'}); oneWay.onchange=()=>{ back.disabled=oneWay.checked; };
+    const ppl={n:2}; const seg=el('div',{className:'seg wide'});
+    for(const [n,l] of [[1,'Just one'],[2,'Both of us']]){ const b=el('button',{type:'button',textContent:l}); b.onclick=()=>{ ppl.n=n; seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); }; if(n===2) b.classList.add('on'); seg.append(b); }
+    const two=(a,b)=>el('div',{className:'two'},el('div',{},...a),el('div',{},...b));
+    sh.append(two(field('From',from),field('To',to)), two(field('Leave',go),field('Return',back)), el('label',{className:'checkrow'},oneWay,el('span',{textContent:'One way'})), ...field('Travelers',seg));
+    const open=site=>{ const f=from.value.trim(), t=to.value.trim(); if(!f||!t) return toast('Add both airports');
+      try{ localStorage.setItem('peggy.homeAirport', f); }catch(_){}
+      const rt=!oneWay.checked && back.value;
+      const url = site==='google'
+        ? 'https://www.google.com/travel/flights?q='+encodeURIComponent(`Flights from ${f} to ${t} on ${go.value}${rt?' returning '+back.value:' one way'} for ${ppl.n} adult${ppl.n>1?'s':''}`)
+        : `https://www.kayak.com/flights/${f}-${t}/${go.value}${rt?'/'+back.value:''}/${ppl.n}adults?sort=bestflight_a`;
+      window.open(url,'_blank','noopener'); };
+    const g=el('button',{className:'primary',textContent:'Search Google Flights'}); g.onclick=()=>open('google');
+    const k=el('button',{textContent:'Search Kayak'}); k.onclick=()=>open('kayak');
+    const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
+    const st=el('div',{className:'stack'}); st.append(g,k,c); sh.append(st);
   });
 }
 
