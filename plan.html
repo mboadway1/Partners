@@ -123,6 +123,22 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 .sline input,.sline select{font:inherit;font-size:15px;padding:7px 9px;border-radius:10px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);flex:1}
 .sline .samt{flex:none;width:96px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
 .snote{font-size:12px;color:var(--dim);font-weight:700}
+.fuelctl{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.fuelctl input{font:inherit;font-size:16px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
+.bigbtn{min-height:56px;font-size:18px}
+.fmeta{font-size:12px;color:var(--dim);font-weight:700;margin:2px 2px 8px}
+.fuelrow{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:10px}
+.fuelrow.best{border:2px solid var(--accent)}
+.frow1{display:flex;gap:12px;align-items:flex-start}
+.fprice{flex:none;min-width:86px;text-align:center}
+.fprice .pv{font:600 30px var(--display);font-variant-numeric:tabular-nums;color:var(--accent)}
+.fuelrow:not(.best) .fprice .pv{color:var(--text)}
+.fprice .pu{font-size:11px;color:var(--dim);font-weight:700}
+.fmid{flex:1;min-width:0}
+.fmid .t{font-weight:800} .fmid .m{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsave{font-size:13px;font-weight:800;color:var(--accent);margin-top:2px}
+.fnote2{font-size:12px;color:var(--dim);margin:14px 2px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.tankin{width:56px;font:inherit;font-size:13px;padding:2px 6px;border-radius:8px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
 .findfl{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--panel);border:1px dashed var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
 .findfl > span:first-child{font-size:24px} .findfl small{display:block;color:var(--dim);font-weight:600;font-size:13px}
 .flight{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
@@ -304,21 +320,21 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(
 
 /* ================= routing ================= */
 let tab='tasks';
-const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights'};
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Diesel'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
-  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':'Add a link';
+  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':'Add a link';
   render(); if(tab==='calendar') loadCalendar(); }
 window.addEventListener('hashchange', route);
-$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():editLink(null); };
+$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):editLink(null); };
 $('#setBtn').onclick=()=>openSettings();
 
 function render(){
   const v=$('#view');
   if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
   $('#addBtn').classList.remove('hidden');
-  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else renderLinks(v);
+  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else renderLinks(v);
 }
 function renderSignIn(v){
   v.replaceChildren(el('div',{className:'card signin'},
@@ -1097,6 +1113,83 @@ async function findFlights(){
     const st=el('div',{className:'stack'}); st.append(g,k,c); sh.append(st);
   });
 }
+
+/* ================= FUEL: cheapest diesel nearby or along the way ================= */
+const FUELS=[['DIESEL','Diesel'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
+const LS=(k,d)=>{ try{ const v=localStorage.getItem('peggy.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
+const SS=(k,v)=>{ try{ localStorage.setItem('peggy.fuel.'+k, JSON.stringify(v)); }catch(_){} };
+const fuel={ type:LS('type','DIESEL'), mode:LS('mode','near'), miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
+const milesBetween=(a,b,c,d)=>{ const R=3958.8, r=x=>x*Math.PI/180, dl=r(c-a), dn=r(d-b), h=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
+const ago = t => { if(!t) return ''; const m=Math.round((Date.now()-Date.parse(t))/60000); return m<60?`${Math.max(1,m)} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`; };
+const priceOf = (st,type) => { const f=(st.prices||[]).find(p=>p.type===type) || (type==='DIESEL' && (st.prices||[]).find(p=>/DIESEL/.test(p.type))); return f&&f.price?f:null; };
+function here(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error('This phone can’t share its location'));
+  navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}), e=>rej(new Error(e.code===1?'Location is off for Peggy. Allow it in Settings → Privacy → Location Services → Safari Websites (While Using).':'Couldn’t get your location. Try again.')), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); }); }
+async function findFuel(){
+  if(fuel.busy) return; fuel.busy=true; fuel.err=''; if(tab==='fuel') render();
+  try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase();
+    const d = fuel.mode==='route'
+      ? await peggyApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word})})
+      : await peggyApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609)})});
+    fuel.res={...d, from:pos, mode:fuel.mode, at:Date.now()}; SS('last', fuel.res); }
+  catch(e){ fuel.err=e.message; }
+  finally{ fuel.busy=false; if(tab==='fuel') render(); }
+}
+function renderFuel(v){
+  const chips=$('#chips'); chips.replaceChildren();
+  for(const [k,l] of FUELS){ const b=el('button',{className:'chip'+(fuel.type===k?' on':''),textContent:l,title:`Show ${l.toLowerCase()} prices`}); b.onclick=()=>{ fuel.type=k; SS('type',k); render(); }; chips.append(b); }
+  const parts=[];
+  const seg=el('div',{className:'seg wide'});
+  for(const [k,l] of [['near','📍 Near me'],['route','🛣️ On my way']]){ const b=el('button',{textContent:l,className:fuel.mode===k?'on':''}); b.onclick=()=>{ fuel.mode=k; SS('mode',k); render(); }; seg.append(b); }
+  parts.push(seg);
+  const ctl=el('div',{className:'fuelctl'});
+  if(fuel.mode==='near'){
+    const rad=el('div',{className:'chips'}); for(const m of [5,10,25,50]){ const b=el('button',{className:'chip'+(fuel.miles===m?' on':''),textContent:`${m} mi`,title:`Look within ${m} miles`}); b.onclick=()=>{ fuel.miles=m; SS('miles',m); findFuel(); }; rad.append(b); }
+    ctl.append(rad);
+  } else {
+    const dest=el('input',{value:fuel.dest,placeholder:'Where are you headed? (city, address or place)',enterKeyHint:'go'});
+    dest.onkeydown=e=>{ if(e.key==='Enter'){ fuel.dest=dest.value.trim(); SS('dest',fuel.dest); findFuel(); } };
+    dest.onchange=()=>{ fuel.dest=dest.value.trim(); SS('dest',fuel.dest); };
+    ctl.append(dest);
+  }
+  const go=el('button',{className:'primary bigbtn',textContent:fuel.busy?'Looking…':fuel.mode==='near'?`⛽ Find cheapest ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()}`:'⛽ Find cheapest on the way',disabled:fuel.busy});
+  go.onclick=()=>{ if(fuel.mode==='route'){ const i=ctl.querySelector('input'); fuel.dest=(i&&i.value.trim())||fuel.dest; SS('dest',fuel.dest); if(!fuel.dest) return i&&i.focus(); } findFuel(); };
+  ctl.append(go); parts.push(ctl);
+  if(fuel.err) parts.push(el('div',{className:'card'},el('p',{textContent:fuel.err})));
+  const R=fuel.res;
+  if(R && R.stations && R.mode===fuel.mode){
+    const from=R.from||{}, base=R.route?parseInt(R.route.duration):0;
+    let list=R.stations.map(st=>({st, p:priceOf(st,fuel.type), mi:(st.lat!=null&&from.lat!=null)?milesBetween(from.lat,from.lng,st.lat,st.lng):null,
+      extra: st.detour&&base ? Math.max(0,Math.round(((st.detour.toSecs||0)+(st.detour.restSecs||0)-base)/60)) : null}));
+    const priced=list.filter(x=>x.p).sort((a,b)=>a.p.price-b.p.price||(a.mi||0)-(b.mi||0)), none=list.filter(x=>!x.p).sort((a,b)=>(a.mi||0)-(b.mi||0));
+    const nearest=priced.slice().sort((a,b)=>(a.mi||0)-(b.mi||0))[0];
+    parts.push(el('div',{className:'fmeta',textContent:`${priced.length} of ${list.length} stations show a ${(FUELS.find(f=>f[0]===fuel.type)||[,''])[1].toLowerCase()} price · checked ${ago(new Date(R.at).toISOString())}`+(R.route?` · trip ${Math.round(R.route.meters/1609)} mi`:'')}));
+    priced.forEach((x,i)=>parts.push(fuelRow(x, i===0, nearest)));
+    if(none.length){ parts.push(el('div',{className:'mhead',textContent:'No price listed'})); none.slice(0,6).forEach(x=>parts.push(fuelRow(x,false,null))); }
+    if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No stations found. Try a bigger distance.':'No stations found along that route.'})));
+  } else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Peggy uses your location to find posted prices nearby, or along your route, cheapest first.'})));
+  const tank=el('input',{type:'number',value:fuel.tank,min:5,max:200,className:'tankin',title:'How many gallons you usually buy'}); tank.onchange=()=>{ fuel.tank=Math.max(1,+tank.value||25); SS('tank',fuel.tank); render(); };
+  parts.push(el('div',{className:'fnote2'}, el('span',{textContent:'Savings figured on '}), tank, el('span',{textContent:' gallons · Prices come from Google Maps and can be a few hours old. Let a passenger tap while you’re driving.'})));
+  v.replaceChildren(...parts);
+}
+function fuelRow(x, best, nearest){
+  const st=x.st, r=el('div',{className:'fuelrow'+(best?' best':'')});
+  const price=el('div',{className:'fprice'}, el('div',{className:'pv',textContent:x.p?'$'+x.p.price.toFixed(2):'—'}), el('div',{className:'pu',textContent:x.p?ago(x.p.updated):''}));
+  const bits=[x.mi!=null?`${x.mi<10?x.mi.toFixed(1):Math.round(x.mi)} mi`:'', x.extra!=null?(x.extra<=1?'right on the way':`+${x.extra} min detour`):'', st.open===false?'closed now':''].filter(Boolean).join(' · ');
+  const save = best && nearest && x.p && nearest.p && nearest.st.id!==st.id ? (nearest.p.price-x.p.price)*fuel.tank : 0;
+  const mid=el('div',{className:'fmid'}, el('div',{className:'t',textContent:(best?'🏆 ':'')+st.name}), el('div',{className:'m',textContent:bits}), el('div',{className:'m',textContent:st.address}));
+  if(save>=0.5) mid.append(el('div',{className:'fsave',textContent:`Saves about $${save.toFixed(2)} vs the closest station`}));
+  const acts=el('div',{className:'facts'});
+  const nav=(t,href,title)=>acts.append(el('a',{href,target:'_blank',rel:'noopener',textContent:t,title}));
+  if(st.lat!=null){ nav('🧭 Apple',`https://maps.apple.com/?daddr=${st.lat},${st.lng}&dirflg=d`,'Directions in Apple Maps'); nav('🗺️ Google',`https://www.google.com/maps/dir/?api=1&destination=${st.lat},${st.lng}&destination_place_id=${encodeURIComponent(st.id)}&travelmode=driving`,'Directions in Google Maps'); }
+  const log=el('button',{textContent:'⛽ Log it',title:'Add this fill-up to Money'}); log.onclick=()=>logFillUp(st, x.p); acts.append(log);
+  r.append(el('div',{className:'frow1'},price,mid), acts); return r;
+}
+function logFillUp(st, p){
+  editExpense(null);
+  setTimeout(()=>{ const w=document.querySelector('.sheet input[placeholder^="What was it"]'); if(w&&st) w.value=`${st.name} · ${(FUELS.find(f=>f[0]===fuel.type)||[,'fuel'])[1].toLowerCase()}${p?' @ $'+p.price.toFixed(2):''}`;
+    const b=[...document.querySelectorAll('.sheet .catchips button')].find(x=>/RV|Gas/.test(x.textContent) && (fuel.type==='DIESEL'?/RV/.test(x.textContent):/Gas/.test(x.textContent))); if(b) b.click(); }, 60);
+}
+setInterval(()=>{ if(tab==='fuel' && !document.hidden && fuel.res && fuel.mode==='near' && Date.now()-fuel.res.at>5*60000) findFuel(); }, 60000);
 
 /* ================= SETTINGS ================= */
 async function openSettings(){

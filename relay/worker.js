@@ -256,6 +256,45 @@ async function api(req, env, url, cors) {
     return json({ items }, 200, cors);
   }
 
+  // --- fuel: posted fuel prices at nearby stations or along a route (Google Places + Routes, key GOOGLE_MAPS_KEY) ---
+  if ((path === 'fuel' || path === 'fuel-route') && req.method === 'POST' && full) {
+    if (!env.GOOGLE_MAPS_KEY) return json({ error: 'Fuel prices need a GOOGLE_MAPS_KEY secret in the relay’s settings.' }, 500, cors);
+    const q = await body(), lat = +q.lat, lng = +q.lng;
+    if (!isFinite(lat) || !isFinite(lng)) return json({ error: 'Location missing' }, 400, cors);
+    const F = 'places.id,places.displayName,places.formattedAddress,places.location,places.fuelOptions,places.currentOpeningHours.openNow,places.googleMapsUri';
+    const g = (url, mask, payload) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY, 'X-Goog-FieldMask': mask }, body: JSON.stringify(payload) })
+      .then(async r => ({ ok: r.ok, d: await r.json().catch(() => ({})) }));
+    let places = [], route = null, summaries = [];
+    if (path === 'fuel') {
+      const radius = Math.min(50000, Math.max(1000, +q.radius || 16000));
+      const near = types => g('https://places.googleapis.com/v1/places:searchNearby', F, { includedTypes: types, maxResultCount: 20, rankPreference: 'DISTANCE',
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } } });
+      let r = await near(['gas_station', 'truck_stop']);
+      if (!r.ok) r = await near(['gas_station']);
+      if (!r.ok) return json({ error: (r.d.error && r.d.error.message) || 'Google Places refused the request' }, 502, cors);
+      places = r.d.places || [];
+    } else {
+      if (!q.dest) return json({ error: 'Where are you headed?' }, 400, cors);
+      const rr = await g('https://routes.googleapis.com/directions/v2:computeRoutes', 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration',
+        { origin: { location: { latLng: { latitude: lat, longitude: lng } } }, destination: { address: String(q.dest).slice(0, 200) }, travelMode: 'DRIVE' });
+      const rt = rr.ok && rr.d.routes && rr.d.routes[0];
+      if (!rt) return json({ error: (rr.d.error && rr.d.error.message) || 'Couldn’t find a route there' }, 502, cors);
+      route = { meters: rt.distanceMeters, duration: rt.duration };
+      const ts = await g('https://places.googleapis.com/v1/places:searchText', F + ',routingSummaries', { textQuery: (q.fuelWord || 'diesel') + ' gas station', maxResultCount: 20,
+        searchAlongRouteParameters: { polyline: { encodedPolyline: rt.polyline.encodedPolyline } }, routingParameters: { origin: { latitude: lat, longitude: lng } } });
+      if (!ts.ok) return json({ error: (ts.d.error && ts.d.error.message) || 'Google Places refused the request' }, 502, cors);
+      places = ts.d.places || []; summaries = ts.d.routingSummaries || [];
+    }
+    const out = places.map((p, i) => {
+      const s = summaries[i] && summaries[i].legs;   // leg 0: here → station; leg 1: station → destination
+      return { id: p.id, name: (p.displayName && p.displayName.text) || 'Station', address: p.formattedAddress || '', lat: p.location && p.location.latitude, lng: p.location && p.location.longitude,
+        open: p.currentOpeningHours ? p.currentOpeningHours.openNow : null, maps: p.googleMapsUri || '',
+        prices: ((p.fuelOptions && p.fuelOptions.fuelPrices) || []).map(f => ({ type: f.type, price: f.price ? (+f.price.units || 0) + (f.price.nanos || 0) / 1e9 : null, currency: f.price && f.price.currencyCode, updated: f.updateTime })),
+        detour: s ? { toMeters: s[0] && s[0].distanceMeters, toSecs: s[0] && parseInt(s[0].duration), restSecs: s[1] && parseInt(s[1].duration) } : null };
+    });
+    return json({ stations: out, route }, 200, cors);
+  }
+
   // --- flights: read a pasted confirmation email into flight details ---
   if (path === 'flight-parse' && req.method === 'POST' && full) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'Reading confirmations needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
