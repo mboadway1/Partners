@@ -69,6 +69,19 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .dupc{flex:none;width:76px;display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:800;color:var(--dim);text-align:center}
 .dupc img{width:76px;height:76px;object-fit:cover;border-radius:8px;opacity:.55}
 .dupc.keep{color:var(--accent)} .dupc.keep img{opacity:1;outline:3px solid var(--accent);outline-offset:-3px}
+.chips.closet button{min-height:32px;padding:4px 10px;font-size:13px;border-radius:999px;background:var(--panel2)}
+.chips.closet .n{margin-left:5px;color:var(--dim);font-size:12px}
+.addrow{display:flex;gap:6px;align-items:stretch}
+.addrow input{flex:1;min-width:0;font:inherit;font-size:15px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
+.addrow select{max-width:120px;font:inherit;font-size:14px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text)}
+.card > input[type=text]{width:100%;box-sizing:border-box}
+.ideas{display:flex;flex-direction:column;gap:10px}
+.idea{background:var(--panel2);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.idea h4{margin:0;font:600 18px var(--display)}
+.idea .meta{color:var(--dim);font-size:13px;font-weight:700}
+.idea p{margin:2px 0;font-size:14px}
+.chips.uses span,.chips.need span{font-size:13px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--panel)}
+.chips.uses span.have{color:var(--accent)}
 .dayh{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-weight:800;font-size:15px;position:sticky;top:0;z-index:1}
 .dayh:first-child{padding-top:2px}
 .dayh .n{color:var(--dim);font-weight:700;font-size:13px;margin-left:6px}
@@ -374,6 +387,7 @@ body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
 <script src="account.js"></script>
 <script src="magic.js"></script>
 <script src="share.js"></script>
+<script src="costumes.js"></script>
 <script>
 'use strict';
 /* ---------- config ---------- */
@@ -399,26 +413,28 @@ function visible(){
   if(view==='fav') l=l.filter(p=>p.fav);
   else if(view==='todo') l=l.filter(p=>!p.postedAt);
   else if(view==='posted') l=l.filter(p=>p.postedAt);
+  else if(view==='costume') l=l.filter(p=>p.costume&&p.costume.is);
   else if(view==='new'){ const b=lastBatch(); l=l.filter(p=>p.batch && p.batch===b); }
   else if(view!=='all') l=l.filter(p=>p.albums.includes(view));
   return l.slice().sort((a,b)=>b.created-a.created);
 }
 const lastBatch = () => { try{ return localStorage.getItem('peggy.lastBatch')||''; }catch(_){ return ''; } };
-const CHIP_TIPS={new:'Show the photos from your last import',all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
+const CHIP_TIPS={costume:'Photos with costumes (tap again for the closet and ideas)',new:'Show the photos from your last import',all:'Show all photos',fav:'Show your favorites',todo:'Show photos you haven’t posted yet',posted:'Show photos you’ve posted'};
 function renderChips(){
   const box=$('#chips'); box.replaceChildren();
   const add=(id,label,n)=>{ const b=el('button',{className:'chip'+(view===id?' on':''),title:CHIP_TIPS[id]||`Show the “${label}” album (tap again to rename or delete)`},label); if(n!=null) b.append(el('span',{className:'n',textContent:n}));
-    b.onclick=()=>{ if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b);
+    b.onclick=()=>{ if(id==='costume' && (view==='costume' || !photos.some(p=>p.costume&&p.costume.is))) return openCostumes(); if(view===id && albums.some(a=>a.id===id)) return albumMenu(id); view=id; selected.clear(); renderAll(); }; box.append(b);
     if(view===id && albums.some(a=>a.id===id)){ const m=el('button',{className:'chip',textContent:'⋯',title:`Rename or delete the “${label}” album`,ariaLabel:'Album options'}); m.onclick=()=>albumMenu(id); box.append(m); } };
   add('all','All',photos.length);
   const nb0=photos.filter(p=>p.batch && p.batch===lastBatch()).length; if(nb0) add('new','🆕 Last import',nb0);
   add('fav','★ Favorites',photos.filter(p=>p.fav).length);
   add('todo','Not posted',photos.filter(p=>!p.postedAt).length);
   add('posted','Posted',photos.filter(p=>p.postedAt).length);
+  add('costume','🎭 Costumes',photos.filter(p=>p.costume&&p.costume.is).length);
   const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
   for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name))) add(a.id, (a.shared?'👥 ':'')+a.name, photos.filter(p=>p.albums.includes(a.id)).length);
   const nb=el('button',{className:'chip',textContent:'＋ Album',title:'Create a new album'}); nb.onclick=()=>newAlbum(); box.append(nb);
-  if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted','new'].includes(view)) view='all';
+  if(!albums.some(a=>a.id===view) && !['all','fav','todo','posted','new','costume'].includes(view)) view='all';
   if(view==='new' && !nb0) view='all';
 }
 function renderGrid(){
@@ -434,6 +450,7 @@ function renderGrid(){
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
     const bd=el('div',{className:'badges'});
     if(edited(p)) bd.append(el('span',{textContent:'✎'}));
+    if(p.costume&&p.costume.is) bd.append(el('span',{textContent:'🎭',title:p.costume.name}));
     if(p.postedAt) bd.append(el('span',{className:'posted',textContent:'✓'}));
     const fv=el('button',{className:'favtap'+(p.fav?' on':''),textContent:p.fav?'★':'☆',title:p.fav?'Remove from Favorites':'Add to Favorites'});
     fv.setAttribute('aria-pressed',!!p.fav);

@@ -13,7 +13,7 @@
 //   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
 //   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
 
-const DOCS = ['tasks', 'links', 'shared', 'expenses'];   // shared = shared photo albums (lists) and the photos in them (items)
+const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights'];   // shared = shared photo albums (lists) and the photos in them (items)
 
 export default {
   async fetch(req, env) {
@@ -199,6 +199,58 @@ async function api(req, env, url, cors) {
     return json({ captions: captions.slice(0, 3) }, 200, cors);
   }
 
+  // --- costumes: find costumes in photos and note the pieces; suggest new costumes from the closet ---
+  if (path === 'costume-scan' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Costume finding needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { images } = await body();
+    const pics = (Array.isArray(images) ? images : []).filter(x => x && typeof x.data === 'string' && x.data.length < 600000 && typeof x.id === 'string').slice(0, 8);
+    if (!pics.length) return json({ error: 'No photos sent' }, 400, cors);
+    const content = [];
+    pics.forEach((x, i) => { content.push({ type: 'text', text: `Photo ${i + 1} (id ${x.id}):` }); content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: x.data } }); });
+    content.push({ type: 'text', text: [
+      'For each photo, decide whether someone in it is wearing a costume (Halloween, cosplay, theme party, dress-up, mascot, period or character outfit). Everyday clothes, uniforms and formal wear are not costumes.',
+      'For photos with a costume, name the costume in a few words and list the visible costume pieces someone could reuse: clothing, accessories, wigs, hats, props, makeup. Use short plain names with a colour when it helps, like "red cape", "pirate hat", "fairy wings".',
+      'Reply with only JSON: an array with one object per photo, in order: {"id": "...", "costume": true|false, "name": "...", "items": [{"name": "...", "kind": "clothing|accessory|wig|hat|prop|makeup|shoes"}]}. Use "costume": false and empty items when there is no costume.',
+    ].join('\n') });
+    const r = await claude(env, env.SCAN_MODEL || 'claude-haiku-5-5', content, 1500);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const arr = jsonFrom(r.text, []);
+    return json({ results: Array.isArray(arr) ? arr : [] }, 200, cors);
+  }
+  if (path === 'costume-ideas' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Costume ideas need an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { closet, wish, past } = await body();
+    const items = (Array.isArray(closet) ? closet : []).filter(x => typeof x === 'string').slice(0, 300);
+    const done = (Array.isArray(past) ? past : []).filter(x => typeof x === 'string').slice(0, 60);
+    const text = [
+      'Two people (a couple) keep a costume closet. Suggest 6 costume ideas they could make mostly from what they already own.',
+      `Their closet: ${items.length ? items.join('; ') : '(empty so far)'}.`,
+      done.length ? `Costumes they have already worn (suggest different ones): ${done.join('; ')}.` : '',
+      wish ? `What they’re looking for: ${String(wish).slice(0, 400)}` : 'Mix solo costumes and a couple of matching couple costumes.',
+      'Reply with only JSON: an array of {"name": "...", "for": "one person|couple", "uses": ["closet items it uses, exactly as listed"], "need": ["a few things to get or make"], "how": "one or two sentences on putting it together"}. Prefer ideas that need little or nothing new.',
+    ].filter(Boolean).join('\n');
+    const r = await claude(env, env.CAPTION_MODEL || 'claude-sonnet-5-5', [{ type: 'text', text }], 2000);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const arr = jsonFrom(r.text, []);
+    return json({ ideas: Array.isArray(arr) ? arr.slice(0, 8) : [] }, 200, cors);
+  }
+
+  // --- flights: read a pasted confirmation email into flight details ---
+  if (path === 'flight-parse' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Reading confirmations needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const { text } = await body();
+    if (!text || typeof text !== 'string') return json({ error: 'Paste the confirmation first' }, 400, cors);
+    const ask = [
+      'Below is an airline booking confirmation or itinerary. Pull out every flight segment.',
+      'Reply with only JSON: an array of {"airline": "two-letter IATA code", "airlineName": "...", "number": "flight number digits", "from": "IATA airport code", "to": "IATA airport code", "date": "YYYY-MM-DD local departure date", "depart": "HH:MM 24h local", "arrive": "HH:MM 24h local", "arriveDate": "YYYY-MM-DD", "conf": "confirmation / record locator", "seat": "", "passengers": ["names"]}. Use "" for anything not shown.',
+      '---', String(text).slice(0, 20000),
+    ].join('\n');
+    const r = await claude(env, env.SCAN_MODEL || 'claude-haiku-5-5', [{ type: 'text', text: ask }], 1500);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const arr = jsonFrom(r.text, []);
+    return json({ flights: Array.isArray(arr) ? arr.slice(0, 12) : [] }, 200, cors);
+  }
+
   // --- link titles: look up a web page's title for a new favorite ---
   if (path === 'linkinfo' && req.method === 'GET' && full) {
     let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return json({ error: 'Bad link' }, 400, cors); }
@@ -276,6 +328,15 @@ async function accessFor(env, KV, user) {
   return { access_token: t.access_token, expires_in: t.expires_in - 60, scope: user.scope };
 }
 async function sessionOf(req, KV) { const t = req.headers.get('X-Peggy-Session'); if (!t || t.length < 20) return null; return KV.get('session:' + t, 'json'); }
+async function claude(env, model, content, max_tokens) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST',
+    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens, messages: [{ role: 'user', content }] }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return { error: (d.error && d.error.message) || ('Claude answered ' + r.status) };
+  return { text: (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('') };
+}
+function jsonFrom(text, dflt) { try { const m = String(text).match(/[\[{][\s\S]*[\]}]/); return JSON.parse(m ? m[0] : text); } catch { return dflt; } }
 function publicUser(u) { return { email: u.email, name: u.name || u.email.split('@')[0], picture: u.picture || '', signedIn: !!u.refresh }; }
 function token() { const b = new Uint8Array(24); crypto.getRandomValues(b); return [...b].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function decodeJwt(j) { try { const p = j.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(decodeURIComponent(escape(atob(p + '==='.slice((p.length + 3) % 4))))); } catch { return {}; } }
