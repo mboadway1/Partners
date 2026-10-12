@@ -325,6 +325,7 @@ function goFull(){
   try{ const p=req.call(d); p && p.catch && p.catch(()=>{}); }catch(_){}
 }
 document.addEventListener('keydown',goFull,true);
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
 document.addEventListener('click',goFull,true);
 // Called by the Fire TV app shell. Return true if the page handled it.
 window.peggyBack=()=>goBack();
@@ -503,11 +504,20 @@ function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove
 function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); clearTimeout(i._t); i._t=setTimeout(()=>i.classList.remove('on'),2500); }
 function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clearTimeout(ss.timer);
   if(ss.paused) ssMsg('❚❚ Paused',1500); else { ssMsg('▶ Playing',1200); ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000); } ssInfo(); }
+// ▼ or Menu during a slideshow: jump to Peggy's other features without leaving full screen.
+async function slideMenu(){
+  const wasPaused=ss&&ss.paused; ssPause(true);
+  const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['📅 Today','today'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
+  if(!v || v==='stay'){ if(ss && !wasPaused) ssPause(false); return; }
+  while(scopes.length>1) popScope();   // leave the slideshow
+  if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings();
+}
 function slideKey(k){
   if(k==='left'||k==='rew'){ ssGo(-1); return true; }
   if(k==='right'||k==='ff'){ ssGo(1); return true; }
   if(k==='ok'||k==='play'){ ssPause(); return true; }
-  if(k==='up'||k==='down'||k==='menu'){ ssInfo(); return true; }
+  if(k==='up'){ ssInfo(); return true; }
+  if(k==='down'||k==='menu'){ slideMenu(); return true; }
   return true;
 }
 
