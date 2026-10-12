@@ -127,3 +127,57 @@ function partnersSettings(onDone){
 .pcolors .pc.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg) inset}
 .partnerset button{width:100%;margin-top:6px}`;
   document.head.append(st); })();
+
+/* ---- settings kept in sync between the Fire Stick, the Chromebook and the iPhones ----
+   Every change to one of these is stamped and sent to the relay; each device pulls the newest
+   on open, every few minutes and when it comes back to the screen. Newest change wins.
+   Not synced on purpose: Screen fit (each TV is different), sign-ins, caches. */
+const SYNC_KEYS = ['peggy.tv.interval','peggy.tv.shuffle','peggy.tv.zoom','peggy.tv.driveStart','peggy.tv.driveFolder','peggy.tv.driveKey',
+  'peggy.driveFolder','peggy.driveKey','peggy.skipShots','peggy.skipBursts','peggy.albumSort','peggy.calTasks','peggy.homeAirport',
+  'peggy.aiTone','peggy.audience','peggy.tv.kinds'];
+const isSynced = k => SYNC_KEYS.includes(k) || k.startsWith('peggy.fuel.') && k!=='peggy.fuel.last';
+// The phone keeps the Drive folder under one name and the TV under another: keep both the same.
+const SYNC_TWINS = { 'peggy.driveFolder':'peggy.tv.driveFolder', 'peggy.tv.driveFolder':'peggy.driveFolder', 'peggy.driveKey':'peggy.tv.driveKey', 'peggy.tv.driveKey':'peggy.driveKey' };
+let syncOut = {}, syncT = 0, syncApplying = false;
+function syncStamps(){ try{ return JSON.parse(localStorage.getItem('peggy.syncAt')||'{}'); }catch(_){ return {}; } }
+(function(){
+  const S = Storage.prototype, set0 = S.setItem, rem0 = S.removeItem;
+  const note = (store, k, v) => {
+    if (syncApplying || store !== window.localStorage || !isSynced(k)) return;
+    const at = Date.now(), st = syncStamps(); st[k] = at; set0.call(localStorage, 'peggy.syncAt', JSON.stringify(st));
+    syncOut[k] = { v, at }; clearTimeout(syncT); syncT = setTimeout(syncPush, 1500);
+  };
+  S.setItem = function(k, v){ set0.call(this, k, v); note(this, k, String(v)); };
+  S.removeItem = function(k){ rem0.call(this, k); note(this, k, null); };
+})();
+async function syncPush(){
+  const changes = syncOut; syncOut = {}; if (!Object.keys(changes).length) return;
+  try{ await partnersFetch('settings', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ changes }) }); }
+  catch(_){ syncOut = { ...changes, ...syncOut }; }   // try again with the next change or pull
+}
+async function syncPull(){
+  let remote; try{ remote = await (await partnersFetch('settings')).json(); }catch(_){ return; }
+  const st = syncStamps(), changed = [];
+  syncApplying = true;
+  try{
+    for (const [k, x] of Object.entries(remote || {})){
+      if (!isSynced(k) || !x || (st[k] || 0) >= x.at) continue;
+      const keys = [k, SYNC_TWINS[k]].filter(Boolean);
+      for (const kk of keys){ if (x.v == null) localStorage.removeItem(kk); else localStorage.setItem(kk, x.v); st[kk] = x.at; }
+      changed.push(k);
+    }
+    localStorage.setItem('peggy.syncAt', JSON.stringify(st));
+  } finally { syncApplying = false; }
+  // Send up anything this device changed that the relay hasn't heard about (for example, set before syncing existed).
+  const up = {}; for (const [k, at] of Object.entries(st)) if (!remote[k] || remote[k].at < at){ const v = localStorage.getItem(k); up[k] = { v, at }; }
+  if (Object.keys(up).length){ Object.assign(syncOut, up); syncPush(); }
+  if (changed.length) document.dispatchEvent(new CustomEvent('partnerssettings', { detail: changed }));
+}
+// First time on this device: offer the settings it already has, marked as old so newer ones elsewhere win.
+(function(){ try{ if (localStorage.getItem('peggy.syncAt')) return; const st={};
+  for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if (isSynced(k)) st[k]=1; }
+  localStorage.setItem('peggy.syncAt', JSON.stringify(st)); }catch(_){} })();
+// Start syncing once this device can reach the relay.
+setTimeout(()=>{ if (partnersAuth()) syncPull(); }, 800);
+setInterval(()=>{ if (!document.hidden && partnersAuth()) syncPull(); }, 3*60*1000);
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden && partnersAuth()) syncPull(); });

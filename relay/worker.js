@@ -126,6 +126,21 @@ async function api(req, env, url, cors) {
     const ph = await KV.get('couple:at');
     return json({ members: list, couplePhoto: ph ? Number(ph) : 0 }, 200, cors);
   }
+  // Settings kept in sync between the TV, the Chromebook and both phones. The TV's view-only pass may write these too.
+  if (path === 'settings') {
+    const cur = (await KV.get('settings', 'json')) || {};
+    if (req.method === 'GET') return json(cur, 200, cors);
+    if (req.method === 'PUT') {
+      const { changes } = await body();
+      for (const [k, x] of Object.entries(changes || {})) {
+        if (!/^peggy\.[\w.]{1,60}$/.test(k) || !x || typeof x.at !== 'number') continue;
+        if (x.v != null && String(x.v).length > 4000) continue;
+        if (!cur[k] || cur[k].at < x.at) cur[k] = { v: x.v == null ? null : String(x.v), at: x.at };
+      }
+      if (JSON.stringify(cur).length < 200000) await KV.put('settings', JSON.stringify(cur));
+      return json(cur, 200, cors);
+    }
+  }
   // Each partner's own name, color and theme (shown to both of you and on the TV).
   if (path === 'profile' && req.method === 'PUT' && full) {
     const b = await body(), cur = (await KV.get('profile:' + s.email, 'json')) || {};

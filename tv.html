@@ -1078,6 +1078,8 @@ function renderTodayTasks(items, members){
   renderHome();
   startPeer();
   if(driveReady() && settings.driveStart) startDrive(true);
+  // Settings changed on another device: show them, and start the Photos slideshow if it was just set up.
+  document.addEventListener('partnerssettings',()=>{ if(topScope().root===$('#home')) renderHome(); if(!ss && driveReady() && settings.driveStart) startDrive(true); });
   const pl=()=>partnersLoad().then(()=>{ if(topScope().root===$('#home')) renderHome(); }).catch(()=>{}); pl(); setInterval(pl, 30*60*1000);
 })();
 </script>
