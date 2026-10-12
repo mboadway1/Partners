@@ -228,6 +228,8 @@ const CODE_ALPH='ACDEFHJKMNPRTWXY3479';
 // The relay was renamed from peggy-relay to ezrad-partners-relay: move any saved address over (phones, Chromebook and TV).
 (function(){ try{
   const fix = u => typeof u==='string' ? u.replace('//peggy-relay.', '//ezrad-partners-relay.').replace('//partners-relay.', '//ezrad-partners-relay.') : u;
+  // Sign-in moved to the new Google project: forget a saved copy of the old client ID.
+  const cid = localStorage.getItem('partners.clientId'); if (cid && cid.indexOf('833687773280-')===0) localStorage.removeItem('partners.clientId');
   const r = localStorage.getItem('partners.relay'); if (r && r!==fix(r)) localStorage.setItem('partners.relay', fix(r));
   const t = JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (t && t.relay && t.relay!==fix(t.relay)){ t.relay=fix(t.relay); localStorage.setItem('partners.tvplan', JSON.stringify(t)); }
 }catch(_){} })();

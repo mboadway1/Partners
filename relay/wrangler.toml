@@ -6,7 +6,7 @@ compatibility_date = "2026-10-01"
 # Where the Partners app is hosted. Add more, comma-separated, e.g. a local test server.
 ALLOWED_ORIGINS = "https://mboadway1.github.io"
 ALLOWED_EMAILS = "mboadway1@gmail.com,pegdarby@gmail.com"
-GOOGLE_CLIENT_ID = "833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com"
 # GOOGLE_CLIENT_SECRET is a secret: set it in the Cloudflare dashboard (or `npx wrangler secret put GOOGLE_CLIENT_SECRET`), never here.
 
 [[kv_namespaces]]

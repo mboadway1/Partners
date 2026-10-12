@@ -2,7 +2,7 @@
 // Used by index.html (photos) and plan.html (tasks, calendar, links).
 'use strict';
 const PARTNERS = {
-  clientId: '833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleusercontent.com',
+  clientId: '68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com',
   relay: 'https://ezrad-partners-relay.mboadway1.workers.dev',
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
