@@ -45,7 +45,7 @@ async function partnersFinishSignIn(){
   if (!r.ok) throw new Error(d.error || `Sign-in failed. The relay answered ${r.status}: ${raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,120) || '(no message)'}`);
   if (!d.session) throw new Error('Sign-in failed. The relay is still running its old code: paste the new worker.js into Cloudflare and click Deploy.');
   acct.set(d.session, d.me); try{ localStorage.removeItem('partners.invite'); }catch(_){}
-  localStorage.setItem('partners.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000 }));
+  localStorage.setItem('partners.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000, scope: d.scope||'' }));
   const back = localStorage.getItem('partners.authReturn') || ''; localStorage.removeItem('partners.authReturn');
   return back || 'index.html';
 }
@@ -73,7 +73,7 @@ const partnersLogin = b => partnersAuthCall('auth/login', b);
 async function googleAccess(){
   try{ const t = JSON.parse(localStorage.getItem('partners.gtoken')||'null'); if (t && t.exp > Date.now()+30000) return t.v; }catch(_){}
   const d = await partnersApi('auth/token');
-  localStorage.setItem('partners.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000 }));
+  localStorage.setItem('partners.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000, scope: d.scope||'' }));
   return d.access_token;
 }
 // Calls a Google API directly with this person's token.

@@ -608,8 +608,9 @@ function renderTasks(v){
 
 // Google Tasks: bring lists in, sync now, and how it's going.
 function tGoogleBits(){
-  const out=[]; const linked=gMine().length;
+  const out=[]; const linked=gMine().length; gCheckScope();
   if(gNeedScope){ const b=el('button',{className:'gt-gwarn',innerHTML:'<b>Reconnect Google</b><small>so changes here go back to Google Tasks</small>'}); b.onclick=()=>partnersSignIn('plan.html#tasks'); out.push(b); }
+  else if(gScopeChecked && acct.session) out.push(el('div',{className:'gt-gstat',textContent:'✓ Partners can update your Google Tasks'}));
   if(linked){ const b=el('button',{className:'gt-nav',innerHTML:`<span class="ic">${gSyncing?'⏳':'⟳'}</span>`}); b.append(gSyncing?'Syncing with Google…':'Sync with Google Tasks');
     b.onclick=()=>syncGoogleTasks(true); out.push(b);
     const ago=gLast?Math.round((Date.now()-gLast)/60000):null;
@@ -937,6 +938,11 @@ let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
 const gDue=d=>d?d+'T00:00:00.000Z':null;
 const gMine=()=>store.tasks.lists.filter(l=>l.gsync && (l.gowner||me().email)===me().email);
+// Can Partners change this person's Google Tasks? (Older sign-ins could only read them.)
+let gScopeChecked=false;
+async function gCheckScope(){ if(gScopeChecked||!acct.session) return; gScopeChecked=true;
+  try{ const d=await partnersApi('auth/token'); try{ localStorage.setItem('partners.gtoken',JSON.stringify({v:d.access_token,exp:Date.now()+d.expires_in*1000,scope:d.scope||''})); }catch(_){}
+    const can=/auth\/tasks(\s|$)/.test(d.scope||''); if(gNeedScope!==!can){ gNeedScope=!can; if(tab==='tasks') render(); } }catch(_){ } }
 function gKick(ms=5000){ clearTimeout(gKickT); if(gMine().length) gKickT=setTimeout(()=>syncGoogleTasks(),ms); }
 function gBody(t){ const b={title:t.title,notes:t.notes||'',due:gDue(t.due),status:t.done?'completed':'needsAction'}; if(!t.done) b.completed=null; return b; }
 const gDiffers=(g,t)=>g.title!==t.title||(g.notes||'')!==(t.notes||'')||(g.due||'').slice(0,10)!==(t.due||'')||(g.status==='completed')!==!!t.done;
