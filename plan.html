@@ -58,6 +58,7 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 /* On the TV: use the whole screen */
 html.tv main{max-width:none;padding-left:24px;padding-right:24px}
 html.tv .bnav a{max-width:none}
+.bnav .tvonly{display:none} html.tv .bnav .tvonly{display:flex} html.tv .bnav .notv{display:none}
 
 /* bottom navigation (same on every Peggy page) */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;background:var(--headerbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
@@ -266,12 +267,16 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 <main id="view"><p class="spin">Loading…</p></main>
 
 <nav class="bnav" aria-label="Peggy sections">
-  <a href="./" data-k="photos" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
+  <a href="tv.html" data-k="tv" class="tvonly" title="Back to the TV screen" id="navTv"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>TV</a>
+  <a href="./" data-k="photos" class="notv" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
   <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="#more" data-k="more" class="more" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="plan.html#fuel" data-k="fuel" class="tvonly" title="Diesel"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/></svg>Diesel</a>
+  <a href="plan.html#us" data-k="us" class="tvonly" title="Us"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>Us</a>
+  <a href="plan.html#links" data-k="links" class="tvonly" title="Links"><svg class="ic" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Links</a>
+  <a href="#more" data-k="more" class="more notv" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 
 <script src="core.js"></script>
@@ -1486,7 +1491,9 @@ document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({siz
 </script>
 <script>
 // On a TV's web browser: a button back to Peggy's TV screen.
-(function(){ if(window.top!==window) return;   // inside Peggy's TV screen, which has its own button
+// TV button in the bottom bar: inside Peggy's TV screen, close the planner instead of loading a page.
+(function(){ var t=document.getElementById('navTv'); if(t) t.onclick=function(e){ try{ if(window.top!==window && window.top.closePlan){ e.preventDefault(); window.top.closePlan(); } }catch(_){} }; })();
+(function(){ return;   // the bottom bar's TV button replaces the floating one
   if(!/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent||'')) return;
   var a=document.createElement('a'); a.href='tv.html'; a.textContent='📺 Back to TV';
   a.style.cssText='position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:50;background:var(--accent,#e0558f);color:#fff;font-weight:800;padding:12px 18px;border-radius:999px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.3)';
