@@ -582,7 +582,7 @@ async function ssGo(step){
   if(!ss.paused) ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000);
 }
 function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove('hidden'); clearTimeout(m._t); if(ms) m._t=setTimeout(()=>m.classList.add('hidden'),ms); }
-function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); clearTimeout(i._t); i._t=setTimeout(()=>i.classList.remove('on'),2500); }
+function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); }
 function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clearTimeout(ss.timer);
   if(ss.paused) ssMsg('❚❚ Paused',1500); else { ssMsg('▶ Playing',1200); ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000); } ssInfo(); }
 // ▼ or Menu during a slideshow: jump to Partners' other features without leaving full screen.
