@@ -1510,7 +1510,7 @@ document.addEventListener('partnerstheme',()=>{ tvShareExtras(); const w=$('#wor
 // Favorites folder slideshow (replaces the old Photos app): the TV plays a shared Google Drive folder.
 // The link and key stay on this phone and the TV; they are never part of Partners' public code.
 function tvSendDrive(){ const f=localStorage.getItem('partners.driveFolder')||'', k=localStorage.getItem('partners.driveKey')||'';
-  if(f && k && tv.conn && tv.conn.open) try{ tv.conn.send({t:'drive', folder:f, key:k}); }catch(_){} }
+  if(f && k && tv.conn && tv.conn.open) try{ tv.conn.send({t:'drive', folder:f, key:k, music:localStorage.getItem('partners.music.folder')||''}); }catch(_){} }
 function tvDriveSetup(){ sheet((sh,close)=>{
   sh.append(el('h3',{textContent:'Favorites folder slideshow'}),
     el('p',{textContent:'The TV plays every photo in a shared Google Drive folder, with the place, date and a clock. To add a photo, share it from Google Photos into the folder.'}));

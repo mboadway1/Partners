@@ -1123,6 +1123,7 @@ async function onData(c, m){
     if(m.t==='theme'){ setPartnersTheme(m.name); paintButterflies(); return; }
     if(m.t==='drive'){ const changed=m.folder!==settings.driveFolder||m.key!==settings.driveKey;
       store.set('partners.tv.driveFolder', m.folder||''); store.set('partners.tv.driveKey', m.key||''); renderHome();
+      if(typeof m.music==='string' && m.music!==musicCfg.folder){ store.set('partners.music.folder', m.music); music.list=[]; try{ localStorage.removeItem('partners.music.cache'); }catch(_){} if(m.music) toast('Music folder connected ✓ Choose Music → My songs.',4000); }
       if(changed && m.folder && m.key){ toast('Favorites folder connected ✓',3000); if(!ss) startDrive(); } return; }
     if(m.t==='plan' && m.session){ store.set('partners.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); partnersLoad().then(renderHome).catch(()=>{}); return; }
     if(m.t==='show-start'){
