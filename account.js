@@ -3,7 +3,7 @@
 'use strict';
 const PEGGY = {
   clientId: '833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleusercontent.com',
-  relay: 'https://peggy-relay.mboadway1.workers.dev',
+  relay: 'https://partners-relay.mboadway1.workers.dev',
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/tasks.readonly',

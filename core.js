@@ -200,3 +200,10 @@ function localKind(img, make){
 function looksLikeScreenshot({name, type, make}){ return SHOT_NAME.test(name||'') || (/png/i.test(type||'') && !make); }
 const PEER_PREFIX='peggy-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';
+
+// The relay was renamed from peggy-relay to partners-relay: move any saved address over (phones, Chromebook and TV).
+(function(){ try{
+  const fix = u => typeof u==='string' ? u.replace('//peggy-relay.', '//partners-relay.') : u;
+  const r = localStorage.getItem('peggy.relay'); if (r && r!==fix(r)) localStorage.setItem('peggy.relay', fix(r));
+  const t = JSON.parse(localStorage.getItem('peggy.tvplan')||'null'); if (t && t.relay && t.relay!==fix(t.relay)){ t.relay=fix(t.relay); localStorage.setItem('peggy.tvplan', JSON.stringify(t)); }
+}catch(_){} })();
