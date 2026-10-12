@@ -18,6 +18,11 @@
 //   STRIPE_PRICE_MONTH    text    Stripe price ID of the monthly plan (price_…)
 //   STRIPE_PRICE_YEAR     text    Stripe price ID of the annual plan (price_…)
 //   APP_URL               text    https://mboadway1.github.io/Partners/
+//   For Mail with Outlook / Hotmail accounts (optional):
+//   MS_CLIENT_ID          text    Application (client) ID of the Microsoft app registration
+//   MS_CLIENT_SECRET      secret  its client secret value
+
+import { connect } from 'cloudflare:sockets';   // Mail: talking IMAP to Yahoo, iCloud, AOL and others
 
 const HOME = 'home', TRIAL_DAYS = 14, AI_PER_DAY = 60;
 const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights', 'us'];   // shared = shared photo albums (lists) and the photos in them (items)
@@ -196,11 +201,14 @@ async function api(req, env, url, cors) {
   const OPEN = ['me', 'members', 'couple', 'auth/signout', 'auth/token', 'settings', 'profile', 'prefs', 'couple-photo'];
   if (!canUse(cp) && !OPEN.includes(path)) return json({ error: 'Your free trial has ended. Choose a plan to keep using Partners.', paywall: true }, 402, cors);
   // A fair-use limit on Claude for subscribers, so costs stay predictable.
-  if (!home && ['caption', 'rephrase', 'concern-ai', 'classify'].includes(path)) {
+  if (!home && ['caption', 'rephrase', 'concern-ai', 'classify', 'mail/ai'].includes(path)) {
     const dk = `ai:${cp.id}:${new Date().toISOString().slice(0, 10)}`, n = +(await KV.get(dk) || 0);
     if (n >= AI_PER_DAY) return json({ error: 'You’ve used today’s Claude help. It resets tomorrow.' }, 429, cors);
     await KV.put(dk, String(n + 1), { expirationTtl: 2 * 86400 });
   }
+
+  // --- Mail (each person's own, never shared with the partner) ---
+  if (path.startsWith('mail/')) { if (!full) return json({ error: 'Read-only' }, 403, cors); return mailApi(req, env, KV, s, path, body, cors); }
 
   if (path === 'auth/token' && req.method === 'GET') {
     if (!full) return json({ error: 'Read-only' }, 403, cors);
@@ -780,4 +788,206 @@ async function stripeWebhook(req, env) {
       cancelAtEnd: !!o.cancel_at_period_end }));
   }
   return new Response('ok', { status: 200 });
+}
+
+/* ---------------- Mail: each person's own email accounts, private to them ----------------
+   Gmail and Outlook/Hotmail connect with their own sign-in (Partners keeps a refresh token and hands the app short-lived
+   access tokens). Yahoo, iCloud, AOL and other providers use IMAP with an app password; Partners talks IMAP for the app.
+   Passwords and tokens are stored encrypted. Settings for Outlook: MS_CLIENT_ID (text) and MS_CLIENT_SECRET (secret). */
+const MS_SCOPE = 'offline_access openid email User.Read Mail.ReadWrite';
+async function mailKey(env) {
+  const raw = new TextEncoder().encode('partners-mail:' + (env.MAIL_KEY || env.GOOGLE_CLIENT_SECRET || 'partners'));
+  return crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
+}
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function seal(env, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await mailKey(env), new TextEncoder().encode(JSON.stringify(obj))));
+  const out = new Uint8Array(12 + ct.length); out.set(iv); out.set(ct, 12); return b64(out);
+}
+async function unseal(env, s) {
+  const u = unb64(s), pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(0, 12) }, await mailKey(env), u.slice(12));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+const MAIL_COLORS = ['#1a73e8', '#d93025', '#188038', '#e37400', '#9334e6', '#00838f', '#c2185b', '#5d4037'];
+async function msToken(env, params) {
+  const r = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: env.MS_CLIENT_ID || '', client_secret: env.MS_CLIENT_SECRET || '', scope: MS_SCOPE, ...params }) });
+  return r.json();
+}
+
+// A tiny IMAP client over a TLS socket: just what Partners needs (log in, list the inbox, read one message, move or flag).
+async function imapSession(cfg, fn) {
+  const sock = connect({ hostname: cfg.host, port: +cfg.port || 993 }, { secureTransport: 'on', allowHalfOpen: false });
+  const w = sock.writable.getWriter(), rd = sock.readable.getReader(), enc = new TextEncoder(), dec = new TextDecoder();
+  let chunks = [], have = 0, n = 0;
+  const pull = async () => { const { value, done } = await rd.read(); if (done) throw new Error('The mail server closed the connection'); chunks.push(value); have += value.length; };
+  const flat = () => { if (chunks.length > 1) { const b = new Uint8Array(have); let o = 0; for (const c of chunks) { b.set(c, o); o += c.length; } chunks = [b]; } return chunks[0] || new Uint8Array(0); };
+  const take = k => { const b = flat(); const out = b.slice(0, k); chunks = [b.slice(k)]; have -= k; return out; };
+  const line = async () => { for (;;) { const b = flat(); for (let i = 0; i + 1 < b.length; i++) if (b[i] === 13 && b[i + 1] === 10) { const l = take(i); take(2); return dec.decode(l); } await pull(); } };
+  const bytes = async k => { while (have < k) await pull(); return take(k); };
+  const resp = async () => { let text = ''; const lits = []; for (;;) { const l = await line(), m = l.match(/\{(\d+)\}$/); if (m) { text += l.slice(0, -m[0].length) + '\u0000' + lits.length + '\u0000'; lits.push(await bytes(+m[1])); continue; } return { text: text + l, lits }; } };
+  const cmd = async c => { const tag = 'P' + (++n); await w.write(enc.encode(tag + ' ' + c + '\r\n')); const out = [];
+    for (;;) { const r = await resp(); if (r.text.startsWith(tag + ' ')) { if (!/^\S+ OK/i.test(r.text)) throw new Error('Mail server: ' + r.text.slice(tag.length + 1).replace(/^(NO|BAD)\s*/i, '').slice(0, 160)); return out; } out.push(r); } };
+  const q = s => '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  try {
+    const hello = await resp(); if (!/^\* (OK|PREAUTH)/i.test(hello.text)) throw new Error('Not an IMAP mail server');
+    await cmd(`LOGIN ${q(cfg.user)} ${q(cfg.pass)}`);
+    return await fn(cmd, q);
+  } finally { try { await w.write(enc.encode('Z LOGOUT\r\n')); } catch {} try { sock.close(); } catch {} }
+}
+const IMAP_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+async function imapFolders(cmd) {   // special folders by their flags (RFC 6154), else by common names
+  const out = {}, all = await cmd('LIST "" "*"');
+  for (const r of all) { const m = r.text.match(/^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (.*)$/i); if (!m) continue;
+    let name = m[2].trim(); const lit = name.match(/^\u0000(\d+)\u0000$/); if (lit) name = new TextDecoder().decode(r.lits[+lit[1]]); else name = name.replace(/^"|"$/g, '').replace(/\\(.)/g, '$1');
+    const f = m[1].toLowerCase();
+    if (f.includes('\\trash')) out.trash = name; if (f.includes('\\archive')) out.archive = name; if (f.includes('\\junk')) out.junk = name;
+    const low = name.toLowerCase();
+    if (!out.trashByName && /^(trash|deleted messages|deleted items|deleted)$/.test(low)) out.trashByName = name;
+    if (!out.archiveByName && /^(archive|archives)$/.test(low)) out.archiveByName = name; }
+  return { trash: out.trash || out.trashByName, archive: out.archive || out.archiveByName };
+}
+
+async function mailApi(req, env, KV, s, path, body, cors) {
+  const key = 'mail:accts:' + s.email, metaKey = 'mail:meta:' + s.email;
+  const accts = async () => (await KV.get(key, 'json')) || [];
+  const save = list => KV.put(key, JSON.stringify(list));
+  const pub = a => ({ id: a.id, kind: a.kind, address: a.address, color: a.color, provider: a.provider || '', added: a.added });
+  const add = async a => { const list = await accts(); const i = list.findIndex(x => x.kind === a.kind && x.address.toLowerCase() === a.address.toLowerCase());
+    if (i >= 0) { a.id = list[i].id; a.color = list[i].color; list[i] = a; } else { a.color = MAIL_COLORS[list.length % MAIL_COLORS.length]; list.push(a); }
+    await save(list); return pub(a); };
+
+  if (path === 'mail/accounts' && req.method === 'GET')
+    return json({ accounts: (await accts()).map(pub), googleClientId: env.GOOGLE_CLIENT_ID || '', msClientId: env.MS_CLIENT_ID || '', ai: !!env.ANTHROPIC_API_KEY }, 200, cors);
+  const dm = path.match(/^mail\/accounts\/([\w-]+)$/);
+  if (dm && req.method === 'DELETE') { await save((await accts()).filter(a => a.id !== dm[1])); await KV.delete('mail:tok:' + dm[1]); return json({ ok: true }, 200, cors); }
+
+  if (path === 'mail/connect/google' && req.method === 'POST') {
+    const { code, redirect_uri } = await body();
+    const t = await googleToken(env, { code, redirect_uri, grant_type: 'authorization_code' });
+    if (t.error) return json({ error: t.error_description || t.error }, 400, cors);
+    if (!/gmail\.modify/.test(t.scope || '')) return json({ error: 'Google didn’t allow access to Gmail. Try again and tick the Gmail box on Google’s screen.' }, 400, cors);
+    if (!t.refresh_token) return json({ error: 'Google didn’t give Partners lasting access. Remove Partners at myaccount.google.com/permissions for that account, then try again.' }, 400, cors);
+    const address = (decodeJwt(t.id_token).email || '').toLowerCase();
+    if (!address) return json({ error: 'Google didn’t share the email address.' }, 400, cors);
+    const a = await add({ id: token().slice(0, 12), kind: 'gmail', provider: 'Gmail', address, sec: await seal(env, { refresh: t.refresh_token }), added: Date.now() });
+    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    return json({ account: a }, 200, cors);
+  }
+  if (path === 'mail/connect/microsoft' && req.method === 'POST') {
+    if (!env.MS_CLIENT_ID || !env.MS_CLIENT_SECRET) return json({ error: 'Outlook isn’t set up in the relay yet (MS_CLIENT_ID and MS_CLIENT_SECRET).' }, 500, cors);
+    const { code, redirect_uri } = await body();
+    const t = await msToken(env, { code, redirect_uri, grant_type: 'authorization_code' });
+    if (t.error) return json({ error: t.error_description ? t.error_description.split('\r\n')[0] : t.error }, 400, cors);
+    const me = await (await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', { headers: { Authorization: 'Bearer ' + t.access_token } })).json().catch(() => ({}));
+    const address = String(me.mail || me.userPrincipalName || decodeJwt(t.id_token).email || '').toLowerCase();
+    const a = await add({ id: token().slice(0, 12), kind: 'ms', provider: 'Outlook', address, sec: await seal(env, { refresh: t.refresh_token }), added: Date.now() });
+    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    return json({ account: a }, 200, cors);
+  }
+  if (path === 'mail/connect/imap' && req.method === 'POST') {
+    const b = await body(), cfg = { host: String(b.host || '').trim(), port: +b.port || 993, user: String(b.user || b.address || '').trim(), pass: String(b.pass || '').replace(/\s+/g, '') };
+    const address = String(b.address || cfg.user).trim().toLowerCase();
+    if (!cfg.host || !cfg.user || !cfg.pass) return json({ error: 'Fill in the email address, the mail server and the app password.' }, 400, cors);
+    try { await imapSession(cfg, async cmd => { await cmd('SELECT INBOX'); }); }
+    catch (e) { return json({ error: /auth|login|credential|password|invalid/i.test(e.message) ? 'The mail server didn’t accept that address and app password. Check the app password (not your normal password).' : e.message }, 400, cors); }
+    return json({ account: await add({ id: token().slice(0, 12), kind: 'imap', provider: String(b.provider || 'Email').slice(0, 20), address, sec: await seal(env, cfg), added: Date.now() }) }, 200, cors);
+  }
+
+  // Short-lived access tokens for Gmail and Outlook, so the app reads mail straight from Google and Microsoft.
+  const tm = path.match(/^mail\/token\/([\w-]+)$/);
+  if (tm && req.method === 'GET') {
+    const list = await accts(), a = list.find(x => x.id === tm[1]); if (!a || a.kind === 'imap') return json({ error: 'No such account' }, 404, cors);
+    const c = await KV.get('mail:tok:' + a.id, 'json'); if (c && c.exp > Date.now() + 60000) return json({ access_token: c.access, expires_in: Math.floor((c.exp - Date.now()) / 1000) }, 200, cors);
+    const sec = await unseal(env, a.sec);
+    const t = a.kind === 'gmail' ? await googleToken(env, { refresh_token: sec.refresh, grant_type: 'refresh_token' }) : await msToken(env, { refresh_token: sec.refresh, grant_type: 'refresh_token' });
+    if (t.error) return json({ error: `${a.address} needs to be connected again (${t.error}).`, reconnect: true }, 409, cors);
+    if (t.refresh_token && t.refresh_token !== sec.refresh) { a.sec = await seal(env, { refresh: t.refresh_token }); await save(list); }   // Microsoft hands out a new one each time
+    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    return json({ access_token: t.access_token, expires_in: t.expires_in - 60 }, 200, cors);
+  }
+
+  // IMAP accounts: Partners reads the inbox for the app.
+  const im = path.match(/^mail\/imap\/([\w-]+)\/(list|get|act)$/);
+  if (im && req.method === 'POST') {
+    const a = (await accts()).find(x => x.id === im[1]); if (!a || a.kind !== 'imap') return json({ error: 'No such account' }, 404, cors);
+    const cfg = await unseal(env, a.sec), b = await body();
+    try {
+      if (im[2] === 'list') return json(await imapSession(cfg, async cmd => {
+        await cmd('SELECT INBOX');
+        const d = new Date(Date.now() - Math.min(90, +b.days || 30) * 864e5);
+        const found = await cmd(`UID SEARCH SINCE ${d.getUTCDate()}-${IMAP_MON[d.getUTCMonth()]}-${d.getUTCFullYear()}`);
+        const uids = found.map(r => r.text).join(' ').replace(/^\* SEARCH/i, '').match(/\d+/g) || [];
+        const want = uids.map(Number).sort((x, y) => y - x).slice(0, Math.min(300, +b.max || 200));
+        const out = [];
+        for (let i = 0; i < want.length; i += 100) {
+          const rs = await cmd(`UID FETCH ${want.slice(i, i + 100).join(',')} (UID FLAGS INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE LIST-UNSUBSCRIBE MESSAGE-ID)])`);
+          for (const r of rs) { const u = r.text.match(/UID (\d+)/); if (!u) continue;
+            out.push({ uid: +u[1], flags: (r.text.match(/FLAGS \(([^)]*)\)/) || [])[1] || '', date: (r.text.match(/INTERNALDATE "([^"]+)"/) || [])[1] || '', head: r.lits[0] ? new TextDecoder().decode(r.lits[0]) : '' }); }
+        }
+        return { uids: uids.length, messages: out };
+      }), 200, cors);
+      if (im[2] === 'get') return json(await imapSession(cfg, async cmd => {
+        await cmd('SELECT INBOX'); const rs = await cmd(`UID FETCH ${+b.uid} (UID BODY.PEEK[])`);
+        const r = rs.find(x => x.lits.length); if (!r) throw new Error('That email isn’t in the inbox anymore');
+        const raw = r.lits[0]; return { raw: b64(raw.length > 6e6 ? raw.slice(0, 6e6) : raw), cut: raw.length > 6e6 };
+      }), 200, cors);
+      if (im[2] === 'act') return json(await imapSession(cfg, async (cmd, q) => {
+        const set = (b.uids || []).map(Number).filter(Boolean).join(','); if (!set) return { ok: true };
+        await cmd('SELECT INBOX');
+        if (b.action === 'read') { await cmd(`UID STORE ${set} +FLAGS.SILENT (\\Seen)`); return { ok: true }; }
+        if (b.action === 'unread') { await cmd(`UID STORE ${set} -FLAGS.SILENT (\\Seen)`); return { ok: true }; }
+        const f = await imapFolders(cmd), to = b.action === 'delete' ? f.trash : f.archive;
+        if (!to) { if (b.action === 'archive') { await cmd(`UID STORE ${set} +FLAGS.SILENT (\\Seen)`); return { ok: true, note: 'no archive folder' }; } throw new Error('No Trash folder found'); }
+        try { await cmd(`UID MOVE ${set} ${q(to)}`); }
+        catch { await cmd(`UID COPY ${set} ${q(to)}`); await cmd(`UID STORE ${set} +FLAGS.SILENT (\\Deleted)`); await cmd('EXPUNGE'); }
+        return { ok: true };
+      }), 200, cors);
+    } catch (e) { return json({ error: e.message || String(e) }, 502, cors); }
+  }
+
+  // What Partners learned about your mail (categories, your spam rules, summaries), shared by your own devices only.
+  if (path === 'mail/meta') {
+    const m = (await KV.get(metaKey, 'json')) || { cats: {}, rules: {} };
+    if (req.method === 'GET') return json(m, 200, cors);
+    if (req.method === 'POST') { const b = await body();
+      for (const [k, v] of Object.entries(b.cats || {})) { if (v) m.cats[k] = String(v).slice(0, 20); else delete m.cats[k]; }
+      for (const [k, v] of Object.entries(b.rules || {})) { if (v) m.rules[String(k).slice(0, 200)] = String(v).slice(0, 20); else delete m.rules[k]; }
+      const ks = Object.keys(m.cats); if (ks.length > 6000) for (const k of ks.slice(0, ks.length - 6000)) delete m.cats[k];
+      await KV.put(metaKey, JSON.stringify(m)); return json(m, 200, cors); }
+  }
+
+  // Claude sorts new mail and writes summaries. Only the sender, subject and the first lines are sent.
+  if (path === 'mail/ai' && req.method === 'POST') {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'Claude needs an ANTHROPIC_API_KEY in the relay’s settings.' }, 500, cors);
+    const b = await body(), cut = (v, n) => String(v || '').replace(/\s+/g, ' ').slice(0, n);
+    const items = (Array.isArray(b.items) ? b.items : []).slice(0, 60).map((x, i) => `${i + 1}. id=${cut(x.id, 80)} | from: ${cut(x.from, 120)} | subject: ${cut(x.subject, 200)} | preview: ${cut(x.snippet, 240)}${x.hint ? ' | provider says: ' + cut(x.hint, 60) : ''}${x.unsub ? ' | has unsubscribe link' : ''}`).join('\n');
+    if (b.mode === 'classify') {
+      const r = await claude(env, env.SCAN_MODEL || 'claude-haiku-5-5', [{ type: 'text', text:
+        'Sort each email into exactly one category for a personal unified inbox:\n'
+        + '- important: needs the person’s attention or action soon (bills due, security alerts they triggered, appointments, replies from real people about something pending, travel)\n'
+        + '- personal: written by a real person to them (friends, family, colleagues, clients) that isn’t urgent\n'
+        + '- updates: automatic but legitimate notices (receipts, shipping, statements, account notices, calendar, newsletters they likely signed up for)\n'
+        + '- promotions: marketing, sales, deals, ads from companies\n'
+        + '- social: social networks and forums\n'
+        + '- spam: unwanted junk, scams, phishing, fake prizes or invoices, “you have been selected”, crypto or loan pitches, look-alike brands, mismatched sender names, adult content, mass cold outreach\n'
+        + 'Be careful: real bills, banks and receipts are not spam. Reply with only JSON: {"<id>": "<category>", ...}\n\n' + items }], 1500);
+      if (r.error) return json({ error: r.error }, 502, cors);
+      const out = jsonFrom(r.text, {}), ok = ['important', 'personal', 'updates', 'promotions', 'social', 'spam'], cats = {};
+      for (const [k, v] of Object.entries(out)) if (ok.includes(v)) cats[k] = v;
+      return json({ cats }, 200, cors);
+    }
+    if (b.mode === 'summary') {
+      const one = b.body ? `Email from ${cut(b.from, 120)}, subject “${cut(b.subject, 200)}”:\n${String(b.body).slice(0, 12000)}` : '';
+      const r = await claude(env, env.CAPTION_MODEL || 'claude-sonnet-5-5', [{ type: 'text', text: one
+        ? 'Summarize this email for a busy person in 1–3 short bullet lines (•). Say plainly what it is, anything they must do and by when, and amounts or dates that matter. If it looks like a scam, say so first. No preamble.\n\n' + one
+        : `Summarize these ${b.title ? '“' + cut(b.title, 40) + '” ' : ''}emails for a busy person. Group similar ones on one line (e.g. “3 shipping updates from Amazon”), lead with anything that needs action or has a deadline, and keep it to at most 8 short bullet lines (•). No preamble.\n\n` + items }], 700);
+      if (r.error) return json({ error: r.error }, 502, cors);
+      return json({ text: r.text.trim() }, 200, cors);
+    }
+    return json({ error: 'Unknown mode' }, 400, cors);
+  }
+  return json({ error: 'Not found' }, 404, cors);
 }
