@@ -622,7 +622,7 @@ function tGoogleBits(){
 function tListCard(L){
   const sort=L.sort||'my', card=el('section',{className:'gt-card'}); card.dataset.list=L.id;
   const menu=el('button',{className:'gt-dots',textContent:'⋮',title:'List options'}); menu.onclick=e=>{ e.stopPropagation(); tListMenu(L,menu); };
-  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.private?[el('span',{className:'gt-priv',textContent:'🔒 Only you',title:'Only you can see this list'})]:[]),...(gOn(L)?[el('span',{className:'gt-priv',textContent:'⇄ Google',title:'Kept in step with Google Tasks'})]:[]),menu));
+  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.private?[el('span',{className:'gt-priv',textContent:'🔒',title:'Only you can see this list'})]:[]),...(gOn(L)?[el('span',{className:'gt-priv',textContent:'⇄ G',title:'Kept in step with Google Tasks'})]:[]),menu));
   const add=el('button',{className:'gt-add',innerHTML:'<span class="gt-plus">＋</span>Add a task'}); add.onclick=()=>tInlineAdd(card,L.id,add); card.append(add);
   const all=tItems().filter(t=>(t.list||'')===L.id && tFilter(t));
   const open=all.filter(t=>!t.done && !t.parent), kids=id=>all.filter(t=>!t.done && t.parent===id).sort(tSortFn('my'));
@@ -934,7 +934,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='120';
+const PARTNERS_VER='121';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
