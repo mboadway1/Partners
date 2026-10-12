@@ -948,7 +948,10 @@ async function musicStart(){
   const a=musicEl(), mode=musicCfg.mode;
   if(mode==='radio'){ const st=musicCfg.station; if(!st) return; a.src=st.url; music.now='📻 '+st.name; music.title=st.name; music.artist='Internet radio'; musicPlay(); musicBanner(); return; }
   if(mode==='drive'){
-    const fid=driveFolderId(musicCfg.folder); if(!fid || !settings.driveKey) return;
+    const fid=driveFolderId(musicCfg.folder);
+    if(!fid){ music.status='This screen doesn’t have your Music folder link yet'; toast('This screen doesn’t have your Music folder link yet. On your iPhone: Partners → 📺 → Favorites folder slideshow → paste the Music folder link → Send to TV. Then click Refresh here.',9000); return; }
+    if(!settings.driveKey){ music.status='No Google key on this screen yet'; toast('This screen doesn’t have the Google key yet. Put it in on your iPhone (📺 → Favorites folder slideshow), then click Refresh here.',8000); return; }
+    music.status='Finding your songs…';
     // The song list is kept on this screen and re-checked in the background every few hours, so a big
     // library with many folders starts playing right away.
     if(!music.list.length){ try{ const c=JSON.parse(localStorage.getItem('partners.music.cache')||'null'); if(c && c.folder===fid && c.v===3){ music.list=c.songs.sort(()=>Math.random()-.5); music.listAt=c.at; music.pos=0; } }catch(_){} }
@@ -958,7 +961,7 @@ async function musicStart(){
       music.list=music.list.filter(x=>keep.has(x.id)).concat(fresh.sort(()=>Math.random()-.5)); return songs.length; };
     if(!music.list.length){ toast('Finding your songs…',3000); try{ await rescan(); music.pos=0; music.list.sort(()=>Math.random()-.5); }catch(e){ toast('Your Music folder couldn’t be read: '+e.message,6000); return; } }
     else if(Date.now()-music.listAt>4*3600e3) rescan().catch(()=>{});
-    if(!music.list.length){ toast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
+    if(!music.list.length){ music.status='No songs found in the Music folder'; toast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
     musicTrack();
   }
 }
@@ -1038,7 +1041,7 @@ async function openMusic(){
     const v=await menu('Music',[
       ['📻 Internet radio…','radio'], ['🎵 My songs (Drive Music folder)','drive'],
       ...(mode!=='off'?[[playing?'⏸ Pause':'▶ Play now','toggle'],...(mode==='drive'?[['⏭ Next song','next'],...(music.cur?[[`👎 Never play “${music.cur.name.slice(0,40)}”`,'hide']]:[]),...(musicSkip.list.length?[[`Hidden songs (${musicSkip.list.length})…`,'hidden']]:[])]:[]),['⏹ Music off','off']]:[]),
-      [`Plays: ${musicCfg.when==='always'?'all the time':'during the slideshow'}`,'when'], [`Volume: ${musicCfg.volume}%`,'vol'], ['Done',null,'primary']], now+(mode!=='off'&&music.status?` · ${music.status}`:'')+(mode!=='off'&&music.el&&music.el.volume===0?' · volume is 0':''));
+      [`Plays: ${musicCfg.when==='always'?'all the time':'during the slideshow'}`,'when'], [`Volume: ${musicCfg.volume}%`,'vol'], ['Done',null,'primary']], now+(mode!=='off'&&music.status?` · ${music.status}`:'')+(mode==='drive'&&!driveFolderId(musicCfg.folder)?' · No Music folder link on this screen yet':'')+(mode!=='off'&&music.el&&music.el.volume===0?' · volume is 0':''));
     if(v==null) return;
     if(v==='radio'){ const g=await menu('Pick a kind of music',[...GENRES.map(([l,t])=>[l,t]),['Back',null]]); if(!g) continue;
       toast('Finding stations…',2000); let list; try{ list=await stationsFor(g); }catch(e){ toast(e.message,5000); continue; }
