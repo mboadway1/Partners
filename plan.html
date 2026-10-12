@@ -334,7 +334,8 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .gt-car{width:22px;text-align:center}
 /* big screens: sidebar + lists side by side */
 .gt-wide{display:flex;gap:18px;align-items:flex-start}
-.gt-side{flex:none;width:250px;position:sticky;top:90px;display:flex;flex-direction:column;gap:2px}
+.gt-side{flex:none;width:250px;position:sticky;top:90px;display:flex;flex-direction:column;gap:2px;max-height:calc(100vh - 180px);overflow-y:auto;overscroll-behavior:contain;padding:4px 6px 12px 12px;margin-left:-12px}
+.gt-side>*{flex:none}
 .gt-create{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;background:var(--panel);border-radius:16px;box-shadow:0 1px 3px rgba(60,20,50,.2),0 3px 8px rgba(60,20,50,.1);padding:14px 22px 14px 16px;margin-bottom:12px;font-weight:800}
 .gt-create span{font-size:24px;line-height:1;color:var(--accent)}
 .gt-nav{display:flex;align-items:center;gap:12px;background:transparent;border-radius:0 999px 999px 0;padding:8px 14px;min-height:42px;text-align:left;font-weight:700;color:var(--text);margin-left:-12px;padding-left:24px}
@@ -576,12 +577,13 @@ function renderTasks(v){
   const create=el('button',{className:'gt-create',innerHTML:'<span>＋</span> Create'}); create.onclick=()=>editTask(null); side.append(create);
   const nav=(k,label,icon)=>{ const b=el('button',{className:'gt-nav'+(tview===k?' on':''),innerHTML:`<span class="ic">${icon}</span>`}); b.append(label); b.onclick=()=>{ tview=k; render(); }; side.append(b); };
   nav('lists','All tasks','☑'); nav('starred','Starred','★'); nav('mine','Assigned to me','●'); if(p) nav('p2',`Assigned to ${p.name}`,'●');
+  { const g=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>Update from Google Tasks'}); g.onclick=()=>importGoogleTasks(); side.append(g); }
   side.append(el('div',{className:'gt-sh',textContent:'Lists'}));
   lists.forEach(l=>{ const cb=el('input',{type:'checkbox',checked:!hidden.has(l.id)}); cb.onchange=()=>{ const h=tHidden(); cb.checked?h.delete(l.id):h.add(l.id); tset('hidden',[...h]); render(); };
     const n=tItems().filter(t=>!t.done&&(t.list||'')===l.id).length;
     side.append(el('label',{className:'gt-li',title:l.private?'Only you can see this list':`Shared with ${p?p.name:'your partner'}`},cb,el('span',{textContent:tLabel(l)}),el('small',{textContent:n||''}))); });
   const nl=el('button',{className:'gt-nav',innerHTML:'<span class="ic">＋</span>Create new list'}); nl.onclick=()=>tNewList(); side.append(nl);
-  const im=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>Update from Google Tasks'}); im.onclick=()=>importGoogleTasks(); side.append(im);
+  
   const cols=el('div',{className:'gt-cols'});
   if(tview==='starred') cols.append(tStarredCard());
   else if(tview!=='lists') cols.append(tAssignedCard());
