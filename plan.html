@@ -58,6 +58,7 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 /* On the TV: use the whole screen */
 html.tv main{max-width:none;padding-left:24px;padding-right:24px}
 html.tv .bnav a{max-width:none}
+html.tv body{zoom:2.2}   /* big text on the TV, same as Words */
 html.tv .mc{min-height:0}
 html.tv .mc .n{font-size:15px}
 html.tv .mc .e{font-size:13px}
@@ -632,7 +633,8 @@ const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).p
 const onTV=()=>document.documentElement.classList.contains('tv');
 function fitMonth(g){ if(!g.isConnected) return;
   const nav=document.querySelector('.bnav'), bottom=nav?nav.getBoundingClientRect().top:innerHeight;
-  const h=Math.max(300, bottom-g.getBoundingClientRect().top-12), weeks=(g.children.length-7)/7;
+  const z=(g.getBoundingClientRect().width/g.offsetWidth)||1;   // page zoom on the TV
+  const h=Math.max(300, bottom-g.getBoundingClientRect().top-12)/z, weeks=(g.children.length-7)/7;
   g.style.height=h+'px'; g.style.gridTemplateRows=`auto repeat(${weeks},1fr)`; }
 addEventListener('resize',()=>{ const g=document.querySelector('.month'); if(g && onTV()) fitMonth(g); });
 function renderCalendar(v){
