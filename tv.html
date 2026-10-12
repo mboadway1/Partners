@@ -958,22 +958,29 @@ async function musicStart(){
 // Songs can be in folders inside folders (Music → Artist → Album → song), so look through every level.
 const AUDIO_EXT=/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
 async function musicScan(rootId){
-  const names=new Map(), parentOf=new Map(), songs=[]; let level=[rootId], depth=0, folders=0;
+  const names=new Map(), parentOf=new Map(), songs=[]; let level=[rootId], depth=0, folders=0; music.blocked=0;
+  // One page of results for some folders. If Google refuses (a folder that isn't shared), retry them one by one and skip the refused ones.
+  const listIn=async ids=>{ const q=`(${ids.map(x=>`'${x}' in parents`).join(' or ')}) and trashed = false`, out=[]; let page='';
+    do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,parents,md5Checksum,size)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
+      const j=await r.json(); if(!r.ok){ const e=new Error((j.error&&j.error.message)||'Drive error'); e.status=r.status; throw e; }
+      out.push(...(j.files||[])); page=j.nextPageToken||''; }while(page);
+    return out; };
   while(level.length && depth<12 && folders<6000 && songs.length<25000){
     const next=[];
     for(let i=0;i<level.length;i+=30){
-      const ids=level.slice(i,i+30), q=`(${ids.map(x=>`'${x}' in parents`).join(' or ')}) and trashed = false`;
-      let page='';
-      do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,parents,md5Checksum,size)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
-        const j=await r.json(); if(!r.ok) throw new Error((j.error&&j.error.message)||'Drive error');
-        for(const f of j.files||[]){ const par=(f.parents||[])[0]||''; parentOf.set(f.id,par); names.set(f.id,f.name);
-          if(f.mimeType==='application/vnd.google-apps.folder'){ next.push(f.id); folders++; }
-          else if(/^audio\//.test(f.mimeType||'') || AUDIO_EXT.test(f.name||'')) songs.push({id:f.id,name:f.name,parent:par,md5:f.md5Checksum||''}); }
-        page=j.nextPageToken||''; }while(page);
+      const ids=level.slice(i,i+30); let files;
+      try{ files=await listIn(ids); }
+      catch(e){
+        if(depth===0) throw new Error(/permission|not found/i.test(e.message)?'Google won’t let Partners read it. On your phone, check the Music folder link, and in Drive share that folder as “Anyone with the link”.':e.message);
+        files=[]; for(const id of ids){ try{ files.push(...await listIn([id])); }catch(_){ music.blocked++; } }
+      }
+      for(const f of files){ const par=(f.parents||[])[0]||''; parentOf.set(f.id,par); names.set(f.id,f.name);
+        if(f.mimeType==='application/vnd.google-apps.folder'){ next.push(f.id); folders++; }
+        else if(/^audio\//.test(f.mimeType||'') || AUDIO_EXT.test(f.name||'')) songs.push({id:f.id,name:f.name,parent:par,md5:f.md5Checksum||''}); }
     }
     level=next; depth++;
   }
-  // "Song — Artist": the artist is the folder above the album folder when there is one.
+  if(music.blocked) toast(`${music.blocked} folder${music.blocked===1?'':'s'} in Music aren’t shared, so their songs are skipped. In Drive, share them as “Anyone with the link”.`,8000);
   // Duplicates (the same file, or the same song title by the same artist) are played only once.
   const seen=new Set(), out=[];
   for(const x of songs){ const album=x.parent!==rootId?names.get(x.parent):'', up=parentOf.get(x.parent), artist=up&&up!==rootId&&names.get(up)||'';
