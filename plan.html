@@ -59,6 +59,9 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 html.tv main{max-width:none;padding-left:24px;padding-right:24px}
 html.tv .bnav a{max-width:none}
 html.tv body{zoom:2.2}   /* big text on the TV, same as Words */
+html.tv.cal body{zoom:1.15}
+.mc .e[hidden]{display:none}
+html.tv.cal .sheet{zoom:1}
 html.tv .sheet{zoom:.55;max-width:900px;max-height:70vh}   /* pop-ups: smaller so they fit the TV screen */
 html.tv .mc{min-height:0}
 html.tv .mc .n{font-size:15px}
@@ -376,6 +379,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(
 let tab='tasks';
 const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Fuel',us:'Us'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
+  document.documentElement.classList.toggle('cal', tab==='calendar');   // calendar uses normal-size text so more events fit
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
   $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':tab==='us'?'Send an appreciation':'Add a link';
@@ -635,11 +639,20 @@ function sortKey(x){ if(x.type==='task') return '1'+(x.t.time||'99'); const ev=x
 const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 // On the TV the month fills the screen: weeks share all the height between the top bar and the bottom bar.
 const onTV=()=>document.documentElement.classList.contains('tv')||document.documentElement.classList.contains('wide');
-function fitMonth(g){ if(!g.isConnected) return;
+function fitMonth(g){ if(!g.isConnected) return; requestAnimationFrame(()=>trimCells(g));
   const nav=document.querySelector('.bnav'), bottom=nav?nav.getBoundingClientRect().top:innerHeight;
   const z=(g.getBoundingClientRect().width/g.offsetWidth)||1;   // page zoom on the TV
   const h=Math.max(300, bottom-g.getBoundingClientRect().top-12)/z, weeks=(g.children.length-7)/7;
   g.style.height=h+'px'; g.style.gridTemplateRows=`auto repeat(${weeks},1fr)`; }
+// Each day shows as many events as fit in its box, then "+N more".
+function trimCells(g){
+  g.querySelectorAll('.mc').forEach(c=>{
+    let more=c.querySelector('.more'); const ev=[...c.querySelectorAll('.e')]; ev.forEach(e=>e.hidden=false); if(more) more.remove();
+    let hid=0;
+    while(c.scrollHeight>c.clientHeight+1 && ev.length-hid>0){ ev[ev.length-1-hid].hidden=true; hid++;
+      if(!more){ more=el('div',{className:'more'}); c.append(more); } more.textContent=`+${hid} more`; }
+  });
+}
 addEventListener('resize',()=>{ const g=document.querySelector('.month'); if(g && onTV()) fitMonth(g); });
 function renderCalendar(v){
   $('#chips').replaceChildren();
@@ -662,7 +675,7 @@ function renderCalendar(v){
     for(let d=new Date(s); d<e; d=addDays(d,1)){
       const k=ymd(d), items=m[k]||[], c=el('div',{className:'mc'+(d.getMonth()!==cdate.getMonth()?' out':'')+(k===ymd(today())?' today':''),title:fmtDay(d)});
       c.append(el('span',{className:'n',textContent:d.getDate()}));
-      const fit=onTV()?6:3;
+      const fit=onTV()?99:3;   // big screens: show as many as fit, trimmed after layout
       items.slice(0,fit).forEach(x=>{ const t=el('div',{className:'e'+(x.type==='task'?' task':''),textContent:x.type==='task'?'☐ '+x.t.title:(x.ev.summary||'(No title)')}); if(x.type==='ev') t.style.setProperty('--c',x.ev._cal.color); c.append(t); });
       if(items.length>fit) c.append(el('div',{className:'more',textContent:`+${items.length-fit} more`}));
       const day=new Date(d); c.onclick=()=>daySheet(day, items); g.append(c);
