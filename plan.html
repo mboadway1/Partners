@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <script src="theme.js"></script>
+<script>try{ if(window.top!==window || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV/i.test(navigator.userAgent)) document.documentElement.classList.add('tv'); }catch(e){}</script>
 <style>
 :root{
   --bg:#FFE9F1; --panel:#FFF8FB; --panel2:#FBDCE8; --line:#F4C6D8; --text:#4A1D3F; --dim:#9B6B8E; --accent:#D1386E; --accentDark:#A82556; --lilac:#8B6CE0;
@@ -54,6 +55,9 @@ header{position:sticky;top:0;z-index:5;background:var(--headerbg);backdrop-filte
 .chip .n{opacity:.6;margin-left:4px}
 
 main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) + 12px);max-width:860px;margin:0 auto}
+/* On the TV: use the whole screen */
+html.tv main{max-width:none;padding-left:24px;padding-right:24px}
+html.tv .bnav a{max-width:none}
 
 /* bottom navigation (same on every Peggy page) */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;background:var(--headerbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
