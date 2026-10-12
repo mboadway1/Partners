@@ -1,4 +1,4 @@
-// Peggy magic tools: magic eraser (fills painted areas from their surroundings) and blur background.
+// Partners magic tools: magic eraser (fills painted areas from their surroundings) and blur background.
 // Both change the photo's pixels, so the editor keeps the untouched original in p.orig and Revert brings it back.
 'use strict';
 

@@ -6,15 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Peggy">
+<meta name="apple-mobile-web-app-title" content="Partners">
 <meta name="theme-color" content="#FFE9F1">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" sizes="180x180" href="https://mboadway1.github.io/Peggy/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" href="icon-512.png">
-<title>Peggy</title>
+<title>Partners</title>
 <script src="theme.js"></script>
 <script>
-// Opened on a Fire TV or other TV browser? Go to Peggy's TV screen instead of the phone app.
+// Opened on a Fire TV or other TV browser? Go to Partners' TV screen instead of the phone app.
 // (?phone on the address keeps the phone app, for testing.)
 (function(){ try{ var ua=navigator.userAgent||'';
   if(!/[?&](phone|code|error)\b/.test(location.search) && !localStorage.getItem('peggy.authState') && /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua))
@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
 :root{
-  /* Peggy in bloom: petal backgrounds, peony actions, lilac accents, plum ink */
+  /* Partners in bloom: petal backgrounds, peony actions, lilac accents, plum ink */
   --bg:#FFE9F1; --panel:#FFF8FB; --panel2:#FBDCE8; --line:#F4C6D8;
   --text:#4A1D3F; --dim:#9B6B8E; --accent:#D1386E; --accent2:#D1386E; --lilac:#8B6CE0;
   --star:#F5A524; --ok:#1F9D63; --danger:#C62A4A; --photo:#2A1230;
@@ -287,28 +287,29 @@ body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
 
 <header>
   <div class="bar">
-    <h1 id="wordmark">Peggy</h1>
+    <h1 id="wordmark">Partners</h1>
     <button id="btnImport" title="Import photos from Google Photos or this device" class="primary" aria-label="Import">＋<span class="lbl"> Import</span></button>
     <button id="sAll" class="hidden" title="Select every photo in this view, or none">Select all</button>
     <button id="btnSelect" title="Select photos to favorite, add to an album, post or send to the TV">Select</button>
-    <button id="btnTv" title="Connect to Peggy on your Fire TV" class="ghost" aria-label="TV"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span class="tl">TV</span><span class="tvdot" id="tvDot"></span></button>
+    <button id="btnTv" title="Connect to Partners on your Fire TV" class="ghost" aria-label="TV"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M8.5 21h7M9 2.5l3 3.5 3-3.5"/></svg><span class="tl">TV</span><span class="tvdot" id="tvDot"></span></button>
     <button id="btnSettings" title="Settings: Google sign-in, storage, delete data" class="ghost" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg><span class="tl">Settings</span></button>
   </div>
   <div class="chips" id="chips"></div>
 </header>
 
 <main id="main">
+  <div id="heroSlot"></div>
   <div class="grid" id="grid"></div>
   <div class="empty hidden" id="empty"></div>
 </main>
 
-<nav class="bnav" aria-label="Peggy sections">
+<nav class="bnav" aria-label="Partners sections">
   <a href="./" data-k="photos" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
   <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="#more" data-k="more" class="more" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="#more" data-k="more" class="more" title="More: Us, Fuel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 <div class="selbar hidden" id="selbar">
   <span class="count" id="selCount">0</span>
@@ -402,7 +403,7 @@ body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
       <div class="lab2">Who should see this post?</div>
       <div class="chips" id="audience"></div>
       <p class="hint" id="audHint"></p>
-      <label class="checkrow" title="Peggy always re-saves photos before sharing, which removes this hidden information"><input type="checkbox" checked disabled> <span>Hidden location and camera details are removed from the photos</span></label>
+      <label class="checkrow" title="Partners always re-saves photos before sharing, which removes this hidden information"><input type="checkbox" checked disabled> <span>Hidden location and camera details are removed from the photos</span></label>
     </div>
     <button id="shareBtn" title="Copy the caption and open the share sheet; choose Facebook" class="fb" style="width:100%" disabled>Preparing photos…</button>
     <p class="hint" id="postHint">Tapping Share copies your caption, then opens the share sheet. Choose <b>Facebook</b>, then long-press the text box and tap <b>Paste</b> to add the caption.</p>
@@ -414,6 +415,7 @@ body.selecting-mode #btnImport, body.selecting-mode #btnTv{display:none}
 <script src="core.js"></script>
 <script src="core-butterfly.js"></script>
 <script src="account.js"></script>
+<script src="partners.js"></script>
 <script src="magic.js"></script>
 <script src="share.js"></script>
 <script src="costumes.js"></script>
@@ -544,7 +546,7 @@ function renderGrid(){
     empty.classList.remove('hidden');
     empty.replaceChildren(...(photos.length
       ? [el('h2',{textContent:'Nothing here yet'}), el('p',{textContent:'Select photos in All and use Album or ★ to fill this view.'})]
-      : [Object.assign(el('div',{className:'trail'}),{innerHTML:butterfly({size:30})+butterfly({size:40})+butterfly({size:64,flutter:true})}), el('h2',{textContent:'Welcome to Peggy'}), el('p',{textContent:'Tap ＋ to bring in photos from Google Photos or this phone. Then make them pretty and share them on Facebook.'})]));
+      : [Object.assign(el('div',{className:'trail'}),{innerHTML:butterfly({size:30})+butterfly({size:40})+butterfly({size:64,flutter:true})}), el('h2',{textContent:'Welcome to Partners'}), el('p',{textContent:'Tap ＋ to bring in photos from Google Photos or this phone. Then make them pretty and share them on Facebook.'})]));
   }
 }
 /* ---------- repair a photo whose picture won't show ---------- */
@@ -555,7 +557,7 @@ async function repairThumb(p, im, cell){
   catch(e){ console.warn('lost photo', p.name, e);
     cell.classList.add('lost'); cell.title='This photo couldn’t be read. Tap to remove it, then import it again.';
     if(!cell.querySelector('.lostmsg')) cell.append(el('div',{className:'lostmsg',textContent:'Couldn’t load · tap to remove'}));
-    cell.onclick=async ev=>{ ev.stopPropagation(); if(confirm(`“${p.name}” couldn’t be read on this phone. Remove it from Peggy? You can import it again.`)){ await dbDel('photos',p.id); dropURL(p.id); photos=photos.filter(x=>x.id!==p.id); renderAll(); } }; }
+    cell.onclick=async ev=>{ ev.stopPropagation(); if(confirm(`“${p.name}” couldn’t be read on this phone. Remove it from Partners? You can import it again.`)){ await dbDel('photos',p.id); dropURL(p.id); photos=photos.filter(x=>x.id!==p.id); renderAll(); } }; }
 }
 /* ---------- clean up what's already here ---------- */
 async function openTidy(){
@@ -566,7 +568,7 @@ async function openTidy(){
       const m=await classifyBlobs(todo.map(p=>({key:p.id, blob:p.blob})), (d,t)=>{ bar.b.style.width=(100*d/t)+'%'; bar.st.textContent=`${d} of ${t}`; });
       for(const p of todo){ const k=m.get(p.id); if(k){ p.kind=k; await dbPut('photos',p); } } }
     catch(e){ // Claude couldn't help: make an on-phone guess instead (kept separate, so Claude can sort them properly later).
-      note=`Claude couldn’t check these: ${sortProblem(e)}. Peggy made its own guess, which only catches screenshots and maps or papers.`;
+      note=`Claude couldn’t check these: ${sortProblem(e)}. Partners made its own guess, which only catches screenshots and maps or papers.`;
       let d=0; for(const p of todo){ try{ const img=await loadImage(p.blob); p.guess=localKind(img, '')||'photo'; if(p.guess!=='photo') await dbPut('photos',p); }catch(_){}
         d++; bar.b.style.width=(100*d/todo.length)+'%'; bar.st.textContent=`${d} of ${todo.length}`; if(d%10===0) await sleep(0); } }
     bar.close(); }
@@ -575,7 +577,7 @@ async function openTidy(){
   sheet((sh,close)=>{
     sh.append(el('h3',{textContent:flagged.length?`Found ${flagged.length} to tidy up`:'All tidy 🦋'}),
       ...(note?[el('p',{className:'tip',textContent:note})]:[]),
-      el('p',{textContent:flagged.length?'Ticked ones will be removed from Peggy (not from Google Photos or your phone). Untick anything you want to keep. Favorites start unticked.':'No screenshots, maps or item photos found.'}));
+      el('p',{textContent:flagged.length?'Ticked ones will be removed from Partners (not from Google Photos or your phone). Untick anything you want to keep. Favorites start unticked.':'No screenshots, maps or item photos found.'}));
     const pick=new Set(flagged.filter(p=>!p.fav).map(p=>p.id));
     const btn=el('button',{className:'danger',style:'width:100%;margin-top:10px'}); const upd=()=>{ btn.textContent=`Remove ${pick.size} photo${pick.size===1?'':'s'}`; btn.disabled=!pick.size; };
     for(const k of ['screenshot','paper','item']){ const ps=flagged.filter(p=>kindOf(p)===k); if(!ps.length) continue;
@@ -586,7 +588,7 @@ async function openTidy(){
         const keep=el('button',{className:'keepbtn',textContent:'It’s a photo',title:'Mark as a real photo so it isn’t flagged again'}); keep.onclick=async ev=>{ ev.stopPropagation(); p.kind='photo'; await dbPut('photos',p); pick.delete(p.id); c.parentElement.remove(); upd(); };
         g.append(el('div',{className:'tidycell'},c,keep)); });
       sh.append(g); }
-    btn.onclick=async()=>{ if(!confirm(`Remove ${pick.size} photo${pick.size===1?'':'s'} from Peggy?`)) return;
+    btn.onclick=async()=>{ if(!confirm(`Remove ${pick.size} photo${pick.size===1?'':'s'} from Partners?`)) return;
       for(const id of pick){ await dbDel('photos',id); dropURL(id); } const n=pick.size; photos=photos.filter(p=>!pick.has(p.id)); selected.clear(); close(); renderAll(); toast(`Removed ${n} 🧹`); };
     const c=el('button',{className:'ghost',textContent:flagged.length?'Cancel':'Close',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
     if(flagged.length){ upd(); sh.append(btn); } sh.append(c);
@@ -620,10 +622,10 @@ async function openDuplicates(){
   const groups=duplicateGroups();
   const keep=new Map(groups.map(g=>[g, new Set([g[0].id])]));   // which ones in each row stay
   sheet((sh,close)=>{
-    const h=el('h3'), go=el('button',{className:'danger',style:'width:100%;margin-top:10px',title:'Remove the ones marked Remove from Peggy'});
+    const h=el('h3'), go=el('button',{className:'danger',style:'width:100%;margin-top:10px',title:'Remove the ones marked Remove from Partners'});
     const count=()=>groups.reduce((n,g)=>n+g.length-keep.get(g).size,0);
     const upd=()=>{ const n=count(); h.textContent=groups.length?`${n} duplicate${n===1?'':'s'} found`:'No duplicates 🦋'; go.textContent=`Remove ${n} photo${n===1?'':'s'}`; go.disabled=!n; };
-    sh.append(h, el('p',{textContent:groups.length?'Each row is one photo that’s in Peggy more than once, or a few shots of the same moment. Peggy keeps the best one (★): favorites and edits first, then the sharpest. Tap a photo to keep or remove it. Favorites, albums and “posted” move onto the one kept. Google Photos and your phone aren’t touched.':'Every photo in Peggy is one of a kind. New imports skip copies automatically.'}));
+    sh.append(h, el('p',{textContent:groups.length?'Each row is one photo that’s in Partners more than once, or a few shots of the same moment. Partners keeps the best one (★): favorites and edits first, then the sharpest. Tap a photo to keep or remove it. Favorites, albums and “posted” move onto the one kept. Google Photos and your phone aren’t touched.':'Every photo in Partners is one of a kind. New imports skip copies automatically.'}));
     const box=el('div',{className:'evs'});
     for(const g of groups){ const row=el('div',{className:'thumbs dup'}), K=keep.get(g);
       const draw=()=>row.replaceChildren(...g.map(p=>{ const k=K.has(p.id); const w=el('button',{className:'dupc'+(k?' keep':''),title:k?'Tap to remove this one':'Tap to keep this one too'}, el('img',{src:urlFor(p),alt:''}), el('span',{textContent:k?'★ Keep':'Remove'}));
@@ -774,7 +776,7 @@ $('#sMore').onclick=async()=>{
   const inAlbum=albums.find(a=>a.id===view), items=[];
   if(inAlbum) items.push([`Remove from “${inAlbum.name}”`,'unalbum']);
   if(selected.size===1) items.push(['🦋 Use as background','bg']);
-  items.push(['⬇ Download','download'],['Share…','share'],['Mark as posted','posted'],['Mark as not posted','unposted'],['Delete from Peggy','delete','danger']);
+  items.push(['⬇ Download','download'],['Share…','share'],['Mark as posted','posted'],['Mark as not posted','unposted'],['Delete from Partners','delete','danger']);
   const v=await actions(`${selected.size} selected`, items); if(!v) return;
   const sel=photos.filter(p=>selected.has(p.id));
   if(v==='unalbum'){ for(const p of sel){ p.albums=p.albums.filter(x=>x!==view); await dbPut('photos',p); } }
@@ -783,7 +785,7 @@ $('#sMore').onclick=async()=>{
   if(v==='bg'){ await setBackground(sel[0]); selecting=false; selected.clear(); renderAll(); return; }
   if(v==='download'){ downloadPhotos(visible().filter(p=>selected.has(p.id))); return; }
   if(v==='delete'){
-    if(!confirm(`Delete ${sel.length} photo(s) from Peggy? This doesn't touch Google Photos.`)) return;
+    if(!confirm(`Delete ${sel.length} photo(s) from Partners? This doesn't touch Google Photos.`)) return;
     for(const p of sel){ await dbDel('photos',p.id); dropURL(p.id); } photos=photos.filter(p=>!selected.has(p.id)); selected.clear();
   }
   renderAll();
@@ -804,14 +806,14 @@ $('#btnImport').onclick=async()=>{
 async function sharedImport(){
   const v=await sheet((sh,close)=>{
     sh.append(el('h3',{textContent:'Photos shared with you'}),
-      el('p',{textContent:'Google only lets Peggy see photos in your own library, so save the shared ones there first. It only takes a few taps.'}));
+      el('p',{textContent:'Google only lets Partners see photos in your own library, so save the shared ones there first. It only takes a few taps.'}));
     const ol=el('ol',{className:'steps',innerHTML:
       '<li>Tap <b>Open shared photos</b> below.</li>'+
       '<li>Open the shared album or the person\'s photos, then press and hold to select the ones you want.</li>'+
       '<li>Tap <b>Save</b> (the cloud with a down arrow).</li>'+
-      '<li>Come back to Peggy and tap <b>Pick them now</b>. In the picker, search the album name or scroll to the date they were taken.</li>'});
+      '<li>Come back to Partners and tap <b>Pick them now</b>. In the picker, search the album name or scroll to the date they were taken.</li>'});
     const open=el('a',{className:'big',href:'https://photos.google.com/sharing',target:'_blank',rel:'noopener',textContent:'Open shared photos',title:'Opens your shared albums and conversations in Google Photos'});
-    const pick=el('button',{className:'primary',textContent:'Pick them now',style:'width:100%;margin-top:8px',title:'Opens the Google Photos picker to bring the saved photos into Peggy'});
+    const pick=el('button',{className:'primary',textContent:'Pick them now',style:'width:100%;margin-top:8px',title:'Opens the Google Photos picker to bring the saved photos into Partners'});
     pick.onclick=()=>close('pick');
     const tip=el('p',{className:'tip',innerHTML:'<b>Tip for a partner\'s photos:</b> in Google Photos, open <b>Sharing</b>, tap your partner, then ⋮ → <b>Partner sharing settings</b>, and turn on saving their photos to your library. New ones then land in your library automatically.'});
     const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:4px'}); c.onclick=()=>close(null);
@@ -848,22 +850,22 @@ async function classifyBlobs(entries, onProgress){
 function sortProblem(e){
   const m=String(e&&e.message||e||'');
   if(!acct.session) return 'you’re not signed in (Settings → Sign in with Google)';
-  if(e&&e.status===404 || /not found/i.test(m)) return 'the relay needs the newest code (Peggy checklist → “Paste the newest relay code”)';
-  if(/x-api-key|api key|authentication|invalid.*key/i.test(m)) return 'the Claude key isn’t working (Peggy checklist → “Fix invalid x-api-key”)';
-  if(/ANTHROPIC_API_KEY/.test(m)) return 'the relay has no Claude key yet (Peggy checklist → “Add the key to the relay”)';
+  if(e&&e.status===404 || /not found/i.test(m)) return 'the relay needs the newest code (Partners checklist → “Paste the newest relay code”)';
+  if(/x-api-key|api key|authentication|invalid.*key/i.test(m)) return 'the Claude key isn’t working (Partners checklist → “Fix invalid x-api-key”)';
+  if(/ANTHROPIC_API_KEY/.test(m)) return 'the relay has no Claude key yet (Partners checklist → “Add the key to the relay”)';
   if(/credit|balance|billing/i.test(m)) return 'the Claude account is out of credit (Claude Console → Billing)';
   return m;
 }
 let sortWarned=0;
 function warnSort(e, extra){ if(Date.now()-sortWarned<60000) return; sortWarned=Date.now();
-  setTimeout(()=>toast(`Claude couldn’t sort photos: ${sortProblem(e)}. ${extra||'Peggy left out the obvious screenshots and maps itself.'}`, 10000), 3500); }
+  setTimeout(()=>toast(`Claude couldn’t sort photos: ${sortProblem(e)}. ${extra||'Partners left out the obvious screenshots and maps itself.'}`, 10000), 3500); }
 const kindSummary = c => Object.entries(c).filter(([,n])=>n).map(([k,n])=>`${n} ${KIND_NAMES[k][n>1?1:0]}`).join(', ');
 // Imports wait their turn, so two at once can't both bring in the same photos.
 let importQ=Promise.resolve();
 function importBlobs(list, prog){ const r=importQ.then(()=>importBlobsNow(list, prog)); importQ=r.catch(()=>{}); return r; }
 async function importBlobsNow(list, prog){
   askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[], skipped={screenshot:0,paper:0,item:0};
-  // Skip photos already in Peggy (same file name, same moment taken, same size).
+  // Skip photos already in Partners (same file name, same moment taken, same size).
   const seen=new Set(photos.filter(p=>p.src==='device').map(p=>p.name+'|'+p.created+'|'+(p.size||'')));
   let bar=null;
   if(!prog && list.length>6) sheet((sh,close)=>{ const b=el('div'), st=el('p',{textContent:`0 of ${list.length}`});
@@ -892,7 +894,7 @@ async function importBlobsNow(list, prog){
       // Claude couldn't sort these, so make an on-phone guess.
       if(skipShots() && !kd){ const lk=localKind(img, it.make); if(lk){ skipped[lk]++; step(); continue; } }
       const me={it, kd, hash, sharp, created:it.created};
-      // Already in Peggy (the same photo, or a look-alike shot of the same moment).
+      // Already in Partners (the same photo, or a look-alike shot of the same moment).
       if(photos.some(q=>q.hash && (skipBursts()?lookAlike(me,q):sameShot(me,q)))){ dup++; step(); continue; }
       me.thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
       cand.push(me);
@@ -929,7 +931,7 @@ async function afterImport(added, msg){
   const from=new Date(ev.from+'T00:00:00').getTime(), to=new Date(ev.to+'T23:59:59.999').getTime();
   const inside=added.filter(p=>p.created>=from && p.created<=to), outside=added.length-inside.length;
   let a=albums.find(x=>x.id===ev.album); if(!a){ a={id:ev.album, name:ev.name, created:Date.now()}; albums.push(a); await dbPut('albums',a); }
-  // Photos from those days that were already in Peggy join the album too.
+  // Photos from those days that were already in Partners join the album too.
   const already=photos.filter(p=>!added.includes(p) && p.created>=from && p.created<=to && !p.albums.includes(a.id));
   for(const p of [...inside, ...already]){ if(!p.albums.includes(a.id)){ p.albums.push(a.id); await dbPut('photos',p); } }
   view=a.id; selecting=false; selected.clear(); renderAll();
@@ -964,7 +966,7 @@ function searchText(from, to){
 function importEvent(){
   sheet((sh,close)=>{
     sh.append(el('h3',{textContent:'📅 Import a day or event'}),
-      el('p',{textContent:'Pick the days. Peggy puts every photo taken on them into one album, named for you. A birthday, a trip, a holiday, last weekend: anything.'}));
+      el('p',{textContent:'Pick the days. Partners puts every photo taken on them into one album, named for you. A birthday, a trip, a holiday, last weekend: anything.'}));
     const quick=el('div',{className:'qchips'});
     const Q=[['today','Today'],['yesterday','Yesterday'],['thiswk','This weekend'],['lastwk','Last weekend'],['week','Last 7 days']];
     const from=el('input',{type:'date',title:'First day'}), to=el('input',{type:'date',title:'Last day'}), name=el('input',{type:'text',placeholder:'Album name',title:'What to call the album'});
@@ -986,7 +988,7 @@ function importEvent(){
     };
     const g=el('button',{className:'primary',textContent:'From Google Photos',title:'Pick the photos in Google Photos'}); g.onclick=()=>go('google');
     const dv=el('button',{textContent:'From this phone',title:'Pick the photos from this phone’s photo library'}); dv.onclick=()=>go('device');
-    const tip=el('p',{className:'tip',innerHTML:'Peggy copies the date for you. In the picker, tap <b>Search</b>, paste it, and select the photos. Anything you pick from other days still comes in, just not into this album.'});
+    const tip=el('p',{className:'tip',innerHTML:'Partners copies the date for you. In the picker, tap <b>Search</b>, paste it, and select the photos. Anything you pick from other days still comes in, just not into this album.'});
     const c=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:4px'}); c.onclick=()=>close(null);
     // Put them in a new album, or add to one that's already there (like the shared album your partner made for the same weekend).
     const albSel=el('select',{className:'albsel',title:'Which album these photos go into'});
@@ -1054,9 +1056,9 @@ function showWaiting(){
   sheet((sh,close)=>{
     waitClose=v=>{ waitClose=null; close(v); };
     sh.append(el('h3',{textContent:'Pick photos in Google Photos'}),
-      el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to Peggy. They\'ll import automatically.'}));
+      el('p',{textContent:'Tap the button, select your photos, tap Done, then come back to Partners. They\'ll import automatically.'}));
     const ph=localStorage.getItem('peggy.pickHint'); if(ph) sh.append(el('p',{className:'tip',innerHTML:`<b>${ph.replace(/</g,'&lt;')}</b>: it’s on your clipboard, so tap the search bar in Google Photos and paste.`}));
-    const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos',title:'Opens Google Photos to pick photos for Peggy'});
+    const a=el('a',{className:'big',href:s.uri+'/autoclose',target:'_blank',rel:'noopener',textContent:'Open Google Photos',title:'Opens Google Photos to pick photos for Partners'});
     const status=el('p',{id:'pickStatus',textContent:'Waiting for your selection…'});
     const cancel=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%;margin-top:8px'});
     cancel.onclick=()=>{ clearTimeout(pollT); api('DELETE','/v1/sessions/'+s.id).catch(()=>{}); localStorage.removeItem('peggy.pickSession'); waitClose(null); };
@@ -1122,7 +1124,8 @@ async function openSettings(note){
     sh.append(el('h3',{textContent:'Settings'}));
     if(acct.session) sh.append(el('p',{textContent:`Signed in as ${acct.me.name} (${acct.me.email}).`}));
     else { const si=el('button',{className:'primary',textContent:'Sign in with Google',title:'One sign-in for Google Photos, Calendar and shared tasks',style:'width:100%'}); si.onclick=()=>peggySignIn('index.html'); sh.append(si); }
-    sh.append(el('label',{className:'f',textContent:'Theme color'}), peggyThemePicker());
+    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), peggyThemePicker());
+    if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings());
     if(note) sh.append(el('p',{textContent:note}));
     const cid=el('input',{value:cfg.clientId,placeholder:'1234…apps.googleusercontent.com',autocapitalize:'off',autocorrect:'off',spellcheck:false});
     const rel=el('input',{value:cfg.relay,placeholder:'https://peggy-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
@@ -1134,8 +1137,8 @@ async function openSettings(note){
     const save=el('button',{className:'primary',textContent:'Save'});
     save.onclick=()=>{ localStorage.setItem('peggy.clientId',cid.value.trim()); localStorage.setItem('peggy.relay',rel.value.trim()); close(); toast('Saved'); };
     const out=el('button',{textContent:'Sign out of Google'}); out.onclick=()=>{ localStorage.removeItem('peggy.token'); toast('Signed out'); };
-    const wipe=el('button',{className:'danger',textContent:'Delete all Peggy data'});
-    wipe.onclick=async()=>{ if(!confirm('Delete every photo and album stored in Peggy on this device? Google Photos is not affected.')) return;
+    const wipe=el('button',{className:'danger',textContent:'Delete all Partners data'});
+    wipe.onclick=async()=>{ if(!confirm('Delete every photo and album stored in Partners on this device? Google Photos is not affected.')) return;
       for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id);
       photos=[]; albums=[]; view='all'; close(); renderAll(); };
     const c=el('button',{className:'ghost',textContent:'Close'}); c.onclick=()=>close();
@@ -1149,9 +1152,9 @@ async function openSettings(note){
     const ss=el('p',{className:'hint',textContent:'Photo sorting: checking…'}); sh.append(ss);
     (async()=>{ try{ if(!acct.session) throw new Error('not signed in'); const c=document.createElement('canvas'); c.width=c.height=16; const b=await toBlob(c,'image/jpeg',.5);
         await classifyBlobs([{key:'t',blob:b}]); ss.textContent='Photo sorting: working ✓ (Claude checks each import)'; }
-      catch(e){ ss.textContent='Photo sorting with Claude isn’t working: '+sortProblem(e)+'. Until then Peggy guesses on the phone (screenshots and maps only).'; } })();
-    const tidy=el('button',{textContent:'🧹 Clean up screenshots, maps & item photos',title:'Find ones already in Peggy and remove them'}); tidy.onclick=()=>{ close(); openTidy(); }; sh.append(tidy);
-    const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
+      catch(e){ ss.textContent='Photo sorting with Claude isn’t working: '+sortProblem(e)+'. Until then Partners guesses on the phone (screenshots and maps only).'; } })();
+    const tidy=el('button',{textContent:'🧹 Clean up screenshots, maps & item photos',title:'Find ones already in Partners and remove them'}); tidy.onclick=()=>{ close(); openTidy(); }; sh.append(tidy);
+    const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Partners more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
     st.append(dups,save,out,wipe,c); sh.append(st);
   });
 }
@@ -1392,7 +1395,7 @@ function renderStrip(){
   }));
 }
 $('#caption').oninput=e=>localStorage.setItem('peggy.caption',e.target.value);
-/* ---------- AI captions (Claude, through Peggy's relay) ---------- */
+/* ---------- AI captions (Claude, through Partners' relay) ---------- */
 const TONES=[['warm','Warm'],['funny','Funny'],['short','Short'],['heartfelt','Heartfelt'],['excited','Excited']];
 let aiTone=(()=>{ try{ return localStorage.getItem('peggy.aiTone')||'warm'; }catch(_){ return 'warm'; } })();
 function renderTones(){ $('#aiTones').replaceChildren(...TONES.map(([k,l])=>{ const b=el('button',{textContent:l,className:aiTone===k?'on':'',title:`Make the caption ${l.toLowerCase()}`}); b.onclick=()=>{ aiTone=k; try{ localStorage.setItem('peggy.aiTone',k); }catch(_){} renderTones(); }; return b; })); }
@@ -1401,8 +1404,8 @@ async function smallJpeg(file){ const img=await loadImage(file); return (await t
 const b64=blob=>new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(String(f.result).split(',')[1]); f.readAsDataURL(blob); });
 $('#aiGo').onclick=async()=>{
   const out=$('#aiOut'), btn=$('#aiGo');
-  if(!acct.session){ const si=el('button',{className:'primary',textContent:'Sign in with Google',title:'Sign in once so Peggy can ask Claude for captions'}); si.onclick=()=>peggySignIn('index.html');
-    out.replaceChildren(el('p',{className:'hint',textContent:'Caption ideas need you signed in to Peggy. You only do this once on each phone.'}), si); return; }
+  if(!acct.session){ const si=el('button',{className:'primary',textContent:'Sign in with Google',title:'Sign in once so Partners can ask Claude for captions'}); si.onclick=()=>peggySignIn('index.html');
+    out.replaceChildren(el('p',{className:'hint',textContent:'Caption ideas need you signed in to Partners. You only do this once on each phone.'}), si); return; }
   const ids=post.ids.filter(id=>post.files.has(id)).slice(0,4); if(!ids.length) return;
   btn.disabled=true; btn.textContent='✨ Looking at your photos…'; out.replaceChildren();
   try{
@@ -1415,7 +1418,7 @@ $('#aiGo').onclick=async()=>{
   finally{ btn.disabled=false; btn.textContent='✨ Suggest again'; }
 };
 /* ---------- privacy ---------- */
-// Facebook doesn't let other apps pick a post's audience, so Peggy remembers the choice and reminds you where to set it.
+// Facebook doesn't let other apps pick a post's audience, so Partners remembers the choice and reminds you where to set it.
 const AUDIENCES=[['friends','👥 Friends','Friends'],['public','🌎 Public','Public'],['specific','👤 Specific friends','Specific friends'],['except','🚫 Friends except…','Friends except…'],['me','🔒 Only me','Only me']];
 let audience=(()=>{ try{ return localStorage.getItem('peggy.audience')||'friends'; }catch(_){ return 'friends'; } })();
 function renderAudience(){
@@ -1467,8 +1470,8 @@ function tvConnect(){
     if(!tv.peer || tv.peer.destroyed){ tv.peer=new Peer(); await new Promise((res,rej)=>{ tv.peer.once('open',res); tv.peer.once('error',rej); }); }
     else if(tv.peer.disconnected){ tv.peer.reconnect(); await sleep(800); }
     const c=tv.peer.connect(PEER_PREFIX+tv.code,{reliable:true, serialization:'binary'});
-    await new Promise((res,rej)=>{ const t=setTimeout(()=>rej(new Error(`Couldn't reach TV ${tv.code}. Make sure Peggy is open on the Fire Stick.`)),12000);
-      c.on('open',()=>{ clearTimeout(t); res(); }); tv.peer.once('error',e=>{ clearTimeout(t); rej(new Error(e.type==='peer-unavailable'?`TV ${tv.code} isn't online. Open Peggy on the Fire Stick.`:e.message)); }); });
+    await new Promise((res,rej)=>{ const t=setTimeout(()=>rej(new Error(`Couldn't reach TV ${tv.code}. Make sure Partners is open on the Fire Stick.`)),12000);
+      c.on('open',()=>{ clearTimeout(t); res(); }); tv.peer.once('error',e=>{ clearTimeout(t); rej(new Error(e.type==='peer-unavailable'?`TV ${tv.code} isn't online. Open Partners on the Fire Stick.`:e.message)); }); });
     c.on('data',m=>{ if(m && m.t==='ack'){ const w=tv.waits.get(m.i); if(w){ tv.waits.delete(m.i); m.error?w.rej(new Error(m.error)):w.res(); } } });
     c.on('close',()=>{ if(tv.conn===c){ tv.conn=null; tvSetState('off'); for(const w of tv.waits.values()) w.rej(new Error('TV disconnected')); tv.waits.clear(); } });
     tv.conn=c; tvSetState('on'); tvShareExtras(); return c;
@@ -1484,9 +1487,9 @@ async function tvShareExtras(){
   try{ let tok=localStorage.getItem('peggy.tvtoken'); if(!tok){ tok=(await peggyApi('tv-token',{method:'POST'})).session; localStorage.setItem('peggy.tvtoken',tok); }
        tv.conn.send({t:'plan', session:tok, relay:acct.relay}); }catch(_){}
 }
-document.addEventListener('peggytheme',()=>{ tvShareExtras(); const w=$('#wordmark .bfly'); if(w) $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>'; renderAll(); });
+document.addEventListener('peggytheme',()=>{ tvShareExtras(); const w=$('#wordmark .bfly'); if(w) $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Partners<span class="kiss" aria-hidden="true">😘</span></span>'; renderAll(); });
 // Favorites folder slideshow (replaces the old Photos app): the TV plays a shared Google Drive folder.
-// The link and key stay on this phone and the TV; they are never part of Peggy's public code.
+// The link and key stay on this phone and the TV; they are never part of Partners' public code.
 function tvSendDrive(){ const f=localStorage.getItem('peggy.driveFolder')||'', k=localStorage.getItem('peggy.driveKey')||'';
   if(f && k && tv.conn && tv.conn.open) try{ tv.conn.send({t:'drive', folder:f, key:k}); }catch(_){} }
 function tvDriveSetup(){ sheet((sh,close)=>{
@@ -1512,12 +1515,12 @@ function tvPair(code){ code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,''); i
 $('#btnTv').onclick=()=>sheet((sh,close)=>{
   sh.append(el('h3',{textContent:'Fire TV'}));
   if(!tv.code){
-    sh.append(el('p',{textContent:'Open Peggy on your Fire Stick. Enter the 4-letter code shown on the TV.'}));
+    sh.append(el('p',{textContent:'Open Partners on your Fire Stick. Enter the 4-letter code shown on the TV.'}));
     const i=el('input',{className:'codein',maxLength:4,autocapitalize:'characters',autocorrect:'off',spellcheck:false,placeholder:'····'});
     const go=el('button',{className:'primary',textContent:'Connect',style:'width:100%;margin-top:10px'}); go.onclick=()=>{ close(); tvPair(i.value); };
     sh.append(i,go);
   } else {
-    sh.append(el('p',{textContent: tv.state==='on' ? `Connected to TV ${tv.code}.` : `Paired with TV ${tv.code}. Peggy connects when you send photos.`}));
+    sh.append(el('p',{textContent: tv.state==='on' ? `Connected to TV ${tv.code}.` : `Paired with TV ${tv.code}. Partners connects when you send photos.`}));
     sh.append(el('p',{textContent:'Select photos, then tap TV to show them as a slideshow or copy them to the TV.'}));
     const st=el('div',{className:'stack'});
     if(tv.state!=='on'){ const c=el('button',{className:'primary',textContent:'Connect now'}); c.onclick=()=>{ close(); tvConnect().then(()=>toast('Connected ✓')).catch(e=>toast(e.message,6000)); }; st.append(c); }
@@ -1589,14 +1592,15 @@ addTips(document);
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
     // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.
     const t0=Date.now(), hadOld=!!navigator.serviceWorker.controller; let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped || !hadOld) return; swapped=true;
-      if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Peggy was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
-  $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>';
+      if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Partners was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
+  $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Partners<span class="kiss" aria-hidden="true">😘</span></span>';
   db=await openDB();
   try{ const bg=await tx('meta','readonly',st=>st.get('background')); if(bg && bg.blob) showBackground(bg.blob); }catch(_){}
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
   await removeDoubles();
   renderAll();
+  $('#heroSlot').append(partnersHero()); if(acct.session) partnersLoad().catch(()=>{});
   setTimeout(fillHashes, 2500); setTimeout(sharedSync, 1200);
   const tvParam=new URLSearchParams(location.search).get('tv');
   if(tvParam){ history.replaceState(null,'',location.pathname+location.hash); tvPair(tvParam); }

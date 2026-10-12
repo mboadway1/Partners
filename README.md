@@ -1,26 +1,26 @@
-# Peggy
+# Partners
 
-Organize and edit photos from Google Photos, post them to Facebook from an iPhone or iPad, and enjoy them on the TV with Peggy for Fire TV.
+Organize and edit photos from Google Photos, post them to Facebook from an iPhone or iPad, and enjoy them on the TV with Partners for Fire TV.
 
-Peggy is a web app you add to your home screen. It runs entirely on your device: photos you import are stored in the app's private storage on that iPhone/iPad, and nothing is uploaded anywhere except Facebook, when you choose to post.
+Partners is a web app you add to your home screen. It runs entirely on your device: photos you import are stored in the app's private storage on that iPhone/iPad, and nothing is uploaded anywhere except Facebook, when you choose to post.
 
 ## What it does
 
 - **Import** from Google Photos (Google's own picker opens; you choose the photos) or from the device's camera roll.
 - **Organize** with albums, ★ favorites, and automatic *Not posted* / *Posted* views. Select many at once to tag, move, or delete.
 - **Edit** non-destructively: crop to Facebook-friendly shapes (Square, Portrait 4:5, Wide 16:9, Story 9:16), zoom and drag to reframe, rotate, flip, brightness, contrast, saturation, warmth, and eight filters. *Revert* always gets the original back.
-- **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Peggy on Fire TV](#peggy-on-fire-tv).
+- **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Partners on Fire TV](#peggy-on-fire-tv).
 - **Words** (🎙 in the header): counts the words each person says and who interrupts whom, with an optional **turn timer**, and shows a live scoreboard on the TV. See [Words](#words).
 - **Tasks** (shared by two people): lists, due dates and times, repeats, ★ important, assign to you, your partner or both; import once from Google Tasks.
-- **Calendar**: your Google calendars in List, Week and Month views; add, edit and delete events; one tap creates a shared “Peggy · Shared” calendar for the two of you. Tasks with due dates show on the calendar.
+- **Calendar**: your Google calendars in List, Week and Month views; add, edit and delete events; one tap creates a shared “Partners · Shared” calendar for the two of you. Tasks with due dates show on the calendar.
 - **Links**: shared favorite web links in folders, with notes and automatic titles.
 - **Themes**: Pink (default), Lavender, Ocean, Mint, Sunset and Midnight. Settings → Theme color; the TV follows along.
-- **Post** one or many photos, in the order you choose. Peggy copies your caption, opens the iOS share sheet, you tap **Facebook**, paste the caption, and post. Posted photos get a ✓.
+- **Post** one or many photos, in the order you choose. Partners copies your caption, opens the iOS share sheet, you tap **Facebook**, paste the caption, and post. Posted photos get a ✓.
 
 ## Two limits worth knowing
 
-1. **Facebook doesn't let any app post to a personal profile on its own.** Meta removed that in 2018. Peggy hands the finished photos to the Facebook app through the share sheet, and you tap *Post*. Facebook also ignores captions passed in by other apps, which is why Peggy puts the caption on your clipboard for you to paste.
-2. **Google Photos only shares the photos you pick.** Since March 2025, apps can't browse your whole library; they get exactly what you select in Google's picker. Each import is a new pick. Peggy never changes or deletes anything in Google Photos.
+1. **Facebook doesn't let any app post to a personal profile on its own.** Meta removed that in 2018. Partners hands the finished photos to the Facebook app through the share sheet, and you tap *Post*. Facebook also ignores captions passed in by other apps, which is why Partners puts the caption on your clipboard for you to paste.
+2. **Google Photos only shares the photos you pick.** Since March 2025, apps can't browse your whole library; they get exactly what you select in Google's picker. Each import is a new pick. Partners never changes or deletes anything in Google Photos.
 
 ---
 
@@ -32,28 +32,28 @@ You'll set up three free things: GitHub Pages (hosts the app), a Google Cloud OA
 
 ### 1. Put the app on GitHub Pages
 
-1. Create a new repository named **Peggy** at https://github.com/new (Public is required for free GitHub Pages; the repo holds only code, never photos).
+1. Create a new repository named **Partners** at https://github.com/new (Public is required for free GitHub Pages; the repo holds only code, never photos).
 2. Push this folder:
    ```bash
-   cd Peggy
-   git remote add origin https://github.com/mboadway1/Peggy.git
+   cd Partners
+   git remote add origin https://github.com/mboadway1/Partners.git
    git push -u origin main
    ```
 3. In the repo: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / `(root)` → Save**.
-4. After a minute the app is live at **https://mboadway1.github.io/Peggy/**
+4. After a minute the app is live at **https://mboadway1.github.io/Partners/**
 
 ### 2. Create the Google OAuth client
 
-1. Go to https://console.cloud.google.com/ and create a project (e.g. *Peggy*).
+1. Go to https://console.cloud.google.com/ and create a project (e.g. *Partners*).
 2. **APIs & Services → Library →** search **Google Photos Picker API → Enable**.
 3. **APIs & Services → OAuth consent screen** (also called *Google Auth Platform*):
-   - User type **External**, app name *Peggy*, your Gmail as support and developer contact.
+   - User type **External**, app name *Partners*, your Gmail as support and developer contact.
    - **Data access / Scopes:** add `https://www.googleapis.com/auth/photospicker.mediaitems.readonly`.
    - **Audience / Test users:** add your Gmail address. Leave the app in **Testing** — it's just for you, so no Google review is needed.
 4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - Application type **Web application**
    - Authorized JavaScript origins: `https://mboadway1.github.io`
-   - Authorized redirect URIs: `https://mboadway1.github.io/Peggy/`  ← trailing slash matters
+   - Authorized redirect URIs: `https://mboadway1.github.io/Partners/`  ← trailing slash matters
 5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`). No client secret is used.
 
 ### 3. Deploy the relay to Cloudflare (free)
@@ -61,12 +61,12 @@ You'll set up three free things: GitHub Pages (hosts the app), a Google Cloud OA
 On any computer with Node.js:
 
 ```bash
-cd Peggy/relay
+cd Partners/relay
 npx wrangler login        # opens a browser to sign in / create a free Cloudflare account
 npx wrangler deploy
 ```
 
-It prints a URL like `https://peggy-relay.<your-subdomain>.workers.dev`. Opening it in a browser should say *Peggy relay is running.*
+It prints a URL like `https://peggy-relay.<your-subdomain>.workers.dev`. Opening it in a browser should say *Partners relay is running.*
 
 The relay only forwards to Google Photos hosts, only accepts requests from the origin in `wrangler.toml`, and stores nothing. Free tier: 100,000 requests/day — far more than you'll use.
 
@@ -74,31 +74,31 @@ The relay only forwards to Google Photos hosts, only accepts requests from the o
 
 ### 4. Install on iPhone / iPad
 
-1. Open **https://mboadway1.github.io/Peggy/** in **Safari**.
+1. Open **https://mboadway1.github.io/Partners/** in **Safari**.
 2. Tap **Share → Add to Home Screen → Add**.
-3. Open Peggy from the home screen, tap **⚙︎**, paste the **Client ID** and **Relay URL**, tap **Save**.
+3. Open Partners from the home screen, tap **⚙︎**, paste the **Client ID** and **Relay URL**, tap **Save**.
 4. Tap **＋ Import → Google Photos**. Sign in to Google; since the app is in Testing, Google shows a "hasn't verified this app" notice — tap **Continue**.
 
 Do step 3 on each device you use. Each device keeps its own library.
 
 ---
 
-### 5. Install Peggy on the Fire TV (optional)
+### 5. Install Partners on the Fire TV (optional)
 
 Same as your Words and Photos apps: Downloader and developer mode are already set up.
 
 1. Every push that changes the TV app builds it automatically (**Actions → Build APK**) and publishes
-   `https://github.com/mboadway1/Peggy/releases/download/latest/Peggy.apk`
+   `https://github.com/mboadway1/Partners/releases/download/latest/Partners.apk`
 2. Make a TinyURL for that address.
-3. On the Fire TV, open **Downloader**, enter the TinyURL, then **Install → Done → Delete**. **Peggy** appears in your apps.
+3. On the Fire TV, open **Downloader**, enter the TinyURL, then **Install → Done → Delete**. **Partners** appears in your apps.
 
 The TV app loads its screen from GitHub Pages each time, so updates arrive without reinstalling.
 
 ---
 
-## Peggy on Fire TV
+## Partners on Fire TV
 
-**Pair once.** Peggy on the TV shows a 4-letter code. In Peggy on the iPhone/iPad, tap **📺** and enter it. The phone remembers the TV and reconnects whenever you send photos. (The TV's QR code opens Peggy in Safari already paired. That's handy for a quick show, but Safari keeps a separate library from the home-screen app.)
+**Pair once.** Partners on the TV shows a 4-letter code. In Partners on the iPhone/iPad, tap **📺** and enter it. The phone remembers the TV and reconnects whenever you send photos. (The TV's QR code opens Partners in Safari already paired. That's handy for a quick show, but Safari keeps a separate library from the home-screen app.)
 
 **From the phone:** Select photos → **📺 TV**:
 - **Show on TV now** — an instant slideshow of the edited photos; the phone becomes a remote (⏮ ⏯ ⏭ ⏹). Nothing is saved on the TV.
@@ -109,7 +109,7 @@ The TV app loads its screen from GitHub Pages each time, so updates arrive witho
 | Button | Does |
 |---|---|
 | ◀ ▶ ▲ ▼ / OK | Move and select |
-| Back | Close what's open; on the home screen, exit Peggy |
+| Back | Close what's open; on the home screen, exit Partners |
 | ⏯ Play/Pause | Start a slideshow from the photo you're viewing, or pause one |
 | ⏪ ⏩ | Previous / next photo |
 
@@ -124,7 +124,7 @@ Importing from Google Photos happens on the phone, because Google doesn't allow 
 
 ## Words
 
-Tap **🎙** in Peggy's header (‹ Photos goes back). The iPhone listens and transcribes; you tap who's talking (or press ◀ ▶ on the Fire remote). Speaker names, language and timer choices are remembered.
+Tap **🎙** in Partners' header (‹ Photos goes back). The iPhone listens and transcribes; you tap who's talking (or press ◀ ▶ on the Fire remote). Speaker names, language and timer choices are remembered.
 
 **Turn timer.** Choose how long each turn gets (30 s – 5 min) and what happens when time is up:
 - Each change of speaker starts that person's countdown, on the phone and on the TV. The clock runs only while listening.
@@ -134,7 +134,7 @@ Tap **🎙** in Peggy's header (‹ Photos goes back). The iPhone listens and tr
 
 Without the timer, a switch counts as an interruption when someone is mid-sentence or spoke within the last second (adjustable in Settings).
 
-**On the TV**, Peggy switches to the scoreboard as soon as you start listening. Back returns to photos (it won't pop up again until you stop and start listening), and **🎙 Words** on the TV's home screen brings it back. Words uses the same TV code as photos.
+**On the TV**, Partners switches to the scoreboard as soon as you start listening. Back returns to photos (it won't pop up again until you stop and start listening), and **🎙 Words** on the TV's home screen brings it back. Words uses the same TV code as photos.
 
 Transcript: **Copy** or **Save .txt** (includes the per-person totals and timer setting).
 
@@ -142,12 +142,12 @@ Transcript: **Copy** or **Save .txt** (includes the per-person totals and timer 
 
 ## Shared tasks, calendar and links: one-time setup
 
-Peggy's relay keeps the shared tasks and links, and keeps each person signed in to Google so nobody has to sign in again.
+Partners' relay keeps the shared tasks and links, and keeps each person signed in to Google so nobody has to sign in again.
 
-**Google Cloud** (Peggy project)
+**Google Cloud** (Partners project)
 1. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) and the [Google Tasks API](https://console.cloud.google.com/apis/library/tasks.googleapis.com).
 2. [Audience](https://console.cloud.google.com/auth/audience): add your partner's Gmail as a test user, then **Publish app → In production** (Testing-mode sign-ins expire every 7 days). Google shows an “unverified app” notice when you sign in; choose Continue.
-3. [Clients](https://console.cloud.google.com/auth/clients) → Peggy → **Add secret**, copy the client secret.
+3. [Clients](https://console.cloud.google.com/auth/clients) → Partners → **Add secret**, copy the client secret.
 
 **Cloudflare** (peggy-relay worker)
 1. **Storage & databases → Workers KV → Create**, name it `peggy`.
@@ -155,7 +155,7 @@ Peggy's relay keeps the shared tasks and links, and keeps each person signed in 
 3. peggy-relay → **Settings → Variables and Secrets**: add text `ALLOWED_EMAILS` (both Gmail addresses, comma-separated), text `GOOGLE_CLIENT_ID`, and secret `GOOGLE_CLIENT_SECRET`.
 4. **Edit code**: replace it with the new `relay/worker.js`, then **Deploy**.
 
-Then each of you opens **Tasks** in Peggy and taps **Sign in with Google**. To bring in Google Tasks: Settings → **Import from Google Tasks**.
+Then each of you opens **Tasks** in Partners and taps **Sign in with Google**. To bring in Google Tasks: Settings → **Import from Google Tasks**.
 
 ---
 
@@ -163,7 +163,7 @@ Then each of you opens **Tasks** in Peggy and taps **Sign in with Google**. To b
 
 | To… | Do this |
 |---|---|
-| Import | **＋ Import → Google Photos**, tap **Open Google Photos**, select, tap **Done**, switch back to Peggy |
+| Import | **＋ Import → Google Photos**, tap **Open Google Photos**, select, tap **Done**, switch back to Partners |
 | Edit | Tap a photo. **Crop / Adjust / Filters** tabs; drag the photo to reframe. **Save** |
 | Organize | **Select**, tap photos, then **★**, **Album**, or **More** (remove from album, mark posted, delete) |
 | Album options | Tap an album's chip while it's already selected → rename / delete |
@@ -172,9 +172,9 @@ Then each of you opens **Tasks** in Peggy and taps **Sign in with Google**. To b
 
 ## Good to know
 
-- **Storage:** photos live in the app's storage on the device (imported at up to 2560px on the long edge). iOS keeps home-screen web apps' data, but it isn't backed up by iCloud — your originals stay safe in Google Photos. Settings shows how much space Peggy uses.
+- **Storage:** photos live in the app's storage on the device (imported at up to 2560px on the long edge). iOS keeps home-screen web apps' data, but it isn't backed up by iCloud — your originals stay safe in Google Photos. Settings shows how much space Partners uses.
 - **Exports** are JPEGs up to 2048px on the long edge, which is Facebook's own maximum for photos.
-- **Videos** in a Google Photos selection are skipped; Peggy handles photos only.
+- **Videos** in a Google Photos selection are skipped; Partners handles photos only.
 - **Google sign-in** lasts about an hour; after that, Import just asks you to sign in again.
 
 ## Files

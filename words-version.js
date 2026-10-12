@@ -1,4 +1,4 @@
-// Shared by Words on the phone (words.html) and the scoreboard in Peggy on the TV (tv.html).
+// Shared by Words on the phone (words.html) and the scoreboard in Partners on the TV (tv.html).
 // Bump this whenever either side changes how they talk to each other; a phone on an
 // older copy is then asked to reload when it connects.
 const WORDS_VERSION = '2.0';

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Peggy TV</title>
+<title>Partners TV</title>
 <script src="theme.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
-:root{/* Peggy in bloom, evening edition: plum room, peony and lilac light */
+:root{/* Partners in bloom, evening edition: plum room, peony and lilac light */
   --bg:#2A1230;--panel:#3A1B42;--panel2:#4B2654;--line:#5E3468;--text:#FFEAF3;--dim:#D9AECB;--accent:#F06A9B;--lilac:#A98BF0;--star:#FFC24B;--ok:#5EE0A6;--danger:#FF7A93;
   --display:"Fredoka","Nunito",ui-rounded,system-ui,sans-serif}
 *{box-sizing:border-box}
@@ -19,6 +19,13 @@ body{transform-origin:50% 50%}
 #tvbar .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:.3vw;padding:.7vw .2vw;border-radius:1.2vw;color:var(--dim);font-size:1.6vw;font-weight:800;cursor:pointer;white-space:nowrap}
 #tvbar .tb .ic{width:2.8vw;height:2.8vw;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block}
 #tvbar .tb.on,#tvbar .tb.focus,#tvbar .tb:hover{color:var(--accent);background:var(--panel2);box-shadow:none;transform:none}
+/* couples photo with both names on the home screen */
+#couple{flex:1;position:relative;margin:1vh 0 2vh;border-radius:2vw;overflow:hidden;background:var(--panel)}
+#couple img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#couple img[src=""]{display:none}
+#couple .cnames{position:absolute;left:0;right:0;bottom:0;padding:8vh 3vw 3vh;font:600 5vw/1.1 var(--display);color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65));text-shadow:0 .2vw 1vw rgba(0,0,0,.6)}
+#couple .cnames span{filter:brightness(1.7) saturate(.85)}
+#couple .cnames small{display:block;font:700 1.8vw var(--body,inherit);color:#eee;filter:none;margin-top:1vh}
 /* bigger text everywhere on the TV */
 .navrow .btn{font-size:2.1vw!important}
 .status,.codechip,.wx{font-size:1.9vw} .codechip b{font-size:2.2vw}
@@ -190,7 +197,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 <div id="home">
   <div id="drift"></div>
   <div class="top">
-    <h1 id="tvWordmark">Peggy</h1>
+    <h1 id="tvWordmark">Partners</h1>
     <span class="status" id="status"><i></i><span id="statusText">Starting…</span></span>
     <span class="wx" id="wxHome"></span>
     <span class="codechip">Phone code <b id="codeSm">····</b></span>
@@ -199,13 +206,14 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <div id="gridWrap"><div id="grid"></div></div>
   <div class="welcome hidden" id="welcome">
     <div>
-      <h2>Welcome to Peggy on TV</h2>
-      <p>Open <b>Peggy</b> on your iPhone or iPad, tap <b>📺</b>, and enter this code:</p>
+      <h2>Welcome to Partners on TV</h2>
+      <p>Open <b>Partners</b> on your iPhone or iPad, tap <b>📺</b>, and enter this code:</p>
       <div class="big" id="codeBig">····</div>
       <p>Then select photos and choose <b>Show on TV</b> for a slideshow, or <b>Copy to TV</b> to keep them here with their albums and edits.</p>
     </div>
     <div class="qr" id="qr"></div>
   </div>
+  <div id="couple" class="hidden"><img id="coupleImg" alt=""><div class="cnames" id="coupleNames"></div></div>
   <nav id="tvbar"></nav>
 </div>
 
@@ -229,7 +237,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <div class="wtop"><h1 id="wWordmark">Words</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
   <div class="wempty" id="wEmpty">
     <h2>Count who talks, and who interrupts</h2>
-    <div>In Peggy on your iPhone, tap <b>🎙</b>, then <b>Start listening</b>.</div>
+    <div>In Partners on your iPhone, tap <b>🎙</b>, then <b>Start listening</b>.</div>
     <div>Phone code <b id="wCode">····</b> · the scoreboard appears here automatically.</div>
   </div>
   <section class="board hidden" id="wBoard"></section>
@@ -255,6 +263,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="core.js"></script>
+<script src="partners.js"></script>
 <script src="core-butterfly.js"></script>
 <script src="words-version.js"></script>
 <script>
@@ -265,7 +274,7 @@ const settings = {
   get interval(){ return +store.get('peggy.tv.interval', 8); }, set interval(v){ store.set('peggy.tv.interval', v); },
   get shuffle(){ return store.get('peggy.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('peggy.tv.shuffle', v?'1':'0'); },
   get motion(){ return store.get('peggy.tv.zoom','0')==='1'; }, set motion(v){ store.set('peggy.tv.zoom', v?'1':'0'); },   // gentle zoom: off unless turned on in Settings
-  // Screen fit: shrinks Peggy so TVs that trim the picture edges (overscan) show all of it.
+  // Screen fit: shrinks Partners so TVs that trim the picture edges (overscan) show all of it.
   // The Fire TV app is already sized right (100%); in the TV's web browser start at 90%.
   get driveFolder(){ return store.get('peggy.tv.driveFolder',''); }, get driveKey(){ return store.get('peggy.tv.driveKey',''); },
   get driveStart(){ return store.get('peggy.tv.driveStart','1')==='1'; }, set driveStart(v){ store.set('peggy.tv.driveStart', v?'1':'0'); },
@@ -346,7 +355,7 @@ document.addEventListener('keydown',goFull,true);
 if(!/; wv\)/.test(navigator.userAgent) && history.pushState){
   try{ history.pushState({peggy:1},''); }catch(_){}
   addEventListener('popstate',()=>{ try{ history.pushState({peggy:1},''); }catch(_){}
-    if(!goBack()) toast('Press the Home button on the remote to leave Peggy',3000); });
+    if(!goBack()) toast('Press the Home button on the remote to leave Partners',3000); });
 }
 document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
 document.addEventListener('click',goFull,true);
@@ -413,9 +422,18 @@ function renderHome(){
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
     const bd=el('div',{className:'badges'}); if(p.fav) bd.append(el('span',{className:'star',textContent:'★'})); if(edited(p)) bd.append(el('span',{textContent:'✎'}));
     c.append(bd); c.onclick=()=>openViewer(list, i); return c; }));
-  $('#welcome').classList.toggle('hidden', photos.length>0);
+  const pd=partnersCached(), hasCouple=!!(pd && pd.members && pd.members.length);
+  $('#welcome').classList.toggle('hidden', photos.length>0 || hasCouple);
+  $('#couple').classList.toggle('hidden', photos.length>0 || !hasCouple);
+  if(hasCouple && !photos.length) drawCouple();
   $('#gridWrap').classList.toggle('hidden', photos.length===0);
   if(topScope() && topScope().root===$('#home')){ const same=keepPid && [...grid.children].find(c=>c._pid===keepPid); same ? focusEl(same) : refocus(); }
+}
+async function drawCouple(){
+  const n=$('#coupleNames'); n.replaceChildren();
+  partnersList().forEach((m,i)=>{ if(i) n.append(' & '); n.append(el('span',{textContent:m.name,style:`color:${m.color}`})); });
+  const url=await couplePhotoURL(); $('#coupleImg').src=url||'';
+  if(!url) n.append(el('small',{textContent:'Add your couples photo on your phone: Settings → Partners'}));
 }
 function setView(v){ view=v; renderHome(); const on=$('#nav .on'); if(on) focusEl(on); }
 async function albumOptions(a){
@@ -532,10 +550,10 @@ function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove
 function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); clearTimeout(i._t); i._t=setTimeout(()=>i.classList.remove('on'),2500); }
 function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clearTimeout(ss.timer);
   if(ss.paused) ssMsg('❚❚ Paused',1500); else { ssMsg('▶ Playing',1200); ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000); } ssInfo(); }
-// ▼ or Menu during a slideshow: jump to Peggy's other features without leaving full screen.
+// ▼ or Menu during a slideshow: jump to Partners' other features without leaving full screen.
 async function slideMenu(){
   const wasPaused=ss&&ss.paused; ssPause(true);
-  const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
+  const v=await menu('Partners',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
     ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings'],['🔄 Refresh','reload']]);
   if(!ss) return;
   if(v==='next'||v==='prev'){ if(!wasPaused) ssPause(false); ssGo(v==='next'?1:-1); return; }
@@ -544,9 +562,9 @@ async function slideMenu(){
   while(scopes.length>1) popScope();   // leave the slideshow
   if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu(); else if(v==='reload') location.reload();
 }
-// Clicking the slideshow goes back to Peggy's home screen (every feature is a button there).
+// Clicking the slideshow goes back to Partners' home screen (every feature is a button there).
 $('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')){ while(scopes.length>1) popScope(); } });
-// Peggy's planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
+// Partners' planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
 const ICONS={
   photos:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/>',
   today:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -560,11 +578,11 @@ const ICONS={
   phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   refresh:'<path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/>'};
-const PLAN_TABS=[['✅ Tasks','tasks'],['📆 Calendar','calendar'],['💵 Money','money'],['✈️ Flights','flights'],['⛽ Diesel','fuel'],['💞 Us','us'],['🔗 Links','links']];
-// Opened inside the TV screen (not as a new page) so Peggy stays full screen.
+const PLAN_TABS=[['✅ Tasks','tasks'],['📆 Calendar','calendar'],['💵 Money','money'],['✈️ Flights','flights'],['⛽ Fuel','fuel'],['💞 Us','us'],['🔗 Links','links']];
+// Opened inside the TV screen (not as a new page) so Partners stays full screen.
 function openPlan(tab){
   const L=$('#planLayer'); let f=L.querySelector('iframe');
-  if(!f){ f=el('iframe',{title:'Peggy plans'}); L.prepend(f); }
+  if(!f){ f=el('iframe',{title:'Partners plans'}); L.prepend(f); }
   f.src='plan.html#'+tab; L.classList.remove('hidden');
   pushScope(L,{ onclose:()=>{ L.classList.add('hidden'); } });
 }
@@ -630,7 +648,7 @@ window.peggyBack=()=>{ if(te && te.reframe){ te.reframe=false; edDraw(); return 
    whole photo (black bars, no cropping), place name and date bottom-left, clock bottom-right,
    each photo once in random order before any repeats (remembered across restarts),
    re-checks the folder every 30 minutes. The folder link and API key come from the phone
-   and are kept only on this TV, never in Peggy's public code. */
+   and are kept only on this TV, never in Partners' public code. */
 const DRIVE_API='https://www.googleapis.com/drive/v3/';
 let drive={items:[], timer:null, clock:null, lastErr:''};
 const driveReady=()=>!!(driveFolderId(settings.driveFolder) && settings.driveKey);
@@ -645,7 +663,7 @@ async function driveList(){
     if(!r.ok){ const msg=((j.error&&j.error.message)||'').toLowerCase();
       throw new Error(msg.includes('api key not valid')?'The API key isn’t valid. Check it on your phone.'
         : msg.includes('has not been used')||msg.includes('disabled')?'Turn on the Google Drive API for this key in Google Cloud.'
-        : r.status===404?'Peggy can’t see the folder. Share it as “Anyone with the link”.'
+        : r.status===404?'Partners can’t see the folder. Share it as “Anyone with the link”.'
         : msg.includes('referer')||msg.includes('blocked')?'This API key is restricted. Allow mboadway1.github.io or remove the restriction.'
         : `Google Drive said: ${j.error&&j.error.message||r.status}`); }
     for(const f of (j.files||[])){
@@ -659,7 +677,7 @@ async function driveList(){
   return out;
 }
 // Leave out screenshots and item photos (things photographed for reference, not memories).
-// Obvious screenshots are caught here; Claude sorts the rest through Peggy's relay, once per photo.
+// Obvious screenshots are caught here; Claude sorts the rest through Partners' relay, once per photo.
 const SKIP_KINDS=new Set(['screenshot','item']);
 function driveKinds(){ try{ return JSON.parse(store.get('peggy.tv.kinds','{}')); }catch(_){ return {}; } }
 function driveKeep(items){ const k=driveKinds(); return items.filter(d=>!d.shot && !SKIP_KINDS.has(k[d.id])); }
@@ -746,7 +764,7 @@ async function wxUpdate(){
 }
 wxUpdate(); setInterval(wxUpdate, 30*60*1000);
 async function startDrive(quiet){
-  if(!driveReady()){ if(!quiet) await menu('Favorites folder',[['OK',true]],'Set it up from your phone: open Peggy, tap 📺, then “Favorites folder slideshow”, and paste the folder link and API key.'); return; }
+  if(!driveReady()){ if(!quiet) await menu('Favorites folder',[['OK',true]],'Set it up from your phone: open Partners, tap 📺, then “Favorites folder slideshow”, and paste the folder link and API key.'); return; }
   if(!quiet) toast('Checking your Favorites folder…',2500);
   let items; try{ items=await driveList(); drive.lastErr=''; }catch(e){ drive.lastErr=e.message; if(!quiet) toast(e.message,7000); return; }
   if(!items.length){ if(!quiet) toast('The Favorites folder has no photos yet.',5000); return; }
@@ -790,7 +808,7 @@ async function openSettings(){
     const wipe=el('div',{className:'btn f danger',textContent:'Delete all photos from the TV'});
     wipe.onclick=async()=>{ if(await confirmTV('Delete everything on the TV?','Photos on your phone and in Google Photos are not affected.','Delete all')){
       for(const p of photos){ await dbDel('photos',p.id); dropURL(p.id); } for(const a of albums) await dbDel('albums',a.id); photos=[]; albums=[]; view='all'; close(); renderHome(); } };
-    const reload=el('div',{className:'btn f',textContent:'Reload Peggy'}); reload.onclick=()=>location.reload();
+    const reload=el('div',{className:'btn f',textContent:'Reload Partners'}); reload.onclick=()=>location.reload();
     const done=el('div',{className:'btn f primary',textContent:'Done'}); done.onclick=()=>close();
     d.append(el('div',{className:'list'},done,wipe,reload));
     refocus();
@@ -798,7 +816,7 @@ async function openSettings(){
   renderHome();
 }
 function showConnect(){
-  menu('Connect your phone',[['Done',null]],`In Peggy on your iPhone or iPad, tap 📺 and enter code ${code}. Or scan the QR code on the home screen with the Camera to open Peggy in Safari, already paired.`);
+  menu('Connect your phone',[['Done',null]],`In Partners on your iPhone or iPad, tap 📺 and enter code ${code}. Or scan the QR code on the home screen with the Camera to open Partners in Safari, already paired.`);
 }
 
 /* ================= phone link (PeerJS) ================= */
@@ -819,7 +837,7 @@ function startPeer(){
   peer=new Peer(PEER_PREFIX+code);
   peer.on('open',()=>setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0));
   peer.on('connection',c=>{
-    c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Peggy TV', count:photos.length}); });
+    c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Partners TV', count:photos.length}); });
     c.on('data',m=>{ if(m && m.type) return onWords(c,m); onData(c,m); });
     c.on('close',()=>{ conns.delete(c); if(c===wConn){ wConn=null; if(wordsOpen()) renderWords(); } setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0); });
     c.on('error',()=>{});
@@ -839,7 +857,7 @@ async function onData(c, m){
     if(m.t==='drive'){ const changed=m.folder!==settings.driveFolder||m.key!==settings.driveKey;
       store.set('peggy.tv.driveFolder', m.folder||''); store.set('peggy.tv.driveKey', m.key||''); renderHome();
       if(changed && m.folder && m.key){ toast('Favorites folder connected ✓',3000); if(!ss) startDrive(); } return; }
-    if(m.t==='plan' && m.session){ store.set('peggy.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); return; }
+    if(m.t==='plan' && m.session){ store.set('peggy.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); partnersLoad().then(renderHome).catch(()=>{}); return; }
     if(m.t==='show-start'){
       startSlideshow([],0,true); ssMsg('Receiving photos from your phone…');
     }
@@ -964,7 +982,7 @@ function onWords(c, m){
 
 /* ================= butterflies (follow the theme) ================= */
 function paintButterflies(){
-  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Peggy<span class="kiss" aria-hidden="true">😘</span>';
+  $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Partners<span class="kiss" aria-hidden="true">😘</span>';
   $('#wWordmark').innerHTML=butterfly({size:60,flutter:true})+'Words';
   $('#tdWordmark').innerHTML=butterfly({size:60,flutter:true})+'Today';
   const drift=$('#drift'); drift.replaceChildren();
@@ -988,7 +1006,7 @@ function tick(){ const n=new Date(); $('#tdClock').textContent=n.toLocaleTimeStr
 async function loadToday(){
   let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){}
   const E=$('#tdEvents'), T=$('#tdTasks');
-  if(!plan){ E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:'Open Peggy on your phone, sign in under Tasks, then connect to this TV. Today’s plans will appear here.'})); T.replaceChildren(el('h2',{textContent:'Tasks'})); return; }
+  if(!plan){ E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:'Open Partners on your phone, sign in under Tasks, then connect to this TV. Today’s plans will appear here.'})); T.replaceChildren(el('h2',{textContent:'Tasks'})); return; }
   const call=p=>fetch(plan.relay+'/api/'+p,{headers:{'X-Peggy-Session':plan.session}}).then(r=>r.ok?r.json():Promise.reject(r.status));
   const start=new Date(); start.setHours(0,0,0,0);
   try{
@@ -997,7 +1015,7 @@ async function loadToday(){
     renderTodayEvents(ag.events||[], start); renderTodayTasks(tasks.items||[], mem.members||[]);
   }catch(e){
     if(e===401){ store.set('peggy.tvplan',''); }
-    E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Peggy on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
+    E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Partners on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
   }
 }
 const ymdL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1044,6 +1062,7 @@ function renderTodayTasks(items, members){
   renderHome();
   startPeer();
   if(driveReady() && settings.driveStart) startDrive(true);
+  const pl=()=>partnersLoad().then(()=>{ if(topScope().root===$('#home')) renderHome(); }).catch(()=>{}); pl(); setInterval(pl, 30*60*1000);
 })();
 </script>
 </body>

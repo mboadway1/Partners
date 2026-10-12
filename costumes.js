@@ -1,4 +1,4 @@
-// Peggy costumes: Claude looks through the photos for costumes, notes the pieces (wigs, hats, capes…) in a
+// Partners costumes: Claude looks through the photos for costumes, notes the pieces (wigs, hats, capes…) in a
 // closet you both share, and suggests new costumes made from what you already own.
 // Each photo's result is kept on the photo (p.costume); the closet is the relay's shared "closet" document:
 // items = pieces {id, name, kind, count}, lists = costumes worn {id, name, count}.
@@ -51,7 +51,7 @@ async function scanCostumes(onProgress){
 function openCostumes(){
   sheet(async (sh,close)=>{
     sh.append(el('h3',{textContent:'🎭 Costumes'}));
-    if(!acct.session){ sh.append(el('p',{textContent:'Sign in with Google first (Settings → Sign in). Then Peggy can look through your photos for costumes.'}));
+    if(!acct.session){ sh.append(el('p',{textContent:'Sign in with Google first (Settings → Sign in). Then Partners can look through your photos for costumes.'}));
       const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%'}); c.onclick=()=>close(); sh.append(c); return; }
     // --- find costumes ---
     const scanBox=el('div',{className:'card'});
@@ -98,7 +98,7 @@ function openCostumes(){
         if((i.need||[]).length){ const u=el('div',{className:'chips need'}); i.need.forEach(n=>u.append(el('span',{textContent:'+ '+n}))); c.append(el('div',{className:'lab2',textContent:'You’d need'}),u); }
         if(i.how) c.append(el('p',{textContent:i.how}));
         if((i.need||[]).length){ const t=el('button',{textContent:'🛒 Add what’s needed to Tasks',title:'Make a shared task for each thing to get'});
-          t.onclick=async()=>{ const ops=i.need.map(n=>({op:'upsert', item:{id:uid(), title:`Get ${n} (for ${i.name} costume)`, done:false, important:false, due:null, time:null, list:null, assignee:'', repeat:'', notes:'From Peggy costume ideas', updatedAt:Date.now()}}));
+          t.onclick=async()=>{ const ops=i.need.map(n=>({op:'upsert', item:{id:uid(), title:`Get ${n} (for ${i.name} costume)`, done:false, important:false, due:null, time:null, list:null, assignee:'', repeat:'', notes:'From Partners costume ideas', updatedAt:Date.now()}}));
             try{ await peggyApi('data/tasks',{method:'POST', body:JSON.stringify({ops})}); t.textContent='✓ Added to Tasks'; t.disabled=true; }catch(e){ toast('Couldn’t add tasks: '+e.message); } };
           c.append(t); }
         return c; })); };

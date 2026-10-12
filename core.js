@@ -1,4 +1,4 @@
-// Peggy shared engine: used by the phone app (index.html) and the TV app (tv.html).
+// Partners shared engine: used by the phone app (index.html) and the TV app (tv.html).
 // Edits are stored as settings and applied on the fly, so originals are never changed.
 'use strict';
 // crop: {x,y,w,h} as fractions of the (rotated) photo, or null to use the older aspect/zoom/pan settings.

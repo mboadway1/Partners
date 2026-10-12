@@ -34,7 +34,7 @@ export default {
     try {
       if (url.pathname.startsWith('/api/')) return await api(req, env, url, cors);
       if (url.pathname.startsWith('/picker/') || url.pathname === '/media') return await photos(req, url, cors);
-      return new Response('Peggy relay is running.', { status: 200, headers: cors });
+      return new Response('Partners relay is running.', { status: 200, headers: cors });
     } catch (e) {
       return json({ error: String(e && e.message || e) }, 500, cors);
     }
@@ -84,7 +84,7 @@ async function api(req, env, url, cors) {
     if (t.error) return json({ error: t.error_description || t.error }, 400, cors);
     const claims = decodeJwt(t.id_token);
     const email = (claims.email || '').toLowerCase();
-    if (!email || !emails.includes(email)) return json({ error: `${email || 'This account'} isn’t on Peggy’s list of members.` }, 403, cors);
+    if (!email || !emails.includes(email)) return json({ error: `${email || 'This account'} isn’t on Partners’ list of members.` }, 403, cors);
     const user = (await KV.get('user:' + email, 'json')) || { email };
     Object.assign(user, { name: claims.given_name || claims.name || email.split('@')[0], fullName: claims.name || '', picture: claims.picture || '',
       access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000, scope: t.scope });
@@ -116,8 +116,40 @@ async function api(req, env, url, cors) {
   }
   if (path === 'members' && req.method === 'GET') {
     const list = [];
-    for (const e of emails) { const u = await KV.get('user:' + e, 'json'); list.push(publicUser(u || { email: e })); }
-    return json({ members: list }, 200, cors);
+    for (const e of emails) {
+      const u = await KV.get('user:' + e, 'json'), pr = (await KV.get('profile:' + e, 'json')) || {};
+      const m = publicUser(u || { email: e });
+      if (pr.name) m.name = pr.name;          // the name each partner chose in Settings
+      m.color = pr.color || ''; m.theme = pr.theme || '';
+      list.push(m);
+    }
+    const ph = await KV.get('couple:at');
+    return json({ members: list, couplePhoto: ph ? Number(ph) : 0 }, 200, cors);
+  }
+  // Each partner's own name, color and theme (shown to both of you and on the TV).
+  if (path === 'profile' && req.method === 'PUT' && full) {
+    const b = await body(), cur = (await KV.get('profile:' + s.email, 'json')) || {};
+    const clean = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : undefined;
+    const next = { ...cur };
+    for (const [k, n] of [['name', 40], ['color', 9], ['theme', 20]]) { const v = clean(b[k], n); if (v !== undefined) next[k] = v; }
+    if (next.color && !/^#[0-9a-fA-F]{6}$/.test(next.color)) delete next.color;
+    await KV.put('profile:' + s.email, JSON.stringify(next));
+    return json(next, 200, cors);
+  }
+  // The couples photo on the home screens. Anyone signed in (and the TV) can see it; either partner can change it.
+  if (path === 'couple-photo') {
+    if (req.method === 'GET') {
+      const d = await KV.get('couple:photo', 'arrayBuffer');
+      if (!d) return json({ error: 'No couples photo yet' }, 404, cors);
+      return new Response(d, { status: 200, headers: { ...cors, 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=60' } });
+    }
+    if (req.method === 'PUT' && full) {
+      const buf = await req.arrayBuffer();
+      if (!buf.byteLength || buf.byteLength > 4_000_000) return json({ error: 'Photo is too large' }, 400, cors);
+      await KV.put('couple:photo', buf); const at = Date.now(); await KV.put('couple:at', String(at));
+      return json({ ok: true, at }, 200, cors);
+    }
+    if (req.method === 'DELETE' && full) { await KV.delete('couple:photo'); await KV.delete('couple:at'); return json({ ok: true }, 200, cors); }
   }
   if (path === 'tv-token' && req.method === 'POST') {
     if (!full) return json({ error: 'Read-only' }, 403, cors);

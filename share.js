@@ -1,4 +1,4 @@
-// Peggy shared albums: an album both people see. Photos live in Cloudflare R2 through Peggy's relay;
+// Partners shared albums: an album both people see. Photos live in Cloudflare R2 through Partners' relay;
 // each phone keeps its own copy so they're quick to browse and work offline.
 // The relay's "shared" document holds the albums (lists) and which photos are in them (items, id "album:photo").
 'use strict';
@@ -97,7 +97,7 @@ async function shareAlbum(a){
   a.sharing=true;
   try{ await sharedOps([{kind:'list', op:'upsert', item:{id:a.id, name:a.name}}]); a.shared=true; await dbPut('albums',a);
     const who=(await sharedPartner())||{}; toast(`Sharing “${a.name}” with ${who.name||'your partner'}. Photos are on their way 🦋`, 5000); renderAll(); await sharedSync(); }
-  catch(e){ toast('Couldn’t share the album: '+(e.status===404||/not found/i.test(e.message)?'the relay needs the newest code. Open the Peggy checklist → “Paste the newest relay code”.':e.message), 9000); }
+  catch(e){ toast('Couldn’t share the album: '+(e.status===404||/not found/i.test(e.message)?'the relay needs the newest code. Open the Partners checklist → “Paste the newest relay code”.':e.message), 9000); }
   finally{ delete a.sharing; }
 }
 async function unshareAlbum(a){

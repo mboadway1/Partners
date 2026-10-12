@@ -1,4 +1,4 @@
-// Peggy account: one Google sign-in per person, kept by the relay so nobody signs in again.
+// Partners account: one Google sign-in per person, kept by the relay so nobody signs in again.
 // Used by index.html (photos) and plan.html (tasks, calendar, links).
 'use strict';
 const PEGGY = {
@@ -17,9 +17,9 @@ const acct = {
   set(session, me){ localStorage.setItem('peggy.session', session); localStorage.setItem('peggy.me', JSON.stringify(me)); },
   clear(){ ['peggy.session','peggy.me','peggy.gtoken'].forEach(k=>localStorage.removeItem(k)); },
 };
-const peggyRedirect = () => location.origin + location.pathname.replace(/[^/]*$/,'');   // the Peggy folder, e.g. …/Peggy/
+const peggyRedirect = () => location.origin + location.pathname.replace(/[^/]*$/,'');   // the Partners folder, e.g. …/Partners/
 
-// Send the person to Google; they come back to Peggy's main page, which finishes and returns them to `returnTo`.
+// Send the person to Google; they come back to Partners' main page, which finishes and returns them to `returnTo`.
 function peggySignIn(returnTo){
   const state = Math.random().toString(36).slice(2)+Date.now().toString(36);
   localStorage.setItem('peggy.authState', state);
@@ -47,7 +47,7 @@ async function peggyFinishSignIn(){
   const back = localStorage.getItem('peggy.authReturn') || ''; localStorage.removeItem('peggy.authReturn');
   return back || 'index.html';
 }
-// Calls Peggy's relay with this person's session.
+// Calls Partners' relay with this person's session.
 async function peggyApi(path, opts={}){
   if (!acct.session){ const e=new Error('Not signed in'); e.status=401; throw e; }
   const r = await fetch(acct.relay + '/api/' + path, { ...opts, headers: { 'X-Peggy-Session': acct.session, ...(opts.body?{'Content-Type':'application/json'}:{}), ...(opts.headers||{}) } });

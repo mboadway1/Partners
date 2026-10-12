@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Peggy">
+<meta name="apple-mobile-web-app-title" content="Partners">
 <meta name="theme-color" content="#FFE9F1">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" sizes="180x180" href="https://mboadway1.github.io/Peggy/apple-touch-icon.png">
-<title>Words · Peggy</title>
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<title>Words · Partners</title>
 <script src="theme.js"></script>
 <script>try{ if(window.top!==window || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV/i.test(navigator.userAgent)) document.documentElement.classList.add('tv'); }catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
 <style>
 /* Layout: phone controller. Status strip, start button, turn timer, speaker pad (tap = who's talking), TV, transcript */
 :root{
-  /* Peggy in bloom: petal background, peony actions, lilac accents, plum ink */
+  /* Partners in bloom: petal background, peony actions, lilac accents, plum ink */
   --bg:#FFE9F1; --surface:#FFF8FB; --fg:#4A1D3F; --muted:#8E5F81; --line:#F4C6D8;
   --accent:#D1386E; --live:#C2410C;
   --s1:#D1386E; --s2:#7C5CD6; --s3:#0E8F8A; --s4:#C46A00; --s5:#2F7FD0; --s6:#B02FB8;
@@ -168,10 +168,10 @@ details summary{cursor:pointer;font-weight:700}
 
   <section class="card">
     <h2>TV</h2>
-    <p class="hint" id="tvHint">Open Peggy on the Fire TV. It shows the scoreboard as soon as you start listening. Uses the same TV code as your photos.</p>
+    <p class="hint" id="tvHint">Open Partners on the Fire TV. It shows the scoreboard as soon as you start listening. Uses the same TV code as your photos.</p>
     <div class="pair">
-      <input id="code" title="The 4-letter code shown on Peggy on your Fire TV" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="TV code">
-      <button class="btn" id="connect" title="Connect to Peggy on your Fire TV">Connect</button>
+      <input id="code" title="The 4-letter code shown on Partners on your Fire TV" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="TV code">
+      <button class="btn" id="connect" title="Connect to Partners on your Fire TV">Connect</button>
     </div>
   </section>
 
@@ -194,20 +194,20 @@ details summary{cursor:pointer;font-weight:700}
   </div>
 </div>
 
-<nav class="bnav" aria-label="Peggy sections">
+<nav class="bnav" aria-label="Partners sections">
   <a href="./" data-k="photos" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
   <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="#more" data-k="more" class="more" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="#more" data-k="more" class="more" title="More: Us, Fuel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="words-version.js"></script>
 <script src="account.js"></script>
 <script src="core-butterfly.js"></script>
 <script>
-const PREFIX='peggy-tv-';           // same TV link as Peggy's photos
+const PREFIX='peggy-tv-';           // same TV link as Partners' photos
 const COLORS=WORDS_COLORS;
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(_){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
@@ -408,7 +408,7 @@ $('reset').onclick=()=>{
 $('toUs').onclick=async()=>{
   const b=$('toUs'), total=speakers.reduce((a,s)=>a+s.words,0);
   if(!total){ b.textContent='Nothing to save yet'; setTimeout(()=>{ b.textContent='💞 Save to Us'; },2000); return; }
-  if(!acct.session){ if(confirm('Sign in to Peggy to save this to Us?')) peggySignIn('words.html'); return; }
+  if(!acct.session){ if(confirm('Sign in to Partners to save this to Us?')) peggySignIn('words.html'); return; }
   const item={id:(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)), kind:'talk', at:new Date().toISOString(), timer:T.len||0,
     speakers:speakers.filter(x=>x.words||x.turns).map(x=>({name:x.name, words:x.words, pct:total?Math.round(x.words/total*100):0, turns:x.turns, interrupts:x.interrupts, interrupted:x.interrupted})), updatedAt:Date.now()};
   b.disabled=true; b.textContent='Saving…';
@@ -427,7 +427,7 @@ document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target
 $('reload').onclick=()=>location.reload();
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText(exportText());$('copy').textContent='Copied'}catch(_){$('copy').textContent='Copy failed'}setTimeout(()=>$('copy').textContent='Copy',1500)};
 
-/* ---------- TV link (peer-to-peer over Wi-Fi, same pairing as Peggy photos) ---------- */
+/* ---------- TV link (peer-to-peer over Wi-Fi, same pairing as Partners photos) ---------- */
 let peer=null, conn=null, tvCode=null, retry=null, sendTimer=null;
 function setTv(t,ok){$('tvText').textContent=t;$('tvPill').className='pill'+(ok?' ok':'')}
 function statePayload(){
@@ -468,7 +468,7 @@ function connectTv(code){
     peer.on('open',go);
     peer.on('disconnected',()=>{try{peer.reconnect()}catch(_){}});
     peer.on('error',e=>{
-      if(e.type==='peer-unavailable'){setTv('TV not found',false);$('tvHint').textContent=`No TV is showing code ${code}. Check the code on the TV and make sure Peggy is open.`;scheduleRetry(5000)}
+      if(e.type==='peer-unavailable'){setTv('TV not found',false);$('tvHint').textContent=`No TV is showing code ${code}. Check the code on the TV and make sure Partners is open.`;scheduleRetry(5000)}
       else if(e.type==='network'||e.type==='server-error'||e.type==='socket-error'){setTv('No internet',false);scheduleRetry(5000)}
     });
   }else if(peer.open)go();else peer.once('open',go);

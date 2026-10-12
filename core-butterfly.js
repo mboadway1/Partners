@@ -1,5 +1,5 @@
 'use strict';
-// Peggy's butterfly: one original drawing used across the app. `flutter` animates the wings.
+// Partners' butterfly: one original drawing used across the app. `flutter` animates the wings.
 let _bfly=0;
 function butterfly({size=40, flutter=false, cls='', a=(window.PEGGY_BF||['#F06A9B'])[0], b=(window.PEGGY_BF||[0,'#9B7BEA'])[1], title=''}={}){
   const id='bf'+(++_bfly);

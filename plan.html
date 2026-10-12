@@ -6,12 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Peggy">
+<meta name="apple-mobile-web-app-title" content="Partners">
 <meta name="theme-color" content="#FFE9F1">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" sizes="180x180" href="https://mboadway1.github.io/Peggy/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" href="icon-512.png">
-<title>Peggy · Plans</title>
+<title>Partners · Plans</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <script src="theme.js"></script>
@@ -64,7 +64,7 @@ html.tv .mc .n{font-size:15px}
 html.tv .mc .e{font-size:13px}
 .bnav .tvonly{display:none} html.tv .bnav .tvonly{display:flex} html.tv .bnav .notv{display:none}
 
-/* bottom navigation (same on every Peggy page) */
+/* bottom navigation (same on every Partners page) */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;background:var(--headerbg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-top:1px solid var(--line);padding:6px calc(var(--sr) + 6px) calc(var(--sb) + 6px) calc(var(--sl) + 6px)}
 .bnav a{flex:1;max-width:120px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:12px;color:var(--dim);text-decoration:none;font-size:12px;font-weight:800}
@@ -262,7 +262,7 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 <body>
 <header>
   <div class="bar">
-    <h1><a href="./" title="Peggy photos" id="logo" style="display:flex"></a><span class="sect" id="sect">Tasks</span></h1>
+    <h1><a href="./" title="Partners photos" id="logo" style="display:flex"></a><span class="sect" id="sect">Tasks</span></h1>
     <button id="addBtn" class="primary" title="Add">＋</button>
     <button id="setBtn" class="iconbtn" title="Settings: account, theme, calendars, import" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg></button>
   </div>
@@ -271,22 +271,23 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 
 <main id="view"><p class="spin">Loading…</p></main>
 
-<nav class="bnav" aria-label="Peggy sections">
+<nav class="bnav" aria-label="Partners sections">
   <a href="tv.html" data-k="tv" class="tvonly" title="Back to the TV screen" id="navTv"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>TV</a>
   <a href="./" data-k="photos" class="notv" title="Photos"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></svg>Photos</a>
   <a href="plan.html#tasks" data-k="tasks" title="Shared tasks"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>Tasks</a>
   <a href="plan.html#calendar" data-k="calendar" title="Calendar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</a>
   <a href="plan.html#money" data-k="money" title="Shared expenses: who paid, who owes"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Money</a>
   <a href="plan.html#flights" data-k="flights" title="Your flights: book, track and share"><svg class="ic" viewBox="0 0 24 24"><path d="M10.5 20.5l1.5-1v-5l7 3v-2l-7-5V5a1.5 1.5 0 0 0-3 0v5.5l-7 5v2l7-3v5l1.5 1z"/></svg>Flights</a>
-  <a href="plan.html#fuel" data-k="fuel" class="tvonly" title="Diesel"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/></svg>Diesel</a>
+  <a href="plan.html#fuel" data-k="fuel" class="tvonly" title="Fuel"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/></svg>Fuel</a>
   <a href="plan.html#us" data-k="us" class="tvonly" title="Us"><svg class="ic" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>Us</a>
   <a href="plan.html#links" data-k="links" class="tvonly" title="Links"><svg class="ic" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Links</a>
-  <a href="#more" data-k="more" class="more notv" title="More: Us, Diesel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
+  <a href="#more" data-k="more" class="more notv" title="More: Us, Fuel and Links"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</a>
 </nav>
 
 <script src="core.js"></script>
 <script src="core-butterfly.js"></script>
 <script src="account.js"></script>
+<script src="partners.js"></script>
 <script>
 'use strict';
 /* ================= basics ================= */
@@ -324,7 +325,8 @@ const nameOf = email => email==='both' ? 'Both of you' : (members.find(m=>m.emai
 function whoBubble(a){
   if(!a) return null;
   const both=a==='both', p2=!both && a!==me().email;
-  return el('span',{className:'who'+(both?' both':p2?' p2':''),textContent:both?'∞':(nameOf(a)[0]||'?').toUpperCase(),title:both?'Both of you':nameOf(a)});
+  const col=!both && (members.find(m=>m.email===a)||{}).color;
+  return el('span',{className:'who'+(both?' both':p2?' p2':''),style:col?`background:${col}`:'',textContent:both?'∞':(nameOf(a)[0]||'?').toUpperCase(),title:both?'Both of you':nameOf(a)});
 }
 
 /* ================= shared data (tasks, links) ================= */
@@ -371,7 +373,7 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(
 
 /* ================= routing ================= */
 let tab='tasks';
-const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Diesel',us:'Us'};
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Fuel',us:'Us'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
@@ -534,10 +536,10 @@ async function listMenu(k,id){
 async function importGoogleTasks(){
   let lists;
   try{ lists=(await gapi('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100')).items||[]; }
-  catch(e){ return toast(e.status===403?'Google Tasks isn’t turned on for Peggy yet (see setup steps), or you need to sign in again.':'Could not reach Google Tasks: '+e.message,6000); }
+  catch(e){ return toast(e.status===403?'Google Tasks isn’t turned on for Partners yet (see setup steps), or you need to sign in again.':'Could not reach Google Tasks: '+e.message,6000); }
   if(!lists.length) return toast('No Google Tasks lists found');
   const chosen=await sheet((sh,close)=>{
-    sh.append(el('h3',{textContent:'Import from Google Tasks'}),el('p',{textContent:'Pick the lists to bring into Peggy. Tasks come in assigned to you; you can reassign them after. Importing again skips tasks already brought in.'}));
+    sh.append(el('h3',{textContent:'Import from Google Tasks'}),el('p',{textContent:'Pick the lists to bring into Partners. Tasks come in assigned to you; you can reassign them after. Importing again skips tasks already brought in.'}));
     const boxes=lists.map(l=>{ const i=el('input',{type:'checkbox',checked:true}); sh.append(el('label',{className:'checkrow'},i,l.title)); return [l,i]; });
     const comp=el('input',{type:'checkbox'}); sh.append(el('label',{className:'checkrow'},comp,'Also bring in completed tasks'));
     const go=el('button',{className:'primary',textContent:'Import',title:'Import the chosen lists'}); go.onclick=()=>close({lists:boxes.filter(b=>b[1].checked).map(b=>b[0]),completed:comp.checked});
@@ -595,8 +597,8 @@ async function loadCalendar(force){
     }
     await loadEvents();
   }catch(e){ const m=String(e.message||''); calRaw=m;
-    calErr = /insufficient|scope/i.test(m) ? 'Google didn’t give Peggy permission to see your calendar. Tap Sign in again, and on Google’s screen tick the box for Google Calendar (tick every box) before tapping Continue.'
-      : /has not been used|disabled|not enabled|accessNotConfigured/i.test(m) ? 'The Google Calendar API is turned off for Peggy’s Google Cloud project. Turn it on in Google Cloud (APIs → Google Calendar API → Enable), wait a minute, then tap Sign in again.'
+    calErr = /insufficient|scope/i.test(m) ? 'Google didn’t give Partners permission to see your calendar. Tap Sign in again, and on Google’s screen tick the box for Google Calendar (tick every box) before tapping Continue.'
+      : /has not been used|disabled|not enabled|accessNotConfigured/i.test(m) ? 'The Google Calendar API is turned off for Partners’ Google Cloud project. Turn it on in Google Cloud (APIs → Google Calendar API → Enable), wait a minute, then tap Sign in again.'
       : e.status===403 ? 'Google refused calendar access: '+m : m; }
   if(tab==='calendar') render();
 }
@@ -769,10 +771,10 @@ async function editEvent(ev, onDay){
   });
 }
 async function createSharedCalendar(){
-  const p=partner(); if(!p) return toast('Your partner needs to sign in to Peggy once first.',5000);
-  if(!confirm(`Create a Google calendar named “Peggy · Shared” and share it with ${p.name} (${p.email})?`)) return;
+  const p=partner(); if(!p) return toast('Your partner needs to sign in to Partners once first.',5000);
+  if(!confirm(`Create a Google calendar named “Partners · Shared” and share it with ${p.name} (${p.email})?`)) return;
   try{
-    const c=await gapi('https://www.googleapis.com/calendar/v3/calendars',{method:'POST',body:JSON.stringify({summary:'Peggy · Shared',description:'Shared by Peggy',timeZone:TZ})});
+    const c=await gapi('https://www.googleapis.com/calendar/v3/calendars',{method:'POST',body:JSON.stringify({summary:'Partners · Shared',description:'Shared by Partners',timeZone:TZ})});
     await gapi(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.id)}/acl?sendNotifications=true`,{method:'POST',body:JSON.stringify({role:'writer',scope:{type:'user',value:p.email}})});
     prefs.sharedCalendarId=c.id; calLoaded=false; await loadCalendar(true); await savePrefs();
     toast(`Shared calendar created. ${p.name} gets an email to add it.`,6000);
@@ -882,7 +884,7 @@ function renderMoney(v){
     parts.push(el('div',{className:'msum',textContent:`${monthName(mview==='last'?lastK:nowK)}: ${money(tot)} spent · you paid ${money(byMe)}, ${pn} ${money(tot-byMe)}`+(top?` · ${top}`:'')})); }
   let lastM='';
   for(const x of list){ const mk=monthKey(x.date||''); if(mk!==lastM){ lastM=mk; parts.push(el('div',{className:'mhead',textContent:monthName(mk)})); } parts.push(moneyRow(x, pn)); }
-  if(!store.expenses.items.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:'No expenses yet'}),el('p',{textContent:`Tap ＋ when you pay for something you and ${pn} share. Peggy splits it and keeps a running total of who owes whom.`})));
+  if(!store.expenses.items.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:'No expenses yet'}),el('p',{textContent:`Tap ＋ when you pay for something you and ${pn} share. Partners splits it and keeps a running total of who owes whom.`})));
   else if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:'Nothing in this month.'})));
   v.replaceChildren(...parts);
 }
@@ -932,7 +934,7 @@ async function editExpense(x){
     upd();
     const save=el('button',{className:'primary',textContent:'Save',title:'Save it for both of you'});
     save.onclick=()=>{ const a=toCents(amt.value); if(!a||a<=0) return amt.focus();
-      if(!p && x.paidBy!==mine) return toast('Your partner needs to sign in to Peggy first.');
+      if(!p && x.paidBy!==mine) return toast('Your partner needs to sign in to Partners first.');
       const item={...x, amount:a, what:what.value.trim(), date:date.value||ymd(new Date()), note:note.value.trim()};
       if(item.split==='custom') item.owe=Math.min(a, toCents(owe.value)||0); else delete item.owe;
       change('expenses',[{op:'upsert',item}]); close(); toast(isNew?'Expense added':'Saved'); };
@@ -989,7 +991,7 @@ async function reviewScanned(items){
     draw(); sum();
     const save=el('button',{className:'primary',textContent:'Save'});
     save.onclick=()=>{ const on=rows.filter(r=>r.on && r.amount>0); if(!on.length) return toast('Nothing ticked');
-      if(!p && opts.paidBy!==mine) return toast('Your partner needs to sign in to Peggy first.');
+      if(!p && opts.paidBy!==mine) return toast('Your partner needs to sign in to Partners first.');
       change('expenses', on.map(r=>({op:'upsert', item:{id:uid(), kind:'expense', what:r.what.trim()||catOf(r.cat)[2], amount:Math.round(r.amount*100), paidBy:opts.paidBy, split:opts.split, cat:r.cat, date:r.date||ymd(new Date()), note:(r.note||'')+(r.note?' · ':'')+'scanned'}})));
       close(); toast(`Saved ${on.length} expense${on.length>1?'s':''} 🧾`); };
     const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
@@ -999,11 +1001,11 @@ async function reviewScanned(items){
 }
 async function settleUp(bal, x){
   const p=partner(), pn=(p&&p.name)||'your partner', mine=me().email, isNew=!x;
-  if(!p) return toast('Your partner needs to sign in to Peggy first.');
+  if(!p) return toast('Your partner needs to sign in to Partners first.');
   x=x?{...x}:{id:uid(), kind:'payment', from: bal<0?mine:p.email, to: bal<0?p.email:mine, amount:Math.abs(bal||0), date:ymd(new Date()), note:''};
   await sheet((sh,close)=>{
     sh.append(el('h3',{textContent:isNew?'Settle up':'Edit payment'}));
-    if(isNew) sh.append(el('p',{textContent:'Record money paid back, in cash, Venmo, Zelle or however you like. Peggy doesn’t move any money itself.'}));
+    if(isNew) sh.append(el('p',{textContent:'Record money paid back, in cash, Venmo, Zelle or however you like. Partners doesn’t move any money itself.'}));
     const seg=el('div',{className:'seg wide'});
     const opts=[[mine,`I paid ${pn}`],[p.email,`${pn} paid me`]];
     const upd=()=>seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===x.from));
@@ -1055,7 +1057,7 @@ function renderFlights(v){
   find.onclick=()=>findFlights();
   const parts=[find]; let lastD='';
   for(const f of list){ if(f.date!==lastD){ lastD=f.date; parts.push(el('div',{className:'mhead',textContent:fmtDay(parseYmd(f.date))})); } parts.push(flightCard(f)); }
-  if(!list.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:fview==='past'?'No past flights':'No flights coming up'}),el('p',{textContent:'Tap ＋ to add one, or paste a confirmation email and Peggy fills it in. You both see each other’s flights.'})));
+  if(!list.length) parts.push(el('div',{className:'empty'},el('h3',{textContent:fview==='past'?'No past flights':'No flights coming up'}),el('p',{textContent:'Tap ＋ to add one, or paste a confirmation email and Partners fills it in. You both see each other’s flights.'})));
   v.replaceChildren(...parts);
 }
 function flightCard(f){
@@ -1094,7 +1096,7 @@ function travelerSeg(x){
 }
 async function addFlight(){
   const v=await sheet((sh,close)=>{
-    sh.append(el('h3',{textContent:'Add a flight'}), el('p',{textContent:'Paste the confirmation email and Peggy fills everything in, or type it yourself.'}));
+    sh.append(el('h3',{textContent:'Add a flight'}), el('p',{textContent:'Paste the confirmation email and Partners fills everything in, or type it yourself.'}));
     const st=el('div',{className:'stack'});
     const a=el('button',{className:'primary',textContent:'📋 Paste a confirmation email'}); a.onclick=()=>close('paste');
     const b=el('button',{textContent:'✏️ Type it in'}); b.onclick=()=>close('manual');
@@ -1152,7 +1154,7 @@ async function editFlight(f){
 async function findFlights(){
   const home=(()=>{ try{ return localStorage.getItem('peggy.homeAirport')||''; }catch(_){ return ''; } })();
   await sheet((sh,close)=>{
-    sh.append(el('h3',{textContent:'🔎 Find flights'}), el('p',{textContent:'Peggy opens the search for you. When you book, paste the confirmation email here with ＋ so you both have it.'}));
+    sh.append(el('h3',{textContent:'🔎 Find flights'}), el('p',{textContent:'Partners opens the search for you. When you book, paste the confirmation email here with ＋ so you both have it.'}));
     const up=i=>{ i.autocapitalize='characters'; i.oninput=()=>{ i.value=i.value.toUpperCase(); }; return i; };
     const from=up(el('input',{value:home,placeholder:'ATL',maxLength:4})), to=up(el('input',{placeholder:'Where to? (e.g. MCO)',maxLength:4}));
     const go=el('input',{type:'date',value:ymd(addDays(today(),14))}), back=el('input',{type:'date',value:ymd(addDays(today(),18))});
@@ -1186,7 +1188,7 @@ const milesBetween=(a,b,c,d)=>{ const R=3958.8, r=x=>x*Math.PI/180, dl=r(c-a), d
 const ago = t => { if(!t) return ''; const m=Math.round((Date.now()-Date.parse(t))/60000); return m<60?`${Math.max(1,m)} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`; };
 const priceOf = (st,type) => { const f=(st.prices||[]).find(p=>p.type===type) || (type==='DIESEL' && (st.prices||[]).find(p=>/DIESEL/.test(p.type))); return f&&f.price?f:null; };
 function here(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error('This phone can’t share its location'));
-  navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}), e=>rej(new Error(e.code===1?'Location is off for Peggy. Allow it in Settings → Privacy → Location Services → Safari Websites (While Using).':'Couldn’t get your location. Try again.')), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); }); }
+  navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}), e=>rej(new Error(e.code===1?'Location is off for Partners. Allow it in Settings → Privacy → Location Services → Safari Websites (While Using).':'Couldn’t get your location. Try again.')), {enableHighAccuracy:true, timeout:15000, maximumAge:60000}); }); }
 async function findFuel(){
   if(fuel.busy) return; fuel.busy=true; fuel.err=''; if(tab==='fuel') render();
   try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase(), kind=placeKind();
@@ -1242,7 +1244,7 @@ function renderFuel(v){
     if(!list.length) parts.push(el('div',{className:'empty'},el('p',{textContent:fuel.mode==='near'?'No stations found. Try a bigger distance.':'No stations found along that route.'})));
   } else if(!fuel.busy && !fuel.err && fuel.type==='ELKS') parts.push(el('div',{className:'empty'},el('h3',{textContent:'Elks Lodges'}),el('p',{textContent:'Find Elks Lodges near you or along your route, then call or check their site about RV parking for members.'})));
   else if(!fuel.busy && !fuel.err && isRest()) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Rest stops'}),el('p',{textContent:'Rest areas and truck stops near you or along your route, with restrooms, pets and hours, and one tap to navigate.'})));
-  else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Peggy uses your location to find posted prices nearby, or along your route, cheapest first.'})));
+  else if(!fuel.busy && !fuel.err) parts.push(el('div',{className:'empty'},el('h3',{textContent:'Cheapest fuel, fast'}),el('p',{textContent:'Tap the big button. Partners uses your location to find posted prices nearby, or along your route, cheapest first.'})));
   const tank=el('input',{type:'number',value:fuel.tank,min:5,max:200,className:'tankin',title:'How many gallons you usually buy'}); tank.onchange=()=>{ fuel.tank=Math.max(1,+tank.value||25); SS('tank',fuel.tank); render(); };
   if(isRest()) parts.push(el('div',{className:'fnote2',textContent:'Places come from Google Maps. Let a passenger tap while you’re driving.'}));
   else parts.push(el('div',{className:'fnote2'}, el('span',{textContent:'Savings figured on '}), tank, el('span',{textContent:' gallons · Prices come from Google Maps and can be a few hours old. Let a passenger tap while you’re driving.'})));
@@ -1456,7 +1458,7 @@ async function weeklyCheckin(){
     STEPS.forEach(([e,t,d])=>{ const ck=el('input',{type:'checkbox'}); list.append(el('label',{className:'wkrow'},ck,el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:d})))); });
     const next=addDays(today(),(7-new Date().getDay())%7||7); next.setHours(19,0,0,0);
     const z=d=>d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
-    const cal='https://calendar.google.com/calendar/render?'+new URLSearchParams({action:'TEMPLATE',text:'💞 Our weekly check-in',details:'Appreciations · What went well · One thing to work on · What I need · Plan something fun (open Peggy → More → Us)',dates:`${z(next)}/${z(new Date(next.getTime()+30*60000))}`,recur:'RRULE:FREQ=WEEKLY'});
+    const cal='https://calendar.google.com/calendar/render?'+new URLSearchParams({action:'TEMPLATE',text:'💞 Our weekly check-in',details:'Appreciations · What went well · One thing to work on · What I need · Plan something fun (open Partners → More → Us)',dates:`${z(next)}/${z(new Date(next.getTime()+30*60000))}`,recur:'RRULE:FREQ=WEEKLY'});
     const a=el('a',{className:'primary linkbtn',href:cal,target:'_blank',rel:'noopener',textContent:'📅 Put it on our calendar every week'});
     const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:8px'}); c.onclick=()=>close();
     sh.append(list,a,c);
@@ -1471,7 +1473,8 @@ async function openSettings(){
       const p=partner();
       sh.append(el('p',{textContent:`Signed in as ${me().name} (${me().email}).`+(p?` Sharing with ${p.name}${p.signedIn?'':' (not signed in yet)'}.`:'')}));
     }
-    sh.append(el('label',{className:'f',textContent:'Theme color'}), peggyThemePicker());
+    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), peggyThemePicker());
+    if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings(()=>{ loadMembers().then(render); }));
     if(acct.session){
       sh.append(el('label',{className:'f',textContent:'Calendars to show'}));
       if(!calLoaded) sh.append(el('p',{textContent:'Open the Calendar tab once to load your calendars.'}));
@@ -1481,10 +1484,10 @@ async function openSettings(){
       sh.append(el('label',{className:'checkrow'},tk,'Show tasks with due dates on the calendar'));
       const st=el('div',{className:'stack'});
       if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
-        const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Peggy · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
-      const im=el('button',{textContent:'Import from Google Tasks',title:'Bring your Google Tasks lists into Peggy'}); im.onclick=()=>{ close(); importGoogleTasks(); };
+        const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Partners · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
+      const im=el('button',{textContent:'Import from Google Tasks',title:'Bring your Google Tasks lists into Partners'}); im.onclick=()=>{ close(); importGoogleTasks(); };
       const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>peggySignIn('plan.html#'+tab);
-      const out=el('button',{className:'danger',textContent:'Sign out of Peggy on this device'}); out.onclick=async()=>{ try{ await peggyApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
+      const out=el('button',{className:'danger',textContent:'Sign out of Partners on this device'}); out.onclick=async()=>{ try{ await peggyApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
       st.append(im,re,out); sh.append(st);
     }
     const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:10px'}); c.onclick=()=>close(); sh.append(c);
@@ -1497,9 +1500,9 @@ document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({siz
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
     // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.
     const t0=Date.now(), hadOld=!!navigator.serviceWorker.controller; let swapped=false; navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(swapped || !hadOld) return; swapped=true;
-      if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Peggy was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
+      if(Date.now()-t0<20000) location.reload(); else if(typeof toast==='function'){ toast('Partners was updated. Tap here to reload.',8000); const t=document.querySelector('.toast'); if(t){ t.style.cursor='pointer'; t.onclick=()=>location.reload(); } } }); }
   $('#logo').innerHTML=butterfly({size:30,flutter:true});
-  loadCache(); route();
+  loadCache(); route(); if(acct.session) partnersLoad().catch(()=>{});
   if(acct.session){
     await loadMembers();
     render(); await syncAll(); if(tab==='calendar') loadCalendar();
@@ -1507,8 +1510,8 @@ document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({siz
 })();
 </script>
 <script>
-// On a TV's web browser: a button back to Peggy's TV screen.
-// TV button in the bottom bar: inside Peggy's TV screen, close the planner instead of loading a page.
+// On a TV's web browser: a button back to Partners' TV screen.
+// TV button in the bottom bar: inside Partners' TV screen, close the planner instead of loading a page.
 (function(){ var t=document.getElementById('navTv'); if(t) t.onclick=function(e){ try{ if(window.top!==window && window.top.closePlan){ e.preventDefault(); window.top.closePlan(); } }catch(_){} }; })();
 (function(){ return;   // the bottom bar's TV button replaces the floating one
   if(!/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent||'')) return;
