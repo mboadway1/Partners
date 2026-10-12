@@ -1178,7 +1178,7 @@ const isRest = () => fuel.type==='REST' || fuel.type==='ELKS';    // place lists
 const placeKind = () => fuel.type==='ELKS' ? 'elks' : fuel.type==='REST' ? 'rest' : 'fuel';
 const LS=(k,d)=>{ try{ const v=localStorage.getItem('peggy.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
 const SS=(k,v)=>{ try{ localStorage.setItem('peggy.fuel.'+k, JSON.stringify(v)); }catch(_){} };
-const fuel={ type:LS('type','DIESEL'), mode:LS('mode','near'), miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
+const fuel={ type:LS('type','DIESEL'), mode:'route', miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
 const milesBetween=(a,b,c,d)=>{ const R=3958.8, r=x=>x*Math.PI/180, dl=r(c-a), dn=r(d-b), h=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
 const ago = t => { if(!t) return ''; const m=Math.round((Date.now()-Date.parse(t))/60000); return m<60?`${Math.max(1,m)} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`; };
 const priceOf = (st,type) => { const f=(st.prices||[]).find(p=>p.type===type) || (type==='DIESEL' && (st.prices||[]).find(p=>/DIESEL/.test(p.type))); return f&&f.price?f:null; };
