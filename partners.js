@@ -6,6 +6,8 @@ const PARTNER_COLORS = ['#D1386E','#7B4FD6','#17709F','#1B7F51','#C24A17','#B530
 function partnersAuth(){
   try{ if (typeof acct!=='undefined' && acct.session) return { relay:acct.relay, session:acct.session, full:true }; }catch(_){}
   try{ const p=JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (p && p.session) return { relay:p.relay, session:p.session, full:false }; }catch(_){}
+  // A computer showing the TV screen uses its own sign-in.
+  try{ const s=localStorage.getItem('partners.session'); if (s) return { relay:((localStorage.getItem('partners.relay')||'').trim()||'https://ezrad-partners-relay.mboadway1.workers.dev').replace(/\/+$/,''), session:s, full:false }; }catch(_){}
   return null;
 }
 async function partnersFetch(path, opts={}){

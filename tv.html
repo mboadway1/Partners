@@ -118,7 +118,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dClock .dEv b{color:#fff;font-weight:800}
 .wx{font-size:1.3vw;color:var(--dim);white-space:nowrap}
 #showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
-#showInfo{position:absolute;right:3vw;bottom:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
+#showInfo{position:absolute;right:3vw;top:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
 #showInfo.on{opacity:1}
 
 /* editor */
@@ -718,7 +718,7 @@ function driveKinds(){ try{ return JSON.parse(store.get('partners.tv.kinds','{}'
 function driveKeep(items){ const k=driveKinds(); return items.filter(d=>!d.shot && !SKIP_KINDS.has(k[d.id])); }
 let sorting=false;
 async function driveSort(items){
-  if(sorting) return; let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){} if(!plan || !plan.session) return;
+  if(sorting) return; let plan=tvPass(); if(!plan || !plan.session) return;
   const known=driveKinds(), todo=items.filter(d=>!d.shot && !(d.id in known)); if(!todo.length) return;
   sorting=true;
   try{
@@ -773,14 +773,21 @@ async function driveShown(d){
   const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
 }
 // Today's calendar on the slideshow, above the clock and weather: what's still ahead today (all-day items first).
+// The pass this screen uses to read the shared calendar and lists: the one the phone sent (Fire Stick),
+// or this computer's own Partners sign-in (Chromebook), so a signed-in Chromebook never needs the phone.
+function tvPass(){
+  try{ const p=JSON.parse(store.get('partners.tvplan','null')); if(p && p.session) return p; }catch(_){}
+  try{ const s=localStorage.getItem('partners.session'); if(s) return { session:s, relay:((localStorage.getItem('partners.relay')||'').trim()||'https://ezrad-partners-relay.mboadway1.workers.dev').replace(/\/+$/,''), own:true }; }catch(_){}
+  return null;
+}
 const slideEv={list:[], at:0, note:''};
 async function loadSlideEvents(){
-  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){}
-  if(!plan||!plan.session){ slideEv.list=[]; slideEv.note='📅 Connect your phone to this screen to see today’s events'; return; }
+  let plan=tvPass();
+  if(!plan||!plan.session){ slideEv.list=[]; slideEv.note= REAL_TV ? '📅 Connect your phone to this screen to see today’s events' : '📅 Sign in to Partners (Settings) to see today’s events'; return; }
   const start=new Date(); start.setHours(0,0,0,0);
   try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Partners-Session':plan.session}});
     // An old pass (e.g. from before the relay moved) no longer works: forget it and ask for a fresh one.
-    if(r.status===401||r.status===403){ store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note='📅 Connect your phone to this screen again to see today’s events'; return; }
+    if(r.status===401||r.status===403){ if(!plan.own) store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note= plan.own ? '📅 Sign in to Partners again (Settings) to see today’s events' : '📅 Connect your phone to this screen again to see today’s events'; return; }
     if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); slideEv.note=''; }catch(_){}
 }
 function todayLines(){
@@ -1081,7 +1088,7 @@ function openToday(){
 }
 function tick(){ const n=new Date(); $('#tdClock').textContent=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); $('#tdDate').textContent=n.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}); }
 async function loadToday(){
-  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){}
+  let plan=tvPass();
   const E=$('#tdEvents'), T=$('#tdTasks');
   if(!plan){ E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:'Open Partners on your phone, sign in under Tasks, then connect to this TV. Today’s plans will appear here.'})); T.replaceChildren(el('h2',{textContent:'Tasks'})); return; }
   const call=p=>fetch(plan.relay+'/api/'+p,{headers:{'X-Partners-Session':plan.session}}).then(r=>r.ok?r.json():Promise.reject(r.status));
@@ -1091,7 +1098,7 @@ async function loadToday(){
     window._tdLoaded=Date.now(); $('#tdUpdated').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
     renderTodayEvents(ag.events||[], start); renderTodayTasks(tasks.items||[], mem.members||[]);
   }catch(e){
-    if(e===401){ store.set('partners.tvplan',''); }
+    if(e===401 && !plan.own){ store.set('partners.tvplan',''); }
     E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Partners on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
   }
 }
