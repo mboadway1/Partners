@@ -26,6 +26,9 @@ body{transform-origin:50% 50%}
 #couple .cnames{position:absolute;left:0;right:0;bottom:0;padding:8vh 3vw 3vh;font:600 5vw/1.1 var(--display);color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65));text-shadow:0 .2vw 1vw rgba(0,0,0,.6)}
 #couple .cnames span{filter:brightness(1.7) saturate(.85)}
 #couple .cnames small{display:block;font:700 1.8vw var(--body,inherit);color:#eee;filter:none;margin-top:1vh}
+#fullPrompt{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);cursor:pointer}
+#fullPrompt div{font:600 3.6vw/1.3 var(--display);text-align:center;color:#fff;background:var(--panel);padding:3vw 5vw;border-radius:2vw;box-shadow:0 1vw 4vw rgba(0,0,0,.5)}
+#fullPrompt b{color:var(--accent)}
 /* bigger text everywhere on the TV */
 .navrow .btn{font-size:2.1vw!important}
 .status,.codechip,.wx{font-size:1.9vw} .codechip b{font-size:2.2vw}
@@ -225,6 +228,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 </div>
 
 <div id="planLayer" class="layer hidden"></div>
+<div id="fullPrompt" class="hidden"><div>Press the <b>center button</b><br>for full screen</div></div>
 
 <div id="show" class="layer hidden">
   <div class="slot" id="slotA"></div><div class="slot" id="slotB"></div>
@@ -346,19 +350,30 @@ document.addEventListener('keydown',e=>{
 });
 // In the TV's web browser, hide the browser's toolbar: go full screen on the first remote press or click.
 // (Browsers only allow this from a button press. Inside the Fire TV app it's already full screen, so this does nothing.)
+let fullTries=0;   // presses where the browser refused full screen
 function goFull(){
   const d=document.documentElement, req=d.requestFullscreen||d.webkitRequestFullscreen;
   if(!req || document.fullscreenElement || document.webkitFullscreenElement) return;
-  try{ const p=req.call(d); p && p.catch && p.catch(()=>{}); }catch(_){}
+  try{ const p=req.call(d); p && p.catch && p.catch(()=>{ fullTries++; }); }catch(_){ fullTries++; }
 }
-document.addEventListener('keydown',goFull,true);
+// Start in full screen. Browsers only allow it after a button press, so: try right away (some TVs allow it),
+// otherwise show a big prompt, and let the first press only switch to full screen (it doesn't also click anything).
+const IN_APP=/; wv\)/.test(navigator.userAgent);
+const isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+// (If the browser keeps refusing, stop swallowing presses.)
+function firstPress(e){ if(IN_APP || isFull() || fullTries>2) return; goFull(); e.preventDefault(); e.stopPropagation(); }
+document.addEventListener('keydown',firstPress,true);
+document.addEventListener('click',firstPress,true);
+document.addEventListener('pointerdown',e=>{ if(!IN_APP && !isFull()) goFull(); },true);
+function fullPrompt(){ const p=$('#fullPrompt'); if(!p) return; p.classList.toggle('hidden', IN_APP || isFull() || fullTries>2); }
+document.addEventListener('fullscreenchange',fullPrompt); document.addEventListener('webkitfullscreenchange',fullPrompt);
+setTimeout(()=>{ goFull(); setTimeout(fullPrompt,600); },300);
 if(!/; wv\)/.test(navigator.userAgent) && history.pushState){
   try{ history.pushState({peggy:1},''); }catch(_){}
   addEventListener('popstate',()=>{ try{ history.pushState({peggy:1},''); }catch(_){}
     if(!goBack()) toast('Press the Home button on the remote to leave Partners',3000); });
 }
 document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
-document.addEventListener('click',goFull,true);
 // Called by the Fire TV app shell. Return true if the page handled it.
 window.peggyBack=()=>goBack();
 window.peggyKey=k=>{ handleKey(k); return true; };
