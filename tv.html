@@ -815,7 +815,7 @@ async function wxUpdate(){
 }
 wxUpdate(); setInterval(wxUpdate, 30*60*1000);
 async function startDrive(quiet){
-  if(!driveReady()){ if(!quiet) await menu('Favorites folder',[['OK',true]],'Set it up from your phone: open Partners, tap 📺, then “Favorites folder slideshow”, and paste the folder link and API key.'); return; }
+  if(!driveReady()){ if(!quiet) await menu('Photos slideshow',[['OK',true]],'This screen doesn’t have your Photos folder yet. It arrives by itself once settings sync (after the relay update). Or, on your phone: open Partners, tap 📺, connect to this screen, tap “🖼 Favorites folder slideshow”, then Send to TV.'); return; }
   if(!quiet) toast('Checking your Favorites folder…',2500);
   let items; try{ items=await driveList(); drive.lastErr=''; }catch(e){ drive.lastErr=e.message; if(!quiet) toast(e.message,7000); return; }
   if(!items.length){ if(!quiet) toast('The Favorites folder has no photos yet.',5000); return; }
