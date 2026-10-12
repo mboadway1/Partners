@@ -711,7 +711,7 @@ async function driveList(){
     const u=`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${encodeURIComponent(page)}`:'');
     const r=await fetch(u); const j=await r.json().catch(()=>({}));
     if(!r.ok){ const msg=((j.error&&j.error.message)||'').toLowerCase();
-      throw new Error(msg.includes('api key not valid')?'The API key isn’t valid. Check it on your phone.'
+      throw new Error(msg.includes('api key not valid')?`Google no longer accepts the Photos slideshow key (ending …${String(settings.driveKey).slice(-4)}). Put a new key in on your phone: 📺 → Favorites folder slideshow.`
         : msg.includes('has not been used')||msg.includes('disabled')?'Turn on the Google Drive API for this key in Google Cloud.'
         : r.status===404?'Partners can’t see the folder. Share it as “Anyone with the link”.'
         : msg.includes('referer')||msg.includes('blocked')?'This API key is restricted. Allow mboadway1.github.io or remove the restriction.'
