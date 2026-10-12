@@ -116,6 +116,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
 #dClock{right:3vw;font-variant-numeric:tabular-nums;text-align:right}
 #dClock small{display:block;font-size:.8em;color:#ddd} #dClock .nowplaying{font-size:.8em;margin-top:.8vh;max-width:42vw;margin-left:auto;display:grid;justify-items:end} #dClock .nowplaying b,#dClock .nowplaying span{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #dClock .nowplaying span{font-size:.85em;color:#ddd}
+#dClock .musicnote{font-size:.75em;max-width:42vw;margin:.6vh 0 0 auto;background:rgba(0,0,0,.45);border-radius:.6vw;padding:.4vh .8vw;text-shadow:none}
 #dClock .nprow{display:flex;gap:.6vw;margin-top:.6vh} #dClock .npbtn{font:700 .8em var(--body,inherit);color:#fff;background:rgba(0,0,0,.45);border:.15vw solid rgba(255,255,255,.35);border-radius:999px;padding:.4vh 1vw;cursor:pointer;text-shadow:none} #dClock .npbtn:hover,#dClock .npbtn.focus{background:var(--accent);border-color:#fff}
 #nowBanner{position:fixed;left:50%;top:5vh;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.6);color:#fff;border-radius:1.2vw;padding:1.2vh 2vw;text-align:center;font-size:1.8vw;opacity:0;transition:opacity .6s;pointer-events:none;max-width:70vw} #nowBanner.on{opacity:1} #nowBanner small{display:block;font-size:.75em;color:#ddd} html.desk #nowBanner{font-size:1.2vw}
 #home>#homeNow{position:absolute;right:3vw;bottom:13vh;z-index:5;background:rgba(0,0,0,.55);color:#fff;border-radius:.8vw;padding:.6vw 1.2vw;font-size:1.3vw;max-width:70vw;display:flex;gap:.8vw;align-items:center}
@@ -824,6 +825,8 @@ function tickClock(){ const c=$('#dClock'); c.replaceChildren();
   else if(slideEv.note){ const box=el('div',{className:'dEvents'}); box.append(el('div',{className:'dEv',textContent:slideEv.note})); c.append(box); }
   c.append(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
   if(wx.line) c.append(el('small',{textContent:wx.line}));
+  const showNote=music.status && music.status!=='Playing' && (Date.now()<(music.noteUntil||0) || (musicCfg.mode!=='off' && !music.title));
+  if(showNote) c.append(el('div',{className:'musicnote',textContent:'♪ '+music.status}));
   if(music.title){ const np=el('div',{className:'nowplaying'},el('b',{textContent:'♪ '+music.title}),music.artist?el('span',{textContent:music.artist}):null);
     // Buttons right under the song: skip it, or never play it again (songs from the Music folder only).
     if(musicCfg.mode==='drive' && music.cur){ const row=el('div',{className:'nprow'});
@@ -917,6 +920,9 @@ document.addEventListener('click',e=>{ const r=e.target.closest('.erow'); if(!r 
 /* ---------- Music under the slideshow: free internet radio, or your own songs from a Google Drive folder ---------- */
 // Radio stations come from the free Radio Browser directory (radio-browser.info). Songs come from a shared
 // Drive folder, played with the same Google key as the Photos slideshow. Settings sync to every screen.
+// Music messages also show on the slideshow, under the clock, where you're looking.
+function musicStatus(t){ music.status=t; music.statusAt=Date.now(); if(drive.clock) tickClock(); }
+function musicToast(t,ms){ musicStatus(t); music.noteUntil=Date.now()+(ms||4000); toast(t,ms); if(drive.clock) setTimeout(()=>{ if(drive.clock) tickClock(); },(ms||4000)+50); }
 const musicCfg={
   get mode(){ return store.get('partners.music.mode','off'); }, set mode(v){ store.set('partners.music.mode',v); },
   get station(){ try{ return JSON.parse(store.get('partners.music.station','null')); }catch(_){ return null; } }, set station(v){ store.set('partners.music.station',JSON.stringify(v)); },
@@ -939,28 +945,28 @@ function musicEl(){
   if(music.el) return music.el;
   const a=el('audio',{id:'musicAudio',preload:'none'}); document.body.append(a);
   a.addEventListener('ended',()=>{ if(musicCfg.mode==='drive') musicNext(); });
-  a.addEventListener('playing',()=>{ music.fails=0; music.status='Playing'; });
-  a.addEventListener('waiting',()=>{ music.status='Loading the song…'; });
+  a.addEventListener('playing',()=>{ music.fails=0; musicStatus('Playing'); });
+  a.addEventListener('waiting',()=>{ musicStatus('Loading the song…'); });
   a.addEventListener('error',()=>{ if(!a.getAttribute('src')) return; music.fails++;
     const codes={1:'stopped',2:'network problem',3:'can’t decode this file',4:'Google wouldn’t send this file or it isn’t a supported format'};
-    music.status='Couldn’t play: '+(codes[a.error&&a.error.code]||'unknown problem');
+    musicStatus('Couldn’t play: '+(codes[a.error&&a.error.code]||'unknown problem'));
     // Google's file API sometimes refuses media for a key; Drive's public download link usually works for shared files.
     if(musicCfg.mode==='drive' && music.cur && !music.triedAlt){ music.triedAlt=true; a.src=`https://drive.google.com/uc?export=download&id=${music.cur.id}`; music.fails--; return musicPlay(); }
     if(musicCfg.mode==='drive' && music.fails<5) return musicNext();
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
-    music.now=''; music.title=music.artist=''; musicBanner(); toast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
+    music.now=''; music.title=music.artist=''; musicBanner(); musicToast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
   return music.el=a;
 }
 function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100)); a.muted=false;
-  const p=a.play(); if(p&&p.catch) p.catch(e=>{ if(e && e.name==='NotAllowedError'){ music.waiting=true; music.status='Waiting for a button press'; toast('Press the center button (or click) to start the music.',5000); } }); if(drive.clock) tickClock(); }
+  const p=a.play(); if(p&&p.catch) p.catch(e=>{ if(e && e.name==='NotAllowedError'){ music.waiting=true; musicStatus('Waiting for a button press'); musicToast('Press the center button (or click) to start the music.',5000); } }); if(drive.clock) tickClock(); }
 async function musicStart(){
   const a=musicEl(), mode=musicCfg.mode;
   if(mode==='radio'){ const st=musicCfg.station; if(!st) return; a.src=st.url; music.now='📻 '+st.name; music.title=st.name; music.artist='Internet radio'; musicPlay(); musicBanner(); return; }
   if(mode==='drive'){
     const fid=driveFolderId(musicCfg.folder);
-    if(!fid){ music.status='This screen doesn’t have your Music folder link yet'; toast('This screen doesn’t have your Music folder link yet. On your iPhone: Partners → 📺 → Favorites folder slideshow → paste the Music folder link → Send to TV. Then click Refresh here.',9000); return; }
-    if(!settings.driveKey){ music.status='No Google key on this screen yet'; toast('This screen doesn’t have the Google key yet. Put it in on your iPhone (📺 → Favorites folder slideshow), then click Refresh here.',8000); return; }
-    music.status='Finding your songs…';
+    if(!fid){ musicStatus('This screen doesn’t have your Music folder link yet'); musicToast('This screen doesn’t have your Music folder link yet. On your iPhone: Partners → 📺 → Favorites folder slideshow → paste the Music folder link → Send to TV. Then click Refresh here.',9000); return; }
+    if(!settings.driveKey){ musicStatus('No Google key on this screen yet'); musicToast('This screen doesn’t have the Google key yet. Put it in on your iPhone (📺 → Favorites folder slideshow), then click Refresh here.',8000); return; }
+    musicStatus('Finding your songs…');
     // The song list is kept on this screen and re-checked in the background every few hours, so a big
     // library with many folders starts playing right away.
     if(!music.list.length){ try{ const c=JSON.parse(localStorage.getItem('partners.music.cache')||'null'); if(c && c.folder===fid && c.v===4){ music.list=c.songs.sort(()=>Math.random()-.5); music.listAt=c.at; music.pos=0; } }catch(_){} }
@@ -968,9 +974,9 @@ async function musicStart(){
       try{ localStorage.setItem('partners.music.cache',JSON.stringify({v:4,folder:fid,at:music.listAt,songs})); }catch(_){}
       const have=new Set(music.list.map(x=>x.id)); const fresh=songs.filter(x=>!have.has(x.id)), keep=new Set(songs.map(x=>x.id));
       music.list=music.list.filter(x=>keep.has(x.id)).concat(fresh.sort(()=>Math.random()-.5)); return songs.length; };
-    if(!music.list.length){ toast('Finding your songs…',3000); try{ await rescan(); music.pos=0; music.list.sort(()=>Math.random()-.5); }catch(e){ toast('Your Music folder couldn’t be read: '+e.message,6000); return; } }
+    if(!music.list.length){ musicToast('Finding your songs…',3000); try{ await rescan(); music.pos=0; music.list.sort(()=>Math.random()-.5); }catch(e){ musicToast('Your Music folder couldn’t be read: '+e.message,6000); return; } }
     else if(Date.now()-music.listAt>4*3600e3) rescan().catch(()=>{});
-    if(!music.list.length){ music.status='No songs found in the Music folder'; toast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
+    if(!music.list.length){ musicStatus('No songs found in the Music folder'); musicToast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
     musicTrack();
   }
 }
@@ -999,7 +1005,7 @@ async function musicScan(rootId){
     }
     level=next; depth++;
   }
-  if(music.blocked) toast(`${music.blocked} folder${music.blocked===1?'':'s'} in Music aren’t shared, so their songs are skipped. In Drive, share them as “Anyone with the link”.`,8000);
+  if(music.blocked) musicToast(`${music.blocked} folder${music.blocked===1?'':'s'} in Music aren’t shared, so their songs are skipped. In Drive, share them as “Anyone with the link”.`,8000);
   // Duplicates (the same file, or the same song title by the same artist) are played only once.
   const seen=new Set(), out=[];
   for(const x of songs){ const album=x.parent!==rootId?names.get(x.parent):'', up=parentOf.get(x.parent), artist=up&&up!==rootId&&names.get(up)||'';
@@ -1023,7 +1029,7 @@ function musicPick(){
   try{ localStorage.setItem('partners.music.played',JSON.stringify([...played])); }catch(_){}
   return f;
 }
-function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false; if(!f){ toast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
+function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false; if(!f){ musicToast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
   a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); music.title=f.title||f.name; music.artist=f.artist||''; musicPlay(); musicBanner(); }
 // When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
 function musicBanner(){
@@ -1031,7 +1037,7 @@ function musicBanner(){
   h.replaceChildren(); h.classList.toggle('hidden',!music.title);
   if(music.title){ h.append(el('span',{className:'nptext',textContent:`♪ ${music.title}${music.artist?' — '+music.artist:''}`}));
     if(musicCfg.mode==='drive' && music.cur){ const nx=el('button',{className:'npbtn f',textContent:'⏭ Next'}); nx.onclick=e=>{ e.stopPropagation(); musicNext(); };
-      const del=el('button',{className:'npbtn f',textContent:'👎 Don’t play again'}); del.onclick=e=>{ e.stopPropagation(); const n=music.cur.title||music.cur.name; musicHide(music.cur); toast(`Removed “${n}”. It won’t play again.`,4000); };
+      const del=el('button',{className:'npbtn f',textContent:'👎 Don’t play again'}); del.onclick=e=>{ e.stopPropagation(); const n=music.cur.title||music.cur.name; musicHide(music.cur); musicToast(`Removed “${n}”. It won’t play again.`,4000); };
       h.append(nx,del); } }
   if(drive.clock) tickClock(); if(!music.title) return;
   let b=$('#nowBanner'); if(!b){ b=el('div',{id:'nowBanner'}); document.body.append(b); }
@@ -1057,17 +1063,17 @@ async function openMusic(){
       [`Plays: ${musicCfg.when==='always'?'all the time':'during the slideshow'}`,'when'], [`Volume: ${musicCfg.volume}%`,'vol'], ['Done',null,'primary']], now+(mode!=='off'&&music.status?` · ${music.status}`:'')+(mode==='drive'&&!driveFolderId(musicCfg.folder)?' · No Music folder link on this screen yet':'')+(mode!=='off'&&music.el&&music.el.volume===0?' · volume is 0':''));
     if(v==null) return;
     if(v==='radio'){ const g=await menu('Pick a kind of music',[...GENRES.map(([l,t])=>[l,t]),['Back',null]]); if(!g) continue;
-      toast('Finding stations…',2000); let list; try{ list=await stationsFor(g); }catch(e){ toast(e.message,5000); continue; }
-      if(!list.length){ toast('No stations found for that one. Try another.',4000); continue; }
+      musicToast('Finding stations…',2000); let list; try{ list=await stationsFor(g); }catch(e){ musicToast(e.message,5000); continue; }
+      if(!list.length){ musicToast('No stations found for that one. Try another.',4000); continue; }
       const pick=await menu('Pick a station',[...list.map(x=>[x.name+(x.cc?` (${x.cc})`:''),x]),['Back',null]]); if(!pick) continue;
       musicCfg.station=pick; musicCfg.mode='radio'; rb('/json/url/'+pick.id).catch(()=>{}); musicStart(); return; }
     if(v==='drive'){ if(!musicCfg.folder || !settings.driveKey){ await menu('My songs',[['OK',true]],'Make a folder of songs (MP3 or M4A) in Google Drive, share it as “Anyone with the link”, and paste its link on your phone: Partners → 📺 → Favorites folder slideshow → Music folder. It arrives here by itself.'); continue; }
       musicCfg.mode='drive'; music.list=[]; musicStart(); return; }
     if(v==='toggle'){ if(playing) music.el.pause(); else if(music.el && music.el.getAttribute('src')) musicPlay(); else musicStart(); continue; }
     if(v==='next'){ musicNext(); continue; }
-    if(v==='hide'){ const n=music.cur&&music.cur.name; musicHide(music.cur); toast(`Hidden: ${n}. It won’t play again.`,4000); continue; }
+    if(v==='hide'){ const n=music.cur&&music.cur.name; musicHide(music.cur); musicToast(`Hidden: ${n}. It won’t play again.`,4000); continue; }
     if(v==='hidden'){ const h=musicSkip.list, pick=await menu('Hidden songs',[...h.slice(-30).reverse().map(x=>['↩ Play again: '+x.name.slice(0,50),x.id]),['Back',null]],'Choose one to bring it back.');
-      if(pick){ musicSkip.list=h.filter(x=>x.id!==pick); toast('It’s back in the mix.',3000); } continue; }
+      if(pick){ musicSkip.list=h.filter(x=>x.id!==pick); musicToast('It’s back in the mix.',3000); } continue; }
     if(v==='off'){ musicCfg.mode='off'; musicStop(); continue; }
     if(v==='when'){ musicCfg.when=musicCfg.when==='always'?'slideshow':'always'; if(musicCfg.when==='slideshow' && !drive.clock) musicStop(); else if(musicCfg.when==='always' && mode!=='off' && !playing) musicStart(); continue; }
     if(v==='vol'){ const L=[30,50,70,85,100]; musicCfg.volume=L[(L.indexOf(musicCfg.volume)+1)%L.length]; if(music.el) music.el.volume=musicCfg.volume/100; continue; }
