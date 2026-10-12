@@ -33,6 +33,7 @@ body{transform-origin:50% 50%}
 #fullPrompt div{font:600 3.6vw/1.3 var(--display);text-align:center;color:#fff;background:var(--panel);padding:3vw 5vw;border-radius:2vw;box-shadow:0 1vw 4vw rgba(0,0,0,.5)}
 #fullPrompt b{color:var(--accent)}
 html.desk,html.desk body{cursor:auto}
+html.desk.still,html.desk.still *{cursor:none!important}
 /* Chromebook / laptop: you sit close, so smaller text than on the TV */
 html.desk .top h1{font-size:2.4vw} html.desk .top h1 .bfly{width:3vw}
 html.desk .status,html.desk .codechip,html.desk .wx{font-size:1vw!important} html.desk .codechip b{font-size:1.2vw!important}
@@ -110,7 +111,8 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #show .slot canvas{max-width:100%;max-height:100%}
 #show .slot.motion canvas{animation:kb var(--dur,8s) linear forwards}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.07)}}
-#show .slot img,#show .slot canvas{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+#show .slot img,#show .slot canvas{position:relative;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain}
+#show .slot canvas.slideBg{position:absolute;inset:0;object-fit:cover;filter:brightness(.55);animation:none!important}
 #show .slot.motion img{animation:kb var(--dur,8s) linear forwards}
 #dCap,#dClock{position:absolute;bottom:3vh;font-size:1.6vw;color:#fff;text-shadow:0 .1vw .5vw #000,0 0 1vw #000;z-index:3;line-height:1.3}
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
@@ -598,12 +600,15 @@ async function ssGo(step){
     const next=ss.slot?$('#slotA'):$('#slotB'), prev=ss.slot?$('#slotB'):$('#slotA'); ss.slot^=1;
     next.style.setProperty('--dur',(settings.interval+2)+'s');
     next.classList.toggle('motion', settings.motion && !ss.paused);
-    next.replaceChildren(c); void next.offsetWidth; next.classList.add('on'); prev.classList.remove('on');
+    next.replaceChildren(...slideBack(c), c); void next.offsetWidth; next.classList.add('on'); prev.classList.remove('on');
     setTimeout(()=>{ if(!prev.classList.contains('on')) prev.replaceChildren(); },1400);
   }
   ssInfo(); if(src.drive) driveShown(src.drive); else $('#dCap').classList.add('hidden');
   if(!ss.paused) ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000);
 }
+// Fill the space beside a tall (or wide) photo with a soft, darkened blur of the same photo instead of a plain color.
+function slideBack(c){ try{ const w=c.naturalWidth||c.width, h=c.naturalHeight||c.height; if(!w||!h) return [];
+  const k=document.createElement('canvas'); k.width=32; k.height=Math.max(8,Math.round(32*h/w)); k.getContext('2d').drawImage(c,0,0,k.width,k.height); k.className='slideBg'; return [k]; }catch(_){ return []; } }
 function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove('hidden'); clearTimeout(m._t); if(ms) m._t=setTimeout(()=>m.classList.add('hidden'),ms); }
 function ssInfo(){ if(!ss) return; const i=$('#showInfo'); const src=ss.items[ss.order[ss.pos]]; i.textContent=`${ss.pos+1} / ${ss.order.length}${ss.paused?'  ·  Paused':''}`; i.classList.add('on'); }
 function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clearTimeout(ss.timer);
@@ -804,6 +809,8 @@ function tvPass(){
   try{ const s=localStorage.getItem('partners.session'); if(s) return { session:s, relay:((localStorage.getItem('partners.relay')||'').trim()||'https://ezrad-partners-relay.mboadway1.workers.dev').replace(/\/+$/,''), own:true }; }catch(_){}
   return null;
 }
+(function(){ let t; const wake=()=>{ document.documentElement.classList.remove('still'); clearTimeout(t); t=setTimeout(()=>document.documentElement.classList.add('still'),3000); };
+  addEventListener('mousemove',wake,{passive:true}); addEventListener('mousedown',wake,{passive:true}); wake(); })();   // the pointer hides after 3 s still
 const slideEv={list:[], at:0, note:''};
 async function loadSlideEvents(){
   let plan=tvPass();
@@ -812,8 +819,12 @@ async function loadSlideEvents(){
   try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Partners-Session':plan.session}});
     // An old pass (e.g. from before the relay moved) no longer works: forget it and ask for a fresh one.
     if(r.status===401||r.status===403){ if(!plan.own) store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note= plan.own ? '📅 Click Tasks below and sign in again to see today’s events' : '📅 Connect your phone to this screen again to see today’s events'; return; }
-    if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); slideEv.note=''; }catch(_){}
+    if(!r.ok) return; const d=await r.json(); slideEv.list=await tvHideNamed(d.events||[],plan); slideEv.at=Date.now(); slideEv.note=''; }catch(_){}
 }
+// Events you hid by name in Partners' Calendar (🙈) stay off the TV too.
+const tvName=t=>String(t||'(No title)').trim().replace(/\s+/g,' ').toLowerCase();
+async function tvHideNamed(evs,plan){ try{ const r=await fetch(plan.relay+'/api/prefs',{headers:{'X-Partners-Session':plan.session}}); const p=r.ok?await r.json():{};
+  const hid=new Set((p.hiddenNames||[]).map(n=>String(n).toLowerCase())); return evs.filter(ev=>!hid.has(tvName(ev.title||ev.summary))); }catch(_){ return evs; } }
 function todayLines(){
   const k=ymdL(new Date()), now=Date.now();
   return slideEv.list.filter(ev=> ev.start.date ? (ev.start.date<=k && ev.end.date>k) : (ymdL(new Date(ev.start.dateTime))===k && Date.parse(ev.end.dateTime||ev.start.dateTime)>now))
@@ -954,7 +965,9 @@ function musicEl(){
     if(musicCfg.mode==='drive' && music.cur && !music.triedAlt){ music.triedAlt=true; a.src=`https://drive.google.com/uc?export=download&id=${music.cur.id}`; music.fails--; return musicPlay(); }
     if(musicCfg.mode==='drive' && music.fails<5) return musicNext();
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
-    music.now=''; music.title=music.artist=''; musicBanner(); musicToast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
+    const why=(codes[a.error&&a.error.code]||'unknown problem');
+    music.now=''; music.title=music.artist=''; musicBanner(); musicToast(musicCfg.mode==='radio'?'That station isn’t playing right now. Trying again in a minute.':`Songs aren’t playing right now (${why}). Trying again in a minute.`,6000);
+    clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode!=='off'){ music.fails=0; music.triedAlt=false; musicCfg.mode==='drive'?musicNext():musicPlay(); } },60000); });
   return music.el=a;
 }
 function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100)); a.muted=false;
@@ -1309,7 +1322,7 @@ async function loadToday(){
   try{
     const [ag,tasks,mem]=await Promise.all([call('agenda?days=7&from='+encodeURIComponent(start.toISOString())), call('data/tasks'), call('members')]);
     window._tdLoaded=Date.now(); $('#tdUpdated').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-    renderTodayEvents(ag.events||[], start); const priv=new Set((tasks.lists||[]).filter(l=>l.private).map(l=>l.id)); renderTodayTasks((tasks.items||[]).filter(t=>!priv.has(t.list)), mem.members||[]);   // private lists stay off the TV
+    renderTodayEvents(await tvHideNamed(ag.events||[],plan), start); const priv=new Set((tasks.lists||[]).filter(l=>l.private).map(l=>l.id)); renderTodayTasks((tasks.items||[]).filter(t=>!priv.has(t.list)), mem.members||[]);   // private lists stay off the TV
   }catch(e){
     if(e===401 && !plan.own){ store.set('partners.tvplan',''); }
     E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Partners on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
