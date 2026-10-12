@@ -1516,14 +1516,16 @@ function tvDriveSetup(){ sheet((sh,close)=>{
     el('p',{textContent:'The TV plays every photo in a shared Google Drive folder, with the place, date and a clock. To add a photo, share it from Google Photos into the folder.'}));
   const f=el('input',{placeholder:'Folder link (drive.google.com/drive/folders/…)',value:localStorage.getItem('partners.driveFolder')||'',autocapitalize:'off',autocorrect:'off',spellcheck:false,style:'width:100%;margin:6px 0'});
   const k=el('input',{placeholder:'Google API key (AIza…)',value:localStorage.getItem('partners.driveKey')||'',autocapitalize:'off',autocorrect:'off',spellcheck:false,style:'width:100%;margin:6px 0'});
+  const mf=el('input',{placeholder:'Music folder link (optional, MP3/M4A songs)',value:localStorage.getItem('partners.music.folder')||'',autocapitalize:'off',autocorrect:'off',spellcheck:false,style:'width:100%;margin:6px 0'});
   const save=el('button',{className:'primary',textContent:'Send to TV',style:'width:100%;margin-top:8px'});
   save.onclick=async()=>{ const fv=f.value.trim(), kv=k.value.trim();
     if(!/folders\/[\w-]{10,}|^[\w-]{20,}$/.test(fv)) return toast('Paste the folder’s share link from Google Drive');
     if(!/^AIza[\w-]{30,}$/.test(kv)) return toast('That doesn’t look like a Google API key (it starts with AIza)');
-    localStorage.setItem('partners.driveFolder',fv); localStorage.setItem('partners.driveKey',kv); close();
+    localStorage.setItem('partners.driveFolder',fv); localStorage.setItem('partners.driveKey',kv);
+    if(mf.value.trim()!==(localStorage.getItem('partners.music.folder')||'')) localStorage.setItem('partners.music.folder',mf.value.trim()); close();
     try{ await tvConnect(); tvSendDrive(); toast('Sent ✓ The TV starts the slideshow now'); }catch(e){ toast('Saved. It goes to the TV next time you connect.',5000); } };
   const x=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%'}); x.onclick=()=>close();
-  sh.append(f,k,save,x);
+  sh.append(f,k,el('p',{className:'hint',textContent:'Songs for the TV (optional): a Drive folder shared as “Anyone with the link”.'}),mf,save,x);
 }); }
 function tvForget(){ try{ tv.conn&&tv.conn.close(); }catch{} try{ tv.peer&&tv.peer.destroy(); }catch{} tv.conn=null; tv.peer=null; tv.code=''; localStorage.removeItem('partners.tv'); tvSetState('off'); }
 function tvSend(msg, timeout=60000){ return new Promise((res,rej)=>{ const t=setTimeout(()=>{ tv.waits.delete(msg.i); rej(new Error('The TV stopped responding')); },timeout);

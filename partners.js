@@ -152,7 +152,7 @@ function partnersSettings(onDone){
    Not synced on purpose: Screen fit (each TV is different), sign-ins, caches. */
 const SYNC_KEYS = ['partners.tv.interval','partners.tv.shuffle','partners.tv.zoom','partners.tv.driveStart','partners.tv.driveFolder','partners.tv.driveKey',
   'partners.driveFolder','partners.driveKey','partners.skipShots','partners.skipBursts','partners.albumSort','partners.calTasks','partners.homeAirport',
-  'partners.aiTone','partners.audience','partners.tv.kinds','partners.symbol'];
+  'partners.aiTone','partners.audience','partners.tv.kinds','partners.symbol','partners.music.mode','partners.music.station','partners.music.folder','partners.music.when','partners.music.volume'];
 const isSynced = k => SYNC_KEYS.includes(k) || k.startsWith('partners.fuel.') && k!=='partners.fuel.last';
 // The phone keeps the Drive folder under one name and the TV under another: keep both the same.
 const SYNC_TWINS = { 'partners.driveFolder':'partners.tv.driveFolder', 'partners.tv.driveFolder':'partners.driveFolder', 'partners.driveKey':'partners.tv.driveKey', 'partners.tv.driveKey':'partners.driveKey' };
