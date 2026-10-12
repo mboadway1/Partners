@@ -785,11 +785,11 @@ function tvPass(){
 const slideEv={list:[], at:0, note:''};
 async function loadSlideEvents(){
   let plan=tvPass();
-  if(!plan||!plan.session){ slideEv.list=[]; slideEv.note= REAL_TV ? '📅 Connect your phone to this screen to see today’s events' : '📅 Sign in to Partners (Settings) to see today’s events'; return; }
+  if(!plan||!plan.session){ slideEv.list=[]; slideEv.note= REAL_TV ? '📅 Connect your phone to this screen to see today’s events' : '📅 Click Tasks below and sign in to see today’s events'; return; }
   const start=new Date(); start.setHours(0,0,0,0);
   try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Partners-Session':plan.session}});
     // An old pass (e.g. from before the relay moved) no longer works: forget it and ask for a fresh one.
-    if(r.status===401||r.status===403){ if(!plan.own) store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note= plan.own ? '📅 Sign in to Partners again (Settings) to see today’s events' : '📅 Connect your phone to this screen again to see today’s events'; return; }
+    if(r.status===401||r.status===403){ if(!plan.own) store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note= plan.own ? '📅 Click Tasks below and sign in again to see today’s events' : '📅 Connect your phone to this screen again to see today’s events'; return; }
     if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); slideEv.note=''; }catch(_){}
 }
 function todayLines(){
