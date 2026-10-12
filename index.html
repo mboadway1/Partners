@@ -1140,7 +1140,7 @@ async function openSettings(note){
     sh.append(el('h3',{textContent:'Settings'}));
     if(acct.session) sh.append(el('p',{textContent:`Signed in as ${acct.me.name} (${acct.me.email}).`}));
     else { const si=el('button',{className:'primary',textContent:'Sign in with Google',title:'One sign-in for Google Photos, Calendar and shared tasks',style:'width:100%'}); si.onclick=()=>partnersSignIn('index.html'); sh.append(si); }
-    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker());
+    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker(), el('label',{className:'f',textContent:'Symbol (shared by both of you, everywhere)'}), partnersSymbolPicker());
     if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings());
     if(note) sh.append(el('p',{textContent:note}));
     const cid=el('input',{value:cfg.clientId,placeholder:'1234…apps.googleusercontent.com',autocapitalize:'off',autocorrect:'off',spellcheck:false});

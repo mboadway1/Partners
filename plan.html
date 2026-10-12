@@ -1714,7 +1714,7 @@ async function openSettings(){
       const p=partner();
       sh.append(el('p',{textContent:`Signed in as ${me().name} (${me().email}).`+(p?` Sharing with ${p.name}${p.signedIn?'':' (not signed in yet)'}.`:'')}));
     }
-    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker());
+    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker(), el('label',{className:'f',textContent:'Symbol (shared by both of you, everywhere)'}), partnersSymbolPicker());
     if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings(()=>{ loadMembers().then(render); }));
     if(acct.session){
       sh.append(el('label',{className:'f',textContent:'Calendars to show'}));
