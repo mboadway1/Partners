@@ -880,11 +880,16 @@ function keepVideo(){
     v.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;opacity:.02;pointer-events:none;z-index:-1';
     v.addEventListener('pause',()=>setTimeout(keepVideo,1000)); v.addEventListener('ended',()=>{ v.currentTime=0; keepVideo(); });
     document.body.prepend(v); }
-  if(v.paused){ const p=v.play(); p && p.catch && p.catch(()=>{}); }
+  // The Fire Stick only counts it as "playing" (and holds off its home screen) when sound is playing, so after the
+  // first button press it's unmuted. Its sound is a very quiet 20 Hz hum that TV speakers can't reproduce.
+  if(REAL_TV && gestured && v.muted){ v.muted=false; v.removeAttribute('muted'); v.volume=1; }
+  if(v.paused){ const p=v.play(); p && p.catch && p.catch(()=>{ if(!v.muted){ v.muted=true; v.play().catch(()=>{}); } }); }
+  try{ if('mediaSession' in navigator){ if(!navigator.mediaSession.metadata) navigator.mediaSession.metadata=new MediaMetadata({title:'Partners', artist:'Photos slideshow'}); navigator.mediaSession.playbackState='playing'; } }catch(_){}
 }
+let gestured=false;
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ wake=null; awake(); } });
 awake(); setInterval(awake, 60000);
-document.addEventListener('click',()=>awake(),true); document.addEventListener('keydown',()=>awake(),true);
+document.addEventListener('click',()=>{ gestured=true; awake(); },true); document.addEventListener('keydown',()=>{ gestured=true; awake(); },true);
 
 // Settings rows with ◀ ▶ values also work by pointing and clicking (TV browsers use the arrows for the pointer):
 // click the ◀ end of the value to go down, anywhere else on the row to go up.
