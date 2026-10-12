@@ -943,18 +943,38 @@ async function musicStart(){
   if(mode==='drive'){
     const fid=driveFolderId(musicCfg.folder); if(!fid || !settings.driveKey) return;
     if(!music.list.length || Date.now()-music.listAt>30*60*1000){
-      try{ const q=`'${fid}' in parents and trashed = false and mimeType contains 'audio/'`, out=[]; let page='';
-        do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
-          const j=await r.json(); if(!r.ok) throw new Error((j.error&&j.error.message)||'Drive error'); out.push(...(j.files||[])); page=j.nextPageToken||''; }while(page);
-        music.list=out.sort(()=>Math.random()-.5); music.listAt=Date.now(); music.pos=0; }
+      try{ music.list=(await musicScan(fid)).sort(()=>Math.random()-.5); music.listAt=Date.now(); music.pos=0; }
       catch(e){ toast('Your Music folder couldn’t be read: '+e.message,6000); return; }
     }
-    if(!music.list.length){ toast('Your Music folder has no songs yet.',5000); return; }
+    if(!music.list.length){ toast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
     musicTrack();
   }
 }
+// Songs can be in folders inside folders (Music → Artist → Album → song), so look through every level.
+const AUDIO_EXT=/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
+async function musicScan(rootId){
+  const names=new Map(), parentOf=new Map(), songs=[]; let level=[rootId], depth=0, folders=0;
+  while(level.length && depth<7 && folders<800 && songs.length<5000){
+    const next=[];
+    for(let i=0;i<level.length;i+=30){
+      const ids=level.slice(i,i+30), q=`(${ids.map(x=>`'${x}' in parents`).join(' or ')}) and trashed = false`;
+      let page='';
+      do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,parents)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
+        const j=await r.json(); if(!r.ok) throw new Error((j.error&&j.error.message)||'Drive error');
+        for(const f of j.files||[]){ const par=(f.parents||[])[0]||''; parentOf.set(f.id,par); names.set(f.id,f.name);
+          if(f.mimeType==='application/vnd.google-apps.folder'){ next.push(f.id); folders++; }
+          else if(/^audio\//.test(f.mimeType||'') || AUDIO_EXT.test(f.name||'')) songs.push({id:f.id,name:f.name,parent:par}); }
+        page=j.nextPageToken||''; }while(page);
+    }
+    level=next; depth++;
+  }
+  // "Song — Artist": the artist is the folder above the album folder when there is one.
+  return songs.map(x=>{ const album=x.parent!==rootId?names.get(x.parent):'', up=parentOf.get(x.parent), artist=up&&up!==rootId&&names.get(up)||'';
+    const title=x.name.replace(/\.[a-z0-9]{2,4}$/i,'').replace(/^\d{1,2}[ .\-_]+/,'');
+    return { id:x.id, name:title+(artist&&!/music$/i.test(artist)?' — '+artist:album&&!/music$/i.test(album)?' — '+album:'') }; });
+}
 function musicTrack(){ const f=music.list[music.pos%music.list.length], a=musicEl();
-  a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.replace(/\.[a-z0-9]{2,4}$/i,'').slice(0,60); musicPlay(); }
+  a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); musicPlay(); }
 function musicNext(){ if(!music.list.length) return; music.pos=(music.pos+1)%music.list.length; if(music.pos===0) music.list.sort(()=>Math.random()-.5); musicTrack(); }
 function musicStop(){ if(!music.el) return; music.el.pause(); music.el.removeAttribute('src'); music.el.load(); music.now=''; if(drive.clock) tickClock(); }
 // Browsers only start sound after a button press: if it was blocked, start on the next one.
