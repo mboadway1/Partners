@@ -444,7 +444,7 @@ function renderHome(){
   // Main sections: a bottom bar that looks like the planner's (icon over label).
   const bar=$('#tvbar'); bar.replaceChildren();
   const tab=(icon,label,fn)=>{ const b=el('div',{className:'tb f'}); b.innerHTML=`<svg class="ic" viewBox="0 0 24 24">${ICONS[icon]}</svg>`; b.append(label); b.onclick=fn; bar.append(b); };
-  if(driveReady()) tab('photos','Photos',()=>startDrive());
+  tab('photos','Photos',()=>startDrive());   // always shown; explains the setup if the Photos folder isn't connected on this device yet
   tab('today','Today',()=>openToday());
   for(const [label,t] of PLAN_TABS) tab(t, label.replace(/^\S+\s/,''), ()=>openPlan(t));
   if(!REAL_TV) tab('photos','Library',()=>{ location.href='./?phone'; });   // the full photo library (import, edit, share)
