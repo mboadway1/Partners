@@ -934,7 +934,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='123';
+const PARTNERS_VER='124';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -1076,8 +1076,10 @@ async function syncGoogleTasks(manual){
     if(manual||gNeedScope) toast(gNeedScope?'To send changes back to Google Tasks, reconnect Google once (button in Tasks).':'Google Tasks sync stopped: '+gLastErr,7000);
   }finally{ gSyncing=false; if(tab==='tasks') render(); }
 }
-setInterval(()=>{ if(!document.hidden && Date.now()-gLast>150000) syncGoogleTasks(); }, 30000);
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-gLast>60000) gKick(2000); });
+setInterval(()=>{ if(!document.hidden && Date.now()-gLast>120000) syncGoogleTasks(); }, 30000);
+// Coming back to Partners (e.g. from Google Tasks in another tab) syncs right away.
+const gBack=()=>{ if(!document.hidden && Date.now()-gLast>10000) gKick(500); };
+document.addEventListener('visibilitychange',gBack); window.addEventListener('focus',gBack);
 
 /* ================= CALENDAR ================= */
 let cview=matchMedia('(min-width:700px)').matches?'month':'schedule', cdate=today(), calendars=[], events={}, calLoaded=false, calErr='', showTasksOnCal=true;
