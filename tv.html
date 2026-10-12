@@ -291,7 +291,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 const PHONE_URL = new URL('./', location.href).href;
 const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(_){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(_){} } };
 const settings = {
-  get interval(){ return +store.get('partners.tv.interval', 8); }, set interval(v){ store.set('partners.tv.interval', v); },
+  get interval(){ return +store.get('partners.tv.interval', 15); }, set interval(v){ store.set('partners.tv.interval', v); },
   get shuffle(){ return store.get('partners.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('partners.tv.shuffle', v?'1':'0'); },
   get motion(){ return store.get('partners.tv.zoom','0')==='1'; }, set motion(v){ store.set('partners.tv.zoom', v?'1':'0'); },   // gentle zoom: off unless turned on in Settings
   // Screen fit: shrinks Partners so TVs that trim the picture edges (overscan) show all of it.
@@ -302,7 +302,9 @@ const settings = {
 };
 function applyFit(){ const f=settings.fit; document.body.style.transform = f<100 ? `scale(${f/100})` : ''; }
 applyFit();
-const INTERVALS=[5,8,12,20,30,60];
+const INTERVALS=[5,8,10,15,20,30,60];
+// 15 seconds is now the default: move screens still on the old 8-second default over once (this also syncs to the other screens).
+try{ if(!store.get('partners.tv.int15','') ){ if(['','8'].includes(String(store.get('partners.tv.interval','')))) store.set('partners.tv.interval', 15); store.set('partners.tv.int15','1'); } }catch(_){}
 
 /* ================= remote-control focus ================= */
 // Every layer is a "scope". Arrow keys move the white focus ring between .f elements
