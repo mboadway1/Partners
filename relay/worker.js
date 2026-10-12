@@ -376,6 +376,41 @@ async function api(req, env, url, cors) {
     return json({ options: Array.isArray(d.options) ? d.options.slice(0, 3).map(String) : [], tip: String(d.tip || '') }, 200, cors);
   }
 
+  // --- Concerns in Us: help word a complaint, understand one, and find a small next step ---
+  if (path === 'concern-ai' && req.method === 'POST' && full) {
+    if (!env.ANTHROPIC_API_KEY) return json({ error: 'This needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
+    const b = await body(), mode = String(b.mode || ''), cut = (v, n) => String(v || '').slice(0, n);
+    const user = await KV.get('user:' + s.email, 'json'), me = (user && user.name) || 'Someone', other = cut(b.partner, 40) || 'their partner';
+    const feelings = Array.isArray(b.feelingKeys) ? b.feelingKeys.slice(0, 20).map(x => cut(x, 20)) : [];
+    const c = b.concern || {}, thread = [
+      c.about && `What happened: ${cut(c.about, 1500)}`, c.feelings && c.feelings.length && `Feelings: ${c.feelings.map(x => cut(x, 30)).join(', ')}`,
+      c.need && `What they'd like: ${cut(c.need, 800)}`, c.clarify && `They later added: ${cut(c.clarify, 800)}`,
+      c.heard && `The partner said back: ${cut(c.heard, 800)}`, c.side && `The partner's side: ${cut(c.side, 1200)}`,
+    ].filter(Boolean).join('\n');
+    const base = 'You help a loving couple talk about a complaint calmly, using ideas from couples research (gentle start-up, complaint not criticism, reflective listening, validation, small repair steps). Warm, plain, everyday words; no therapy jargon; never take sides or diagnose either person. '
+      + 'If anything describes being hurt, threatened, controlled or unsafe, do not coach them to smooth it over: put a short kind note in the "safety" field that they deserve to feel safe and can call or text the National Domestic Violence Hotline (1-800-799-7233, or text START to 88788). Otherwise leave "safety" empty. Reply with only JSON.';
+    let ask;
+    if (mode === 'shape') ask = [base,
+      `${me} wants to raise something with ${other}. Below is what they wrote, maybe messy or angry. Turn it into a calm, specific complaint in their own voice (first person), keeping their real concern; don't add anything they didn't say and don't water it down to nothing.`,
+      `JSON: {"about": "one specific situation, no blame, no always/never, written to follow the word 'When' (e.g. 'plans changed last night and I found out last minute')", "feelings": [1-3 keys chosen only from: ${feelings.join(', ')}], "need": "a specific, positive request written to follow 'I'd like' (e.g. 'a heads-up text when plans change')", "tip": "one sentence on timing or tone", "safety": ""}`,
+      '---', cut(b.text, 3000)].join('\n');
+    else if (mode === 'understand') ask = [base,
+      `${other} raised this with ${me}. Help ${me} understand it and show they get it, before any defending or fixing.`,
+      `JSON: {"underneath": "2-3 short sentences on what ${other} is probably feeling and needing, and why it may matter so much to them", "reflect": "what ${me} could say back, in first person, starting 'What I heard is', ending with 'Did I get that right?'", "validate": "one or two sentences starting 'It makes sense you'd feel that way'", "avoid": ["2-3 short things not to say right now, e.g. defending or 'you're overreacting'"], "ask": "one gentle question ${me} could ask to understand more", "safety": ""}`,
+      '---', thread].join('\n');
+    else if (mode === 'steps') ask = [base,
+      `${me} and ${other} have talked this through and feel understood. Suggest small, concrete, doable steps that address the need, fair to both. Not big promises.`,
+      `JSON: {"steps": ["3 short steps, each under 12 words, starting with a verb"], "note": "one encouraging sentence", "safety": ""}`,
+      '---', thread].join('\n');
+    else return json({ error: 'Unknown request' }, 400, cors);
+    const r = await claude(env, env.CAPTION_MODEL || 'claude-sonnet-5-5', [{ type: 'text', text: ask }], 900);
+    if (r.error) return json({ error: r.error }, 502, cors);
+    const d = jsonFrom(r.text, {}), str = (v, n) => cut(typeof v === 'string' ? v : '', n), arr = (v, n) => (Array.isArray(v) ? v : []).slice(0, n).map(x => str(x, 200)).filter(Boolean);
+    if (mode === 'shape') return json({ about: str(d.about, 600), feelings: arr(d.feelings, 3).filter(k => feelings.includes(k)), need: str(d.need, 400), tip: str(d.tip, 300), safety: str(d.safety, 400) }, 200, cors);
+    if (mode === 'understand') return json({ underneath: str(d.underneath, 700), reflect: str(d.reflect, 700), validate: str(d.validate, 400), avoid: arr(d.avoid, 3), ask: str(d.ask, 300), safety: str(d.safety, 400) }, 200, cors);
+    return json({ steps: arr(d.steps, 3), note: str(d.note, 300), safety: str(d.safety, 400) }, 200, cors);
+  }
+
   // --- Elks lodges: read the lodge's own elks.org page for RV parking details (cached a week) ---
   if (path === 'elks-rv' && req.method === 'GET') {
     const n = (url.searchParams.get('lodge') || '').replace(/\D/g, '').slice(0, 5);

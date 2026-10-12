@@ -168,6 +168,20 @@ textarea.ta{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding
 .ci{background:var(--panel2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .ci.wait{align-items:center;justify-content:center;color:var(--dim);font-weight:700;text-align:center}
 .cim{font-size:30px} .ciw{font-weight:800;font-size:13px;color:var(--dim)} .cia,.cin{line-height:1.35}
+.card.concern{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line)}
+.card.concern.s-shared,.card.concern.s-heard,.card.concern.s-proposed{border:2px solid var(--lilac)}
+.cquote{font-weight:700;line-height:1.45;font-size:16px;background:var(--panel2);border-radius:12px;padding:10px 12px}
+.cline{font-size:14px;line-height:1.4} .cline.heard{color:var(--text)} .cline.step{font-weight:800}
+.csteps{display:flex;gap:4px;flex-wrap:wrap} .csteps span{font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;background:var(--panel2);color:var(--dim)}
+.csteps span.on{background:var(--accent);color:#fff}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap} .cbtns button{flex:1;min-width:140px}
+.cwarn{background:var(--panel2);border-radius:12px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.cprev{font-size:14px;font-style:italic;color:var(--dim);margin:10px 0}
+.cwhy{background:var(--panel2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:14px;margin:10px 0}
+.feelchips{margin-bottom:8px}
+.aibtn{width:100%;margin:2px 0 8px;background:var(--panel2);border:1px dashed var(--lilac);font-weight:800}
+.aibox{display:flex;flex-direction:column;gap:6px;margin-bottom:10px} .aibox .aiu{line-height:1.45;margin:0}
+.safety{background:var(--panel2);border-left:4px solid var(--lilac);padding:8px 10px;border-radius:8px;font-weight:700}
 .ustools{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
 @media (min-width:560px){.ustools{grid-template-columns:1fr 1fr}}
 .ustools.solo{grid-template-columns:1fr}
@@ -1320,21 +1334,23 @@ const usItems = k => store.us.items.filter(x=>x.kind===k);
 function myCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy===me().email); }
 function theirCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy!==me().email); }
 function streak(){ let n=0; for(let d=today();;d=addDays(d,-1)){ const k=ymd(d); const both=usItems('checkin').filter(x=>x.date===k).map(x=>x.createdBy); if(new Set(both).size>=2) n++; else if(k!==ymd(today())) break; if(n>400) break; } return n; }
-// Us is trimmed to just Words for now; set US_LITE=false to bring back check-ins, breaks, appreciations and the rest.
-const US_LITE=true;
+// Us is trimmed for now; set US_LITE=false to bring back check-ins, appreciations and the rest.
+// US_ON lists the tools shown even while trimmed: the ones for raising and understanding concerns.
+const US_LITE=true, US_ON={concern:1, kindly:1, talk:1, pause:1};
 function renderUs(v){
   $('#chips').replaceChildren(); if(US_LITE) $('#addBtn').classList.add('hidden');
   const p=partner(), pn=(p&&p.name)||'your partner', d=ymd(today()), mine=myCheckin(d), theirs=theirCheckin(d);
   const parts=[];
   // Break in progress
   const pause=usItems('pause').filter(x=>!x.ended && Date.parse(x.until)>Date.now()-3600e3).sort((a,b)=>Date.parse(b.until)-Date.parse(a.until))[0];
-  if(pause && !US_LITE){ const byMe=pause.createdBy===me().email, left=Math.max(0,Math.round((Date.parse(pause.until)-Date.now())/60000));
+  if(pause && (!US_LITE||US_ON.pause)){ const byMe=pause.createdBy===me().email, left=Math.max(0,Math.round((Date.parse(pause.until)-Date.now())/60000));
     const c=el('div',{className:'card pause'});
     c.append(el('div',{className:'pt',textContent:byMe?`🌿 You asked for a break`:`🌿 ${nameOf(pause.createdBy)} asked for a break`}),
       el('p',{textContent:(pause.msg?`“${pause.msg}” `:'')+(left?`Back at ${new Date(pause.until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})} (${left} min).`:'Time’s up: ready when you both are.')}),
       el('p',{className:'hint',textContent:byMe?'Do something calming: a walk, a drink of water, slow breaths. Not rehearsing the argument helps most.':'This isn’t walking away from you; it’s so you can both come back calmer. Take a breather too.'}));
     const done=el('button',{className:'primary',textContent:'I’m ready to talk'}); done.onclick=()=>change('us',[{op:'upsert',item:{...pause, ended:new Date().toISOString(), endedBy:me().email}}]);
     c.append(done); parts.push(c); }
+  concernSection(parts);
   // Daily check-in
   const ci=el('div',{className:'card'});
   ci.append(el('div',{className:'cardh'},el('b',{textContent:'Today’s check-in'}),el('span',{className:'hint',textContent:streak()?`🔥 ${streak()} day${streak()>1?'s':''} in a row together`:'A minute a day, for both of you'})));
@@ -1360,12 +1376,13 @@ function renderUs(v){
   }
   if(!US_LITE) parts.push(ci);
   // Tools
-  const tools=el('div',{className:'ustools'+(US_LITE?' solo':'')});
+  const tools=el('div',{className:'ustools'});
   const tool=(e,t,s2,fn)=>{ const b=el('button',{className:'ustool'}); b.append(el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:s2}))); b.onclick=fn; tools.append(b); };
+  tool('💬','Share a concern','Say what’s bothering you so it gets heard',()=>raiseConcern());
   if(!US_LITE) tool('💌','Send an appreciation','A quick note they’ll see here',sendAppreciation);
-  if(!US_LITE) tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
-  if(!US_LITE) tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
-  if(!US_LITE) tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
+  if(!US_LITE||US_ON.pause) tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
+  if(!US_LITE||US_ON.talk) tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
+  if(!US_LITE||US_ON.kindly) tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
   tool('🎙️','Taking Turns','Listens and shows how evenly you share the talk',()=>{ location.href='words.html'; });
   if(!US_LITE) tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
   parts.push(tools);
@@ -1401,6 +1418,214 @@ function renderUs(v){
     <p class="hint">If you ever feel unsafe, threatened or controlled at home: National Domestic Violence Hotline, <a href="tel:18007997233">1-800-799-7233</a>, or text <b>START</b> to <a href="sms:88788">88788</a>. Free and confidential, 24/7.</p>`;
   if(!US_LITE) parts.push(sup);
   v.replaceChildren(...parts);
+}
+/* ---------- Concerns: raise a complaint gently, and make sure it's understood before solving it ----------
+   Steps: 1 share it (what happened · how I felt · what I'd like) → 2 the partner says back what they heard
+   → 3 the one who raised it confirms "yes, that's it" (or clarifies) → 4 one small step, agreed by both
+   → 5 "It's better now". Each feeling comes with the need usually behind it, to help the listener understand. */
+const FEELINGS=[
+  ['hurt','💔','Hurt','to feel cared for'],
+  ['lonely','🫥','Lonely','closeness and time together'],
+  ['unappreciated','🙁','Unappreciated','to feel noticed and valued'],
+  ['overwhelmed','😵‍💫','Overwhelmed','help, and a fair share of the load'],
+  ['frustrated','😤','Frustrated','for this to change, and to be taken seriously'],
+  ['ignored','🙉','Not listened to','to be heard'],
+  ['worried','😟','Worried','reassurance and a plan'],
+  ['anxious','😰','Anxious','calm and knowing what to expect'],
+  ['disrespected','😠','Disrespected','respect, and to be treated as an equal'],
+  ['embarrassed','😳','Embarrassed','to feel safe and backed up in front of others'],
+  ['disappointed','😞','Disappointed','to be able to count on you'],
+  ['tired','🥱','Worn out','rest and support'],
+];
+const feelOf=k=>FEELINGS.find(f=>f[0]===k)||[k,'💬',k,''];
+const feelList=ks=>{ const n=(ks||[]).map(k=>feelOf(k)[2].toLowerCase()); return n.length<2?(n[0]||''):n.slice(0,-1).join(', ')+' and '+n[n.length-1]; };
+const SIZES=[['small','A small thing'],['medium','It matters'],['big','It’s big for me']];
+const WHENS=[['now','Now is fine'],['today','Later today'],['soon','In the next few days']];
+const concerns=()=>usItems('concern').filter(x=>x.status!=='withdrawn');
+const concernBy=c=>c.by||c.createdBy;
+function concernText(c){ const clean=t=>String(t||'').trim().replace(/[.!\s]+$/,'');
+  const ab=clean(c.about).replace(/^when\s+/i,''), f=feelList(c.feelings), nd=clean(c.need).replace(/^(i’d like|i'd like|i would like)\s+/i,'');
+  let t = ab ? (f ? `When ${ab}, I felt ${f}.` : `When ${ab}.`) : (f ? `I felt ${f}.` : '');
+  if(nd) t += (t?' ':'')+`I’d like ${nd}.`;
+  return t; }
+// Claude's help for concerns (through the relay). Only the text of this concern is sent.
+async function concernAI(mode, extra){ const p=partner();
+  try{ return await partnersApi('concern-ai',{method:'POST',body:JSON.stringify({mode, partner:(p&&p.name)||'', feelingKeys:FEELINGS.map(f=>f[0]), ...extra})}); }
+  catch(e){ throw new Error(e.status===404?'Claude’s help needs the relay update first (see the checklist).':e.message); } }
+const concernPayload=c=>({about:c.about, feelings:(c.feelings||[]).map(k=>feelOf(k)[2]), need:c.need, clarify:c.clarify||'', heard:c.heard?c.heard.text:'', side:c.side?c.side.text:''});
+function aiBox(){ return el('div',{className:'aibox hidden'}); }
+function aiShow(box, nodes){ box.replaceChildren(...nodes); box.classList.toggle('hidden',!nodes.length); }
+function aiBusy(btn, on, label){ btn.disabled=on; btn.textContent=on?'✨ Thinking…':label; }
+function useBtn(text, fn){ const b=el('button',{type:'button',className:'sugg'}); b.append(text, el('small',{textContent:'Tap to use'})); b.onclick=fn; return b; }
+function concernSave(c, patch, entry){ const log=(c.log||[]).slice(); if(entry) log.push({...entry, by:me().email, at:Date.now()});
+  return change('us',[{op:'upsert',item:{...c, ...patch, log}}]); }
+
+// Words that usually turn a complaint into criticism, with a gentler idea.
+function criticismHints(t){ const s=' '+t.toLowerCase()+' ', out=[];
+  if(/\b(always|never)\b/.test(s)) out.push('“Always” and “never” can sound like an attack. Try one specific time it happened.');
+  if(/\byou('re| are) (so |such |really )?(a |an )?(lazy|selfish|useless|stupid|rude|mean|inconsiderate|thoughtless|careless|crazy|impossible|ridiculous|liar)/.test(s)) out.push('Describing who they are feels like blame. Describe what happened instead.');
+  if(/\bwhy (do|don’t|don't|can’t|can't|won’t|won't) you\b/.test(s)) out.push('“Why don’t you…” can sound like an accusation. Try “I’d like…”.');
+  if(/\b(whatever|i don’t care|i don't care|obviously|seriously\?)/.test(s)) out.push('That can come across as dismissive. Say what you feel instead.');
+  return out; }
+
+async function raiseConcern(edit){
+  const p=partner(), pn=(p&&p.name)||'your partner';
+  const st={feelings:new Set(edit?edit.feelings:[]), size:(edit&&edit.size)||'medium', when:(edit&&edit.when)||'today'};
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'💬 Share a concern'}),
+      el('p',{className:'hint',textContent:`Talk about one situation, how it felt, and what would help. ${pn} sees it in Us and says back what they heard before anyone tries to fix anything.`}));
+    const vent=el('textarea',{className:'ta',rows:3,placeholder:'Not sure how to say it? Write it however it comes out. Messy or angry is fine.'});
+    const shape=el('button',{type:'button',className:'aibtn',textContent:'✨ Shape it for me'}), sout=aiBox();
+    const about=el('textarea',{className:'ta',rows:3,placeholder:'What happened? One specific time, e.g. “When plans changed last night and I found out at the last minute…”',value:(edit&&edit.about)||''});
+    const warn=el('div',{className:'cwarn hidden'});
+    const chips=el('div',{className:'catchips feelchips'});
+    FEELINGS.forEach(([k,e,l])=>{ const b=el('button',{type:'button',textContent:`${e} ${l}`,className:st.feelings.has(k)?'on':''}); b.dataset.k=k; b.onclick=()=>{ st.feelings.has(k)?st.feelings.delete(k):st.feelings.add(k); b.classList.toggle('on',st.feelings.has(k)); prev(); }; chips.append(b); });
+    const need=el('textarea',{className:'ta',rows:2,placeholder:'What would help? e.g. “a heads-up text when plans change”',value:(edit&&edit.need)||''});
+    const seg=(opts,key)=>{ const s=el('div',{className:'seg wide'}); opts.forEach(([k,l])=>{ const b=el('button',{type:'button',textContent:l,className:st[key]===k?'on':''}); b.onclick=()=>{ st[key]=k; s.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); }; s.append(b); }); return s; };
+    const preview=el('div',{className:'cprev'});
+    const prev=()=>{ const t=concernText({about:about.value.trim(), feelings:[...st.feelings], need:need.value.trim()});
+      preview.textContent=t?`${pn} will read: “${t}”`:''; preview.classList.toggle('hidden',!t);
+      const h=criticismHints(about.value+' '+need.value); warn.replaceChildren(...h.map(x=>el('div',{textContent:'💡 '+x}))); warn.classList.toggle('hidden',!h.length); };
+    about.oninput=prev; need.oninput=prev;
+    shape.onclick=async()=>{ const t=vent.value.trim(); if(!t) return vent.focus(); aiBusy(shape,true);
+      try{ const d=await concernAI('shape',{text:t});
+        if(d.about) about.value=d.about; if(d.need) need.value=d.need;
+        if(d.feelings && d.feelings.length){ st.feelings=new Set(d.feelings); chips.querySelectorAll('button').forEach(x=>x.classList.toggle('on',st.feelings.has(x.dataset.k))); }
+        prev(); aiShow(sout,[...(d.safety?[el('p',{className:'safety',textContent:'💜 '+d.safety})]:[]), el('p',{className:'hint',textContent:'✨ Filled in below. Change anything that isn’t quite you.'+(d.tip?' 💡 '+d.tip:'')})]); }
+      catch(e){ aiShow(sout,[el('p',{className:'hint',textContent:'Couldn’t get help: '+e.message})]); }
+      finally{ aiBusy(shape,false,'✨ Shape it again'); } };
+    const send=el('button',{className:'primary',textContent:edit?'Save':'Share with '+pn});
+    send.onclick=()=>{ const a=about.value.trim(); if(!a) return about.focus(); if(!st.feelings.size) return toast('Pick at least one feeling');
+      const item={about:a, feelings:[...st.feelings], need:need.value.trim(), size:st.size, when:st.when};
+      if(edit) concernSave(edit,item,{type:'edit'}); else change('us',[{op:'upsert',item:{id:uid(),kind:'concern',by:me().email,status:'shared',log:[],...item}}]);
+      close(); toast(edit?'Updated':'Shared 💬'); };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close();
+    sh.append(vent, shape, sout, ...field('What happened',about), warn, el('label',{className:'f',textContent:'How I felt'}), chips, ...field('What I’d like',need),
+      ...field('How big is this for me?',seg(SIZES,'size')), ...field('A good time to talk',seg(WHENS,'when')), preview, el('div',{className:'btns'},c,send));
+    prev();
+  });
+}
+
+// The listener's turn: understand first. No defending, no fixing yet.
+async function hearConcern(c){
+  const who=nameOf(concernBy(c));
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:`👂 Hear ${who} out`}),
+      el('div',{className:'cquote',textContent:concernText(c)}));
+    const why=el('div',{className:'cwhy'}); why.append(el('b',{textContent:'What may be underneath'}));
+    (c.feelings||[]).forEach(k=>{ const f=feelOf(k); if(f[3]) why.append(el('div',{textContent:`${f[1]} Feeling ${f[2].toLowerCase()} often means needing ${f[3]}.`})); });
+    if(c.size==='big') why.append(el('div',{textContent:`⚠️ ${who} said this is big for them, so take it slowly.`}));
+    const tips=el('p',{className:'hint',textContent:'No defending and no fixing yet. Just show you understand. Your side and solutions come next.'});
+    const help=el('button',{type:'button',className:'aibtn',textContent:'✨ Help me understand'}), hout=aiBox();
+    const heard=el('textarea',{className:'ta',rows:3,placeholder:'What I heard is…'});
+    const start=el('button',{type:'button',className:'ghost',textContent:'Give me a starting point'});
+    start.onclick=()=>{ const f=feelList(c.feelings); heard.value=`What I heard is that when ${c.about.replace(/^when\s+/i,'').replace(/[.!\s]+$/,'')}, you felt ${f}${c.need?`, and you’d like ${c.need.replace(/[.!\s]+$/,'')}`:''}. Did I get that right?`; heard.focus(); };
+    const valid=el('textarea',{className:'ta',rows:2,placeholder:'It makes sense you’d feel that way, because…'});
+    const brk=el('button',{type:'button',className:'ghost',textContent:'⏸️ I need a break first'}); brk.onclick=()=>{ close(); askBreak(); };
+    help.onclick=async()=>{ aiBusy(help,true);
+      try{ const d=await concernAI('understand',{concern:concernPayload(c)}); const n=[];
+        if(d.safety) n.push(el('p',{className:'safety',textContent:'💜 '+d.safety}));
+        if(d.underneath) n.push(el('p',{className:'aiu',textContent:d.underneath}));
+        if(d.reflect) n.push(el('label',{className:'f',textContent:'You could say back'}), useBtn(d.reflect,()=>{ heard.value=d.reflect; heard.focus(); }));
+        if(d.validate) n.push(useBtn(d.validate,()=>{ valid.value=d.validate; }));
+        if(d.ask) n.push(el('p',{className:'hint',textContent:'❓ You could ask: '+d.ask}));
+        if(d.avoid && d.avoid.length) n.push(el('p',{className:'hint',textContent:'🚫 Try not to say: '+d.avoid.join(' · ')}));
+        aiShow(hout,n); }
+      catch(e){ aiShow(hout,[el('p',{className:'hint',textContent:'Couldn’t get help: '+e.message})]); }
+      finally{ aiBusy(help,false,'✨ Ask again'); } };
+    const send=el('button',{className:'primary',textContent:'Send what I heard'});
+    send.onclick=()=>{ const h=heard.value.trim(); if(!h) return heard.focus();
+      concernSave(c,{status:'heard', heard:{text:h, valid:valid.value.trim(), by:me().email, at:Date.now()}},{type:'heard',text:h}); close(); toast('Sent 👂'); };
+    const x=el('button',{className:'ghost',textContent:'Not now'}); x.onclick=()=>close();
+    sh.append(why, help, hout, tips, ...field('Say back what you heard',heard), start, ...field('Show it makes sense (optional)',valid), brk, el('div',{className:'btns'},x,send));
+  });
+}
+async function clarifyConcern(c){
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Not quite'}), el('p',{className:'hint',textContent:'Say what they missed, kindly. They’ll get another go at saying it back.'}));
+    const t=el('textarea',{className:'ta',rows:3,placeholder:'The part that matters most to me is…'});
+    const send=el('button',{className:'primary',textContent:'Send'}); send.onclick=()=>{ const v=t.value.trim(); if(!v) return t.focus();
+      concernSave(c,{status:'shared', clarify:v, heard:null},{type:'clarify',text:v}); close(); };
+    const x=el('button',{className:'ghost',textContent:'Cancel'}); x.onclick=()=>close();
+    sh.append(t, el('div',{className:'btns'},x,send));
+  });
+}
+async function mySide(c){
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'My side'}), el('p',{className:'hint',textContent:`Now that ${nameOf(concernBy(c))} feels heard, you can share how it looked from your side. Same idea: what happened for you, how you felt, no blame.`}));
+    const t=el('textarea',{className:'ta',rows:3,placeholder:'From my side…',value:c.side?c.side.text:''});
+    const kind=el('button',{type:'button',className:'aibtn',textContent:'✨ Help me say it kindly'}), kout=aiBox();
+    kind.onclick=async()=>{ if(!t.value.trim()) return t.focus(); aiBusy(kind,true);
+      try{ const d=await partnersApi('rephrase',{method:'POST',body:JSON.stringify({text:t.value, to:nameOf(concernBy(c))})});
+        aiShow(kout,[...(d.options||[]).map(o=>useBtn(o,()=>{ t.value=o; aiShow(kout,[]); })), ...(d.tip?[el('p',{className:'hint',textContent:'💡 '+d.tip})]:[])]); }
+      catch(e){ aiShow(kout,[el('p',{className:'hint',textContent:'Couldn’t get help: '+e.message})]); }
+      finally{ aiBusy(kind,false,'✨ Try again'); } };
+    const send=el('button',{className:'primary',textContent:'Share'}); send.onclick=()=>{ const v=t.value.trim(); if(!v) return t.focus();
+      concernSave(c,{side:{text:v, by:me().email, at:Date.now()}},{type:'side',text:v}); close(); };
+    const x=el('button',{className:'ghost',textContent:'Cancel'}); x.onclick=()=>close();
+    sh.append(t, kind, kout, el('div',{className:'btns'},x,send));
+  });
+}
+async function proposeStep(c){
+  const p=partner();
+  await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'🌱 One small step'}), el('p',{className:'hint',textContent:'Something small and doable you could both try. The other person agrees before it counts.'}));
+    const t=el('input',{placeholder:'e.g. Text a heads-up when plans change',value:c.step?c.step.text:''});
+    const who={v:(c.step&&c.step.who)||'both'};
+    const opts=[[me().email,'Me'],...(p?[[p.email,p.name||'Partner']]:[]),['both','Both of us']];
+    const seg=el('div',{className:'seg wide'}); opts.forEach(([k,l])=>{ const b=el('button',{type:'button',textContent:l,className:who.v===k?'on':''}); b.onclick=()=>{ who.v=k; seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); }; seg.append(b); });
+    const task=el('input',{type:'checkbox',checked:true});
+    const ideas=el('button',{type:'button',className:'aibtn',textContent:'✨ Ideas from Claude'}), iout=aiBox();
+    ideas.onclick=async()=>{ aiBusy(ideas,true);
+      try{ const d=await concernAI('steps',{concern:concernPayload(c)});
+        aiShow(iout,[...(d.safety?[el('p',{className:'safety',textContent:'💜 '+d.safety})]:[]), ...(d.steps||[]).map(x=>useBtn(x,()=>{ t.value=x; })), ...(d.note?[el('p',{className:'hint',textContent:d.note})]:[])]); }
+      catch(e){ aiShow(iout,[el('p',{className:'hint',textContent:'Couldn’t get ideas: '+e.message})]); }
+      finally{ aiBusy(ideas,false,'✨ More ideas'); } };
+    const send=el('button',{className:'primary',textContent:'Suggest it'}); send.onclick=()=>{ const v=t.value.trim(); if(!v) return t.focus();
+      concernSave(c,{status:'proposed', step:{text:v, who:who.v, task:task.checked, by:me().email}},{type:'step',text:v}); close(); };
+    const x=el('button',{className:'ghost',textContent:'Cancel'}); x.onclick=()=>close();
+    sh.append(...field('The step',t), ideas, iout, ...field('Who does it',seg), el('label',{className:'checkrow'},task,'Add it to Tasks once we both agree'), el('div',{className:'btns'},x,send));
+  });
+}
+function agreeStep(c){
+  concernSave(c,{status:'agreed', agreedAt:Date.now()},{type:'agree'});
+  if(c.step && c.step.task) change('tasks',[{op:'upsert',item:{id:uid(),title:c.step.text,done:false,important:false,due:null,time:null,list:null,assignee:c.step.who==='both'?'':c.step.who,repeat:'',notes:'From a concern in Us: '+concernText(c)}}]);
+  toast(c.step && c.step.task?'Agreed 🌱 Added to Tasks':'Agreed 🌱');
+}
+function concernCard(c){
+  const mine=concernBy(c)===me().email, raiser=mine?'You':nameOf(concernBy(c)), other=mine?nameOf((partner()||{}).email):'you';
+  const card=el('div',{className:'card concern s-'+c.status});
+  const steps=['shared','heard','understood','proposed','agreed'], at=Math.max(0,steps.indexOf(c.status));
+  const dots=el('div',{className:'csteps'}); ['Shared','Heard','Understood','A step','Agreed'].forEach((l,i)=>dots.append(el('span',{className:i<=at?'on':'',textContent:l})));
+  const size=(SIZES.find(s=>s[0]===c.size)||[])[1], when=(WHENS.find(s=>s[0]===c.when)||[])[1];
+  card.append(el('div',{className:'um',textContent:`${raiser} · ${fmtShort(new Date(c.createdAt||Date.now()))}${size?' · '+size:''}${when&&c.status==='shared'?' · '+when:''}`}),
+    el('div',{className:'cquote',textContent:concernText(c)}), dots);
+  if(c.clarify) card.append(el('div',{className:'cline',textContent:`${raiser==='You'?'You added':raiser+' added'}: “${c.clarify}”`}));
+  if(c.heard) card.append(el('div',{className:'cline heard',textContent:`👂 ${c.heard.by===me().email?'You':nameOf(c.heard.by)}: “${c.heard.text}”${c.heard.valid?` · “${c.heard.valid}”`:''}`}));
+  if(c.side) card.append(el('div',{className:'cline',textContent:`🪞 ${c.side.by===me().email?'Your':nameOf(c.side.by)+'’s'} side: “${c.side.text}”`}));
+  if(c.step) card.append(el('div',{className:'cline step',textContent:`🌱 ${c.status==='agreed'?'Agreed':'Suggested'}: ${c.step.text} (${c.step.who==='both'?'both of you':c.step.who===me().email?'you':nameOf(c.step.who)})`}));
+  const btns=el('div',{className:'cbtns'}), b=(t,fn,cls)=>{ const x=el('button',{className:cls||'',textContent:t}); x.onclick=fn; btns.append(x); };
+  const hint=t=>card.append(el('p',{className:'hint',textContent:t}));
+  if(c.status==='shared'){ if(mine){ hint(`Waiting for ${other} to say back what they heard.`); b('Edit',()=>raiseConcern(c),'ghost'); b('Let it go',()=>concernSave(c,{status:'withdrawn'},{type:'withdraw'}),'ghost'); }
+    else { hint('Your turn: understand first. No defending or fixing yet.'); b('👂 Say back what I heard',()=>hearConcern(c),'primary'); } }
+  if(c.status==='heard'){ if(mine){ hint('Did they get it?'); b('💚 Yes, that’s it',()=>concernSave(c,{status:'understood'},{type:'confirm'}),'primary'); b('Not quite',()=>clarifyConcern(c),'ghost'); }
+    else hint(`Waiting for ${raiser} to say if you got it right.`); }
+  if(c.status==='understood'){ hint(mine?`${other} understands. Now find one small step together.`:'They feel understood 💚 Now you can share your side, or suggest a step.');
+    b('🌱 Suggest a step',()=>proposeStep(c),'primary'); if(!mine) b(c.side?'Edit my side':'🪞 Share my side',()=>mySide(c),'ghost'); }
+  if(c.status==='proposed'){ const byMe=c.step.by===me().email;
+    if(byMe){ hint('Waiting for the other person to agree.'); b('Change it',()=>proposeStep(c),'ghost'); }
+    else { b('🤝 Agree',()=>agreeStep(c),'primary'); b('Suggest something else',()=>proposeStep(c),'ghost'); } }
+  if(c.status==='agreed'){ if(mine){ hint('Give it a try. When it feels better, close it here.'); b('✓ It’s better now',()=>concernSave(c,{status:'resolved',resolvedAt:Date.now()},{type:'resolved'}),'primary'); b('Talk about it again',()=>concernSave(c,{status:'understood',step:null},{type:'reopen'}),'ghost'); }
+    else hint(`When ${raiser} feels it’s better, they’ll close it.`); }
+  if(btns.children.length) card.append(btns);
+  return card;
+}
+function concernSection(parts){
+  const open=concerns().filter(x=>x.status!=='resolved').sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+  const done=concerns().filter(x=>x.status==='resolved').sort((a,b)=>(b.resolvedAt||0)-(a.resolvedAt||0)).slice(0,5);
+  if(open.length){ parts.push(el('div',{className:'mhead',textContent:'💬 Concerns we’re working through'})); open.forEach(c=>parts.push(concernCard(c))); }
+  if(done.length){ parts.push(el('div',{className:'mhead',textContent:'🌿 Worked through together'}));
+    done.forEach(c=>parts.push(el('div',{className:'unote mine'},el('div',{className:'ut',textContent:c.step?`🌱 ${c.step.text}`:concernText(c)}),el('div',{className:'um',textContent:`${concernBy(c)===me().email?'You':nameOf(concernBy(c))} raised it · resolved ${fmtShort(new Date(c.resolvedAt||Date.now()))}`})))); }
 }
 async function sendAppreciation(){
   const p=partner(), pn=(p&&p.name)||'your partner';
