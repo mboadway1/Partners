@@ -76,7 +76,9 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #show .slot.motion img{animation:kb var(--dur,8s) linear forwards}
 #dCap,#dClock{position:absolute;bottom:3vh;font-size:1.6vw;color:#fff;text-shadow:0 .1vw .5vw #000,0 0 1vw #000;z-index:3;line-height:1.3}
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
-#dClock{right:3vw;font-variant-numeric:tabular-nums}
+#dClock{right:3vw;font-variant-numeric:tabular-nums;text-align:right}
+#dClock small{display:block;font-size:.8em;color:#ddd}
+.wx{font-size:1.3vw;color:var(--dim);white-space:nowrap}
 #showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
 #showInfo{position:absolute;right:3vw;bottom:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
 #showInfo.on{opacity:1}
@@ -178,6 +180,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <div class="top">
     <h1 id="tvWordmark">Peggy</h1>
     <span class="status" id="status"><i></i><span id="statusText">Starting…</span></span>
+    <span class="wx" id="wxHome"></span>
     <span class="codechip">Phone code <b id="codeSm">····</b></span>
   </div>
   <div class="navrow" id="nav"></div>
@@ -661,7 +664,32 @@ async function driveShown(d){
   if(date) cap.append(el('span',{textContent:date}));
   const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
 }
-function tickClock(){ $('#dClock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+function tickClock(){ const c=$('#dClock'); c.replaceChildren(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+  if(wx.line) c.append(el('small',{textContent:wx.line})); }
+/* ---------- local weather (Open-Meteo, no key needed) ----------
+   Where the TV is: the browser's location if it shares it, otherwise worked out from the internet connection,
+   re-checked every 3 hours so it follows the RV. Weather refreshes every 30 minutes. */
+const wx={line:'', at:0, place:null, placeAt:0};
+const WX_CODES=[[0,'☀️','Clear'],[1,'🌤','Mostly clear'],[2,'⛅','Partly cloudy'],[3,'☁️','Cloudy'],[48,'🌫','Fog'],[57,'🌦','Drizzle'],[67,'🌧','Rain'],[77,'🌨','Snow'],[82,'🌧','Showers'],[86,'🌨','Snow showers'],[99,'⛈','Thunderstorms']];
+const wxCode=c=>WX_CODES.find(([n])=>c<=n)||WX_CODES[WX_CODES.length-1];
+async function wxPlace(){
+  if(wx.place && Date.now()-wx.placeAt<3*3600e3) return wx.place;
+  let p=await new Promise(res=>{ try{ navigator.geolocation.getCurrentPosition(g=>res({lat:g.coords.latitude, lon:g.coords.longitude}),()=>res(null),{timeout:8000,maximumAge:3*3600e3}); }catch(_){ res(null); } });
+  if(!p) try{ const j=await (await fetch('https://ipapi.co/json/')).json(); if(j.latitude!=null) p={lat:j.latitude, lon:j.longitude, city:j.city}; }catch(_){}
+  if(!p) try{ const j=await (await fetch('https://get.geojs.io/v1/ip/geo.json')).json(); if(j.latitude) p={lat:+j.latitude, lon:+j.longitude, city:j.city}; }catch(_){}
+  if(p){ wx.place=p; wx.placeAt=Date.now(); }
+  return wx.place;
+}
+async function wxUpdate(){
+  try{ const p=await wxPlace(); if(!p) return;
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${p.lat.toFixed(3)}&longitude=${p.lon.toFixed(3)}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`;
+    const j=await (await fetch(u)).json(), c=j.current||{}, d=j.daily||{};
+    const [,icon,word]=wxCode(c.weather_code||0);
+    wx.line=`${icon} ${Math.round(c.temperature_2m)}° ${word}`+(d.temperature_2m_max?` · H ${Math.round(d.temperature_2m_max[0])}° L ${Math.round(d.temperature_2m_min[0])}°`:'');
+    wx.at=Date.now(); $('#wxHome').textContent=(p.city?p.city+'  ':'')+wx.line; if(drive.clock) tickClock();
+  }catch(_){}
+}
+wxUpdate(); setInterval(wxUpdate, 30*60*1000);
 async function startDrive(quiet){
   if(!driveReady()){ if(!quiet) await menu('Favorites folder',[['OK',true]],'Set it up from your phone: open Peggy, tap 📺, then “Favorites folder slideshow”, and paste the folder link and API key.'); return; }
   if(!quiet) toast('Checking your Favorites folder…',2500);
