@@ -1,7 +1,7 @@
 {
   "name": "Partners",
   "short_name": "Partners",
-  "description": "Organize and edit your Google Photos, then post them to Facebook.",
+  "description": "Photos, tasks, calendar, money, flights and fuel for the two of you.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
