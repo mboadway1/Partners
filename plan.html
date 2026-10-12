@@ -1299,13 +1299,15 @@ const usItems = k => store.us.items.filter(x=>x.kind===k);
 function myCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy===me().email); }
 function theirCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.createdBy!==me().email); }
 function streak(){ let n=0; for(let d=today();;d=addDays(d,-1)){ const k=ymd(d); const both=usItems('checkin').filter(x=>x.date===k).map(x=>x.createdBy); if(new Set(both).size>=2) n++; else if(k!==ymd(today())) break; if(n>400) break; } return n; }
+// Us is trimmed to just Words for now; set US_LITE=false to bring back check-ins, breaks, appreciations and the rest.
+const US_LITE=true;
 function renderUs(v){
-  $('#chips').replaceChildren();
+  $('#chips').replaceChildren(); if(US_LITE) $('#addBtn').classList.add('hidden');
   const p=partner(), pn=(p&&p.name)||'your partner', d=ymd(today()), mine=myCheckin(d), theirs=theirCheckin(d);
   const parts=[];
   // Break in progress
   const pause=usItems('pause').filter(x=>!x.ended && Date.parse(x.until)>Date.now()-3600e3).sort((a,b)=>Date.parse(b.until)-Date.parse(a.until))[0];
-  if(pause){ const byMe=pause.createdBy===me().email, left=Math.max(0,Math.round((Date.parse(pause.until)-Date.now())/60000));
+  if(pause && !US_LITE){ const byMe=pause.createdBy===me().email, left=Math.max(0,Math.round((Date.parse(pause.until)-Date.now())/60000));
     const c=el('div',{className:'card pause'});
     c.append(el('div',{className:'pt',textContent:byMe?`🌿 You asked for a break`:`🌿 ${nameOf(pause.createdBy)} asked for a break`}),
       el('p',{textContent:(pause.msg?`“${pause.msg}” `:'')+(left?`Back at ${new Date(pause.until).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})} (${left} min).`:'Time’s up: ready when you both are.')}),
@@ -1335,20 +1337,20 @@ function renderUs(v){
     ci.append(box);
     if(theirs && theirs.need) ci.append(el('p',{className:'hint',textContent:`Tip: pick one small way to help with what ${pn} needs, and maybe add it to Tasks.`}));
   }
-  parts.push(ci);
+  if(!US_LITE) parts.push(ci);
   // Tools
   const tools=el('div',{className:'ustools'});
   const tool=(e,t,s2,fn)=>{ const b=el('button',{className:'ustool'}); b.append(el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:s2}))); b.onclick=fn; tools.append(b); };
-  tool('💌','Send an appreciation','A quick note they’ll see here',sendAppreciation);
-  tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
-  tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
-  tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
+  if(!US_LITE) tool('💌','Send an appreciation','A quick note they’ll see here',sendAppreciation);
+  if(!US_LITE) tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
+  if(!US_LITE) tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
+  if(!US_LITE) tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
   tool('🎙️','Words','Listens and shows who talks and who interrupts',()=>{ location.href='words.html'; });
-  tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
+  if(!US_LITE) tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
   parts.push(tools);
   // Appreciation wall
   const notes=usItems('note').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,30);
-  if(notes.length){ parts.push(el('div',{className:'mhead',textContent:'💌 Appreciations'}));
+  if(notes.length && !US_LITE){ parts.push(el('div',{className:'mhead',textContent:'💌 Appreciations'}));
     notes.forEach(n=>{ const r=el('div',{className:'unote'+(n.createdBy===me().email?' mine':'')});
       r.append(el('div',{className:'ut',textContent:n.text}),el('div',{className:'um',textContent:`${n.createdBy===me().email?'You':nameOf(n.createdBy)} · ${fmtShort(new Date(n.createdAt||Date.now()))}`}));
       if(n.createdBy!==me().email){ const h=el('button',{className:'heart'+(n.hearted?' on':''),textContent:n.hearted?'❤️':'🤍',title:'Thank them'}); h.onclick=()=>change('us',[{op:'upsert',item:{...n,hearted:!n.hearted}}]); r.append(h); }
@@ -1366,7 +1368,7 @@ function renderUs(v){
       parts.push(c); }); }
   // Recent check-ins
   const past=usItems('checkin').filter(x=>x.date!==d && myCheckin(x.date)).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,14);
-  if(past.length){ parts.push(el('div',{className:'mhead',textContent:'Recent check-ins'}));
+  if(past.length && !US_LITE){ parts.push(el('div',{className:'mhead',textContent:'Recent check-ins'}));
     const days=[...new Set(past.map(x=>x.date))].slice(0,7);
     days.forEach(day=>{ const a=myCheckin(day), b=theirCheckin(day), m=x=>x?(MOODS.find(z=>z[0]===x.mood)||MOODS[2])[1]:'·';
       parts.push(el('div',{className:'pastci'},el('span',{textContent:fmtShort(parseYmd(day))}),el('span',{textContent:`You ${m(a)}`}),el('span',{textContent:`${pn} ${m(b)}`}),el('span',{className:'hint',textContent:(b&&b.appreciate)?'💗 '+b.appreciate:''}))); }); }
@@ -1376,7 +1378,7 @@ function renderUs(v){
     <a class="blk" href="https://www.psychologytoday.com/us/therapists/marriage-couples-counseling" target="_blank" rel="noopener">Find a couples therapist near you</a>
     <a class="blk" href="https://www.gottman.com/couples/" target="_blank" rel="noopener">The Gottman Institute: free articles for couples</a>
     <p class="hint">If you ever feel unsafe, threatened or controlled at home: National Domestic Violence Hotline, <a href="tel:18007997233">1-800-799-7233</a>, or text <b>START</b> to <a href="sms:88788">88788</a>. Free and confidential, 24/7.</p>`;
-  parts.push(sup);
+  if(!US_LITE) parts.push(sup);
   v.replaceChildren(...parts);
 }
 async function sendAppreciation(){
