@@ -36,13 +36,15 @@ async function partnersFinishSignIn(){
   const clean = () => history.replaceState(null, '', location.pathname + location.hash);
   if (q.get('error')){ clean(); throw new Error('Google sign-in was cancelled'); }
   if (q.get('state') !== localStorage.getItem('partners.authState')){ clean(); throw new Error('Sign-in check failed, please try again'); }
-  const r = await fetch(acct.relay + '/api/auth/exchange', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ code: q.get('code'), redirect_uri: partnersRedirect() }) });
+  // Signed in with email already? Then this connects Google to that account. A saved invite joins the partner's couple.
+  let invite=''; try{ invite=localStorage.getItem('partners.invite')||''; }catch(_){}
+  const r = await fetch(acct.relay + '/api/auth/exchange', { method:'POST', headers:{'Content-Type':'application/json', ...(acct.session?{'X-Partners-Session':acct.session}:{})},
+    body: JSON.stringify({ code: q.get('code'), redirect_uri: partnersRedirect(), invite }) });
   const raw = await r.text(); let d={}; try{ d=JSON.parse(raw); }catch(_){}
   clean();
   if (!r.ok) throw new Error(d.error || `Sign-in failed. The relay answered ${r.status}: ${raw.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,120) || '(no message)'}`);
   if (!d.session) throw new Error('Sign-in failed. The relay is still running its old code: paste the new worker.js into Cloudflare and click Deploy.');
-  acct.set(d.session, d.me);
+  acct.set(d.session, d.me); try{ localStorage.removeItem('partners.invite'); }catch(_){}
   localStorage.setItem('partners.gtoken', JSON.stringify({ v: d.access_token, exp: Date.now() + d.expires_in*1000 }));
   const back = localStorage.getItem('partners.authReturn') || ''; localStorage.removeItem('partners.authReturn');
   return back || 'index.html';
@@ -52,9 +54,21 @@ async function partnersApi(path, opts={}){
   if (!acct.session){ const e=new Error('Not signed in'); e.status=401; throw e; }
   const r = await fetch(acct.relay + '/api/' + path, { ...opts, headers: { 'X-Partners-Session': acct.session, ...(opts.body?{'Content-Type':'application/json'}:{}), ...(opts.headers||{}) } });
   const d = await r.json().catch(()=>({}));
-  if (!r.ok){ const e=new Error(d.error || ('Error '+r.status)); e.status=r.status; e.reauth=!!d.reauth; if (e.status===401) acct.clear(); throw e; }
+  if (!r.ok){ const e=new Error(d.error || ('Error '+r.status)); e.status=r.status; e.reauth=!!d.reauth; if (e.status===401) acct.clear();
+    // Free trial over and no plan yet: show the plans.
+    if (e.status===402 && !/account\.html$/.test(location.pathname) && window.top===window) location.href='account.html?ended=1';
+    throw e; }
   return d;
 }
+// Accounts with email and password (Google sign-in is partnersSignIn above).
+async function partnersAuthCall(path, body){
+  const r = await fetch(acct.relay + '/api/' + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const d = await r.json().catch(()=>({}));
+  if (!r.ok || !d.session) throw new Error(d.error || ('Something went wrong ('+r.status+'). Please try again.'));
+  acct.set(d.session, d.me); return d;
+}
+const partnersSignup = b => partnersAuthCall('auth/signup', b);
+const partnersLogin = b => partnersAuthCall('auth/login', b);
 // A fresh Google access token for this person (calendar, tasks import, photos).
 async function googleAccess(){
   try{ const t = JSON.parse(localStorage.getItem('partners.gtoken')||'null'); if (t && t.exp > Date.now()+30000) return t.v; }catch(_){}

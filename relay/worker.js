@@ -12,7 +12,14 @@
 //   GOOGLE_CLIENT_ID      text    the Partners OAuth client ID
 //   GOOGLE_CLIENT_SECRET  secret  the Partners OAuth client secret
 //   PARTNERS_KV           KV namespace binding (stores sign-ins and shared data)
+//   For subscriptions (other couples; the two ALLOWED_EMAILS are the "home" couple and never pay):
+//   STRIPE_SECRET_KEY     secret  Stripe secret key (sk_test_… while testing, sk_live_… when selling)
+//   STRIPE_WEBHOOK_SECRET secret  signing secret of the Stripe webhook that points at /stripe/webhook
+//   STRIPE_PRICE_MONTH    text    Stripe price ID of the monthly plan (price_…)
+//   STRIPE_PRICE_YEAR     text    Stripe price ID of the annual plan (price_…)
+//   APP_URL               text    https://mboadway1.github.io/Partners/
 
+const HOME = 'home', TRIAL_DAYS = 14, AI_PER_DAY = 60;
 const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights', 'us'];   // shared = shared photo albums (lists) and the photos in them (items)
 
 export default {
@@ -27,6 +34,10 @@ export default {
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     };
+    // Stripe calls this from its servers (no browser Origin); it's checked by its signature instead.
+    if (new URL(req.url).pathname === '/stripe/webhook' && req.method === 'POST') {
+      try { return await stripeWebhook(req, env); } catch (e) { return new Response('Error: ' + (e && e.message || e), { status: 500 }); }
+    }
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (!okOrigin) return new Response('Origin not allowed', { status: 403, headers: cors });
 
@@ -77,34 +88,126 @@ async function api(req, env, url, cors) {
   const emails = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const body = async () => { try { return await req.json(); } catch { return {}; } };
 
-  // --- sign-in: exchange Google's one-time code for tokens, kept here so nobody has to sign in again ---
+  // --- sign-in with Google: exchange Google's one-time code for tokens, kept here so nobody has to sign in again ---
+  // The two home members sign in as before. Anyone else gets (or reuses) their own Partners account; someone
+  // already signed in with email and password connects Google to that account instead (for Calendar and Photos).
   if (path === 'auth/exchange' && req.method === 'POST') {
-    const { code, redirect_uri } = await body();
+    const { code, redirect_uri, invite } = await body();
     if (!code || !redirect_uri) return json({ error: 'Missing code' }, 400, cors);
     const t = await googleToken(env, { code, redirect_uri, grant_type: 'authorization_code' });
     if (t.error) return json({ error: t.error_description || t.error }, 400, cors);
     const claims = decodeJwt(t.id_token);
-    const email = (claims.email || '').toLowerCase();
-    if (!email || !emails.includes(email)) return json({ error: `${email || 'This account'} isn’t on Partners’ list of members.` }, 403, cors);
+    const gmail = (claims.email || '').toLowerCase();
+    if (!gmail) return json({ error: 'Google didn’t share an email address.' }, 400, cors);
+    const s0 = await sessionOf(req, KV);
+    let email = gmail, session = '';
+    if (s0 && !s0.ro && s0.email !== gmail && !emails.includes(s0.email) && await KV.get('acct:' + s0.email)) { email = s0.email; session = sessionToken(req); }
+    else if (!emails.includes(gmail)) {
+      let a = await KV.get('acct:' + gmail, 'json');
+      if (!a) { a = { email: gmail, name: claims.given_name || claims.name || gmail.split('@')[0], created: Date.now(), google: true };
+        const j = invite ? await joinCouple(KV, a, invite) : null;
+        if (j && j.error) return json(j, 400, cors);
+        if (!j) a.couple = (await newCouple(KV, gmail)).id;
+        await KV.put('acct:' + gmail, JSON.stringify(a)); }
+      else if (invite && !a.couple) { const j = await joinCouple(KV, a, invite); if (j.error) return json(j, 400, cors); await KV.put('acct:' + gmail, JSON.stringify(a)); }
+    }
     const user = (await KV.get('user:' + email, 'json')) || { email };
-    Object.assign(user, { name: claims.given_name || claims.name || email.split('@')[0], fullName: claims.name || '', picture: claims.picture || '',
-      access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000, scope: t.scope });
+    Object.assign(user, { name: user.name && email !== gmail ? user.name : (claims.given_name || claims.name || email.split('@')[0]), fullName: claims.name || '', picture: claims.picture || '',
+      google: gmail, access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000, scope: t.scope });
     if (t.refresh_token) user.refresh = t.refresh_token;
     await KV.put('user:' + email, JSON.stringify(user));
-    const session = token();
-    await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
+    if (!session) { session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() })); }
     return json({ session, me: publicUser(user), access_token: t.access_token, expires_in: t.expires_in - 60, scope: t.scope }, 200, cors);
   }
 
+  // --- accounts with email and password ---
+  if (path === 'auth/signup' && req.method === 'POST') {
+    const b = await body(), email = String(b.email || '').trim().toLowerCase(), name = String(b.name || '').trim().slice(0, 40);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 120) return json({ error: 'Please enter a valid email address.' }, 400, cors);
+    if (String(b.password || '').length < 8) return json({ error: 'Use a password with at least 8 characters.' }, 400, cors);
+    if (emails.includes(email) || await KV.get('acct:' + email)) return json({ error: 'There’s already an account with that email. Log in instead.' }, 409, cors);
+    const a = { email, name: name || email.split('@')[0], created: Date.now(), pw: await pwHash(String(b.password)) };
+    const j = b.invite ? await joinCouple(KV, a, b.invite) : null;
+    if (j && j.error) return json(j, 400, cors);
+    if (!j) a.couple = (await newCouple(KV, email)).id;
+    await KV.put('acct:' + email, JSON.stringify(a));
+    await KV.put('user:' + email, JSON.stringify({ email, name: a.name }));
+    const session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
+    return json({ session, me: publicUser({ email, name: a.name }) }, 200, cors);
+  }
+  if (path === 'auth/login' && req.method === 'POST') {
+    const b = await body(), email = String(b.email || '').trim().toLowerCase();
+    const rl = 'rl:' + email, tries = +(await KV.get(rl) || 0);
+    if (tries >= 10) return json({ error: 'Too many tries. Please wait 15 minutes and try again.' }, 429, cors);
+    const a = await KV.get('acct:' + email, 'json');
+    const ok = a && a.pw && await pwCheck(String(b.password || ''), a.pw);
+    if (!ok) { await KV.put(rl, String(tries + 1), { expirationTtl: 900 });
+      return json({ error: a && !a.pw ? 'This account uses Google. Tap “Continue with Google”.' : 'That email and password don’t match.' }, 401, cors); }
+    const u = (await KV.get('user:' + email, 'json')) || { email, name: a.name };
+    const session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
+    return json({ session, me: publicUser(u) }, 200, cors);
+  }
+
   const s = await sessionOf(req, KV);
-  if (!s || !emails.includes(s.email)) return json({ error: 'Please sign in again.', reauth: true }, 401, cors);
-  const full = !s.ro;
+  const cp = s ? await coupleFor(env, KV, s.email) : null;
+  if (!s || !cp) return json({ error: 'Please sign in again.', reauth: true }, 401, cors);
+  const full = !s.ro, home = cp.id === HOME, K = key => home ? key : `c:${cp.id}:${key}`;
+
+  // --- your couple: who's in it, inviting your partner, the plan ---
+  if (path === 'couple' && req.method === 'GET') return json(coupleView(cp, s.email), 200, cors);
+  if (path === 'couple/invite' && req.method === 'POST' && full) {
+    if (home) return json({ error: 'You’re both already in.' }, 400, cors);
+    if (cp.members.length >= 2) return json({ error: 'Your couple already has two people.' }, 400, cors);
+    const code = inviteCode(); await KV.put('inv:' + code, JSON.stringify({ couple: cp.id, by: s.email }), { expirationTtl: 7 * 86400 });
+    return json({ code, link: (env.APP_URL || 'https://mboadway1.github.io/Partners/') + 'welcome.html?invite=' + code }, 200, cors);
+  }
+  if (path === 'couple/join' && req.method === 'POST' && full) {
+    if (home) return json({ error: 'You’re already in.' }, 400, cors);
+    const a = await KV.get('acct:' + s.email, 'json'); const j = await joinCouple(KV, a, (await body()).code);
+    if (j.error) return json(j, 400, cors);
+    await KV.put('acct:' + s.email, JSON.stringify(a)); return json(coupleView(j.couple, s.email), 200, cors);
+  }
+  // --- subscription (Stripe) ---
+  if (path === 'billing/checkout' && req.method === 'POST' && full) {
+    if (home) return json({ error: 'Your account is free.' }, 400, cors);
+    if (!env.STRIPE_SECRET_KEY) return json({ error: 'Payments aren’t set up yet.' }, 500, cors);
+    const interval = (await body()).interval === 'year' ? 'year' : 'month';
+    const price = interval === 'year' ? env.STRIPE_PRICE_YEAR : env.STRIPE_PRICE_MONTH;
+    if (!price) return json({ error: 'Payments aren’t set up yet (missing price).' }, 500, cors);
+    const app = env.APP_URL || 'https://mboadway1.github.io/Partners/', p = cp.plan || {};
+    const f = { mode: 'subscription', 'line_items[0][price]': price, 'line_items[0][quantity]': '1', client_reference_id: cp.id,
+      'subscription_data[metadata][couple]': cp.id, 'metadata[couple]': cp.id, allow_promotion_codes: 'true',
+      success_url: app + 'account.html?paid=1', cancel_url: app + 'account.html' };
+    // Keep what's left of the free trial (Stripe needs at least two days of it).
+    if (p.status === 'trialing' && !p.sub && (p.trialEnds || 0) > Date.now() + 2.1 * 864e5) f['subscription_data[trial_end]'] = String(Math.floor(p.trialEnds / 1000));
+    if (p.customer) f.customer = p.customer; else f.customer_email = s.email;
+    const r = await stripe(env, 'checkout/sessions', f);
+    if (r.error) return json({ error: r.error.message || 'Stripe error' }, 502, cors);
+    return json({ url: r.url }, 200, cors);
+  }
+  if (path === 'billing/portal' && req.method === 'POST' && full) {
+    const p = cp.plan || {};
+    if (!p.customer) return json({ error: 'There’s no subscription to manage yet.' }, 400, cors);
+    const r = await stripe(env, 'billing_portal/sessions', { customer: p.customer, return_url: (env.APP_URL || 'https://mboadway1.github.io/Partners/') + 'account.html' });
+    if (r.error) return json({ error: r.error.message || 'Stripe error' }, 502, cors);
+    return json({ url: r.url }, 200, cors);
+  }
+  // Trial over and no subscription: only account and billing work until a plan is chosen.
+  const OPEN = ['me', 'members', 'couple', 'auth/signout', 'auth/token', 'settings', 'profile', 'prefs', 'couple-photo'];
+  if (!canUse(cp) && !OPEN.includes(path)) return json({ error: 'Your free trial has ended. Choose a plan to keep using Partners.', paywall: true }, 402, cors);
+  // A fair-use limit on Claude for subscribers, so costs stay predictable.
+  if (!home && ['caption', 'rephrase', 'concern-ai', 'classify'].includes(path)) {
+    const dk = `ai:${cp.id}:${new Date().toISOString().slice(0, 10)}`, n = +(await KV.get(dk) || 0);
+    if (n >= AI_PER_DAY) return json({ error: 'You’ve used today’s Claude help. It resets tomorrow.' }, 429, cors);
+    await KV.put(dk, String(n + 1), { expirationTtl: 2 * 86400 });
+  }
 
   if (path === 'auth/token' && req.method === 'GET') {
     if (!full) return json({ error: 'Read-only' }, 403, cors);
     const user = await KV.get('user:' + s.email, 'json');
     const t = await accessFor(env, KV, user);
-    if (!t) return json({ error: 'Google sign-in expired. Please sign in again.', reauth: true }, 401, cors);
+    // Not a Partners sign-in problem (that's 401): this account just has no working Google connection.
+    if (!t) return json({ error: user && user.google ? 'Google sign-in expired. Connect Google again in Settings → Account.' : 'Connect your Google account first (Settings → Account → Connect Google).', google: true }, 412, cors);
     return json(t, 200, cors);
   }
   if (path === 'auth/signout' && req.method === 'POST') {
@@ -113,23 +216,23 @@ async function api(req, env, url, cors) {
   }
   if (path === 'me' && req.method === 'GET') {
     const user = await KV.get('user:' + s.email, 'json');
-    return json({ me: publicUser(user || { email: s.email }), readOnly: !full }, 200, cors);
+    return json({ me: publicUser(user || { email: s.email }), readOnly: !full, couple: coupleView(cp, s.email) }, 200, cors);
   }
   if (path === 'members' && req.method === 'GET') {
     const list = [];
-    for (const e of emails) {
+    for (const e of cp.members) {
       const u = await KV.get('user:' + e, 'json'), pr = (await KV.get('profile:' + e, 'json')) || {};
       const m = publicUser(u || { email: e });
       if (pr.name) m.name = pr.name;          // the name each partner chose in Settings
       m.color = pr.color || ''; m.theme = pr.theme || '';
       list.push(m);
     }
-    const ph = await KV.get('couple:at');
+    const ph = await KV.get(K('couple:at'));
     return json({ members: list, couplePhoto: ph ? Number(ph) : 0 }, 200, cors);
   }
   // Settings kept in sync between the TV, the Chromebook and both phones. The TV's view-only pass may write these too.
   if (path === 'settings') {
-    const raw = (await KV.get('settings', 'json')) || {}, cur = {};
+    const raw = (await KV.get(K('settings'), 'json')) || {}, cur = {};
     for (const [k, x] of Object.entries(raw)) { const n = k.replace(/^peggy\./, 'partners.'); if (!cur[n] || cur[n].at < x.at) cur[n] = x; }
     if (req.method === 'GET') return json(cur, 200, cors);
     if (req.method === 'PUT') {
@@ -140,7 +243,7 @@ async function api(req, env, url, cors) {
         if (x.v != null && String(x.v).length > 4000) continue;
         if (!cur[k] || cur[k].at < x.at) cur[k] = { v: x.v == null ? null : String(x.v), at: x.at };
       }
-      if (JSON.stringify(cur).length < 200000) await KV.put('settings', JSON.stringify(cur));
+      if (JSON.stringify(cur).length < 200000) await KV.put(K('settings'), JSON.stringify(cur));
       return json(cur, 200, cors);
     }
   }
@@ -157,17 +260,17 @@ async function api(req, env, url, cors) {
   // The couples photo on the home screens. Anyone signed in (and the TV) can see it; either partner can change it.
   if (path === 'couple-photo') {
     if (req.method === 'GET') {
-      const d = await KV.get('couple:photo', 'arrayBuffer');
+      const d = await KV.get(K('couple:photo'), 'arrayBuffer');
       if (!d) return json({ error: 'No couples photo yet' }, 404, cors);
       return new Response(d, { status: 200, headers: { ...cors, 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=60' } });
     }
     if (req.method === 'PUT' && full) {
       const buf = await req.arrayBuffer();
       if (!buf.byteLength || buf.byteLength > 4_000_000) return json({ error: 'Photo is too large' }, 400, cors);
-      await KV.put('couple:photo', buf); const at = Date.now(); await KV.put('couple:at', String(at));
+      await KV.put(K('couple:photo'), buf); const at = Date.now(); await KV.put(K('couple:at'), String(at));
       return json({ ok: true, at }, 200, cors);
     }
-    if (req.method === 'DELETE' && full) { await KV.delete('couple:photo'); await KV.delete('couple:at'); return json({ ok: true }, 200, cors); }
+    if (req.method === 'DELETE' && full) { await KV.delete(K('couple:photo')); await KV.delete(K('couple:at')); return json({ ok: true }, 200, cors); }
   }
   if (path === 'tv-token' && req.method === 'POST') {
     if (!full) return json({ error: 'Read-only' }, 403, cors);
@@ -185,7 +288,7 @@ async function api(req, env, url, cors) {
   // --- shared documents (tasks, links): last change wins per item ---
   const dm = path.match(/^data\/(\w+)$/);
   if (dm && DOCS.includes(dm[1])) {
-    const key = 'doc:' + dm[1];
+    const key = K('doc:' + dm[1]);
     if (req.method === 'GET') return json((await KV.get(key, 'json')) || { v: 0, items: [], lists: [] }, 200, cors);
     if (req.method === 'POST' && full) {
       const { ops } = await body();
@@ -202,7 +305,7 @@ async function api(req, env, url, cors) {
   if (pm) {
     const R2 = env.PARTNERS_R2;
     if (!R2) return json({ error: 'Shared albums need the PARTNERS_R2 photo storage connected to the relay.' }, 500, cors);
-    const key = 'photos/' + pm[1] + '/full';
+    const key = (home ? '' : `c/${cp.id}/`) + 'photos/' + pm[1] + '/full';
     if (req.method === 'GET') {
       const o = await R2.get(key);
       if (!o) return json({ error: 'Photo not found' }, 404, cors);
@@ -510,7 +613,7 @@ async function api(req, env, url, cors) {
     const from = new Date(url.searchParams.get('from') || Date.now());
     const to = new Date(from.getTime() + days * 86400000);
     const seen = new Set(), events = [], problems = [];
-    for (const e of emails) {
+    for (const e of cp.members) {
       const user = await KV.get('user:' + e, 'json'); if (!user || !user.refresh) continue;
       const prefs = (await KV.get('prefs:' + e, 'json')) || {};
       const cals = (prefs.calendars || []).filter(c => c.show !== false);
@@ -583,3 +686,82 @@ function publicUser(u) { return { email: u.email, name: u.name || u.email.split(
 function token() { const b = new Uint8Array(24); crypto.getRandomValues(b); return [...b].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function decodeJwt(j) { try { const p = j.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(decodeURIComponent(escape(atob(p + '==='.slice((p.length + 3) % 4))))); } catch { return {}; } }
 function decodeEntities(s) { return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)); }
+
+/* ---------------- couples, accounts and subscriptions ---------------- */
+// The two ALLOWED_EMAILS are the original "home" couple: their data keeps its original storage names and they never pay.
+function homeEmails(env) { return (env.ALLOWED_EMAILS || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean); }
+async function coupleFor(env, KV, email) {
+  const he = homeEmails(env);
+  if (he.includes(email)) return { id: HOME, owner: he[0], members: he, plan: { status: 'free' } };
+  const a = await KV.get('acct:' + email, 'json'); if (!a || !a.couple) return null;
+  const c = await KV.get('cpl:' + a.couple, 'json'); return c && c.members.includes(email) ? c : null;
+}
+async function newCouple(KV, email) {
+  const c = { id: token().slice(0, 16), owner: email, members: [email], created: Date.now(), plan: { status: 'trialing', trialEnds: Date.now() + TRIAL_DAYS * 864e5 } };
+  await KV.put('cpl:' + c.id, JSON.stringify(c)); return c;
+}
+// Join the couple an invite code belongs to (at most two people). Changes `a` (the account); the caller saves it.
+async function joinCouple(KV, a, code) {
+  code = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const inv = code && await KV.get('inv:' + code, 'json'); if (!inv) return { error: 'That invite code isn’t valid or has expired. Ask your partner for a new one.' };
+  const c = await KV.get('cpl:' + inv.couple, 'json'); if (!c) return { error: 'That invite is no longer valid.' };
+  if (!c.members.includes(a.email)) {
+    if (c.members.length >= 2) return { error: 'That couple already has two people.' };
+    if (a.couple && a.couple !== c.id) {          // leave your own (new, empty) couple
+      const old = await KV.get('cpl:' + a.couple, 'json');
+      if (old) { old.members = old.members.filter(x => x !== a.email); if (old.members.length) await KV.put('cpl:' + old.id, JSON.stringify(old)); else if (!(old.plan && old.plan.sub)) await KV.delete('cpl:' + old.id); else await KV.put('cpl:' + old.id, JSON.stringify(old)); }
+    }
+    c.members.push(a.email); await KV.put('cpl:' + c.id, JSON.stringify(c));
+  }
+  a.couple = c.id; await KV.delete('inv:' + code);
+  return { couple: c };
+}
+function canUse(c) {
+  const p = c.plan || {};
+  if (c.id === HOME || ['free', 'active', 'past_due'].includes(p.status)) return true;
+  return p.status === 'trialing' && (p.trialEnds || 0) > Date.now();
+}
+function coupleView(c, me) {
+  const p = c.plan || {};
+  return { id: c.id === HOME ? HOME : 'c', members: c.members, owner: c.owner === me, canUse: canUse(c), plan: { status: p.status || 'none', trialEnds: p.trialEnds || 0,
+    periodEnd: p.periodEnd || 0, interval: p.interval || '', cancelAtEnd: !!p.cancelAtEnd, hasBilling: !!p.customer } };
+}
+function inviteCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', b = new Uint8Array(8); crypto.getRandomValues(b); return [...b].map(x => A[x % A.length]).join(''); }
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+async function pwHash(pw, saltHex) {
+  const salt = saltHex ? unhex(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100000 }, key, 256);
+  return { salt: hex(salt), hash: hex(bits) };
+}
+async function pwCheck(pw, saved) { const h = (await pwHash(pw, saved.salt)).hash; let d = h.length ^ saved.hash.length; for (let i = 0; i < h.length; i++) d |= h.charCodeAt(i) ^ (saved.hash.charCodeAt(i) || 0); return d === 0; }
+// Stripe's API takes form-encoded fields.
+async function stripe(env, path, fields, method) {
+  const r = await fetch('https://api.stripe.com/v1/' + path, { method: method || 'POST',
+    headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: method === 'GET' ? undefined : new URLSearchParams(fields || {}) });
+  return r.json();
+}
+// Stripe tells the relay when a subscription starts, renews, changes or ends.
+async function stripeWebhook(req, env) {
+  const KV = env.PARTNERS_KV || env.PEGGY_KV, raw = await req.text(), sig = req.headers.get('Stripe-Signature') || '';
+  if (!env.STRIPE_WEBHOOK_SECRET) return new Response('Webhook secret missing', { status: 500 });
+  const parts = Object.fromEntries(sig.split(',').map(x => x.split('=')).filter(x => x.length === 2).map(([k, v]) => [k, v]));
+  const v1s = sig.split(',').filter(x => x.startsWith('v1=')).map(x => x.slice(3));
+  if (!parts.t || !v1s.length || Math.abs(Date.now() / 1000 - +parts.t) > 600) return new Response('Bad signature', { status: 400 });
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(parts.t + '.' + raw)));
+  if (!v1s.includes(mac)) return new Response('Bad signature', { status: 400 });
+  const ev = JSON.parse(raw), o = (ev.data && ev.data.object) || {};
+  const save = async (cid, fn) => { if (!cid) return; const c = await KV.get('cpl:' + cid, 'json'); if (!c) return; c.plan = { ...(c.plan || {}), ...fn(c.plan || {}) }; await KV.put('cpl:' + cid, JSON.stringify(c)); };
+  if (ev.type === 'checkout.session.completed') await save(o.client_reference_id || (o.metadata && o.metadata.couple), () => ({ customer: o.customer, sub: o.subscription }));
+  if (/^customer\.subscription\.(created|updated|deleted)$/.test(ev.type)) {
+    const item = o.items && o.items.data && o.items.data[0];
+    const end = o.current_period_end || (item && item.current_period_end) || 0;
+    await save(o.metadata && o.metadata.couple, () => ({ customer: o.customer, sub: o.id, status: ev.type.endsWith('deleted') ? 'canceled' : o.status,
+      trialEnds: o.trial_end ? o.trial_end * 1000 : 0, periodEnd: end * 1000, interval: (item && item.price && item.price.recurring && item.price.recurring.interval) || '',
+      cancelAtEnd: !!o.cancel_at_period_end }));
+  }
+  return new Response('ok', { status: 200 });
+}

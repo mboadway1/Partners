@@ -413,8 +413,9 @@ function renderSignIn(v){
   v.replaceChildren(el('div',{className:'card signin'},
     Object.assign(el('div'),{innerHTML:butterfly({size:64,flutter:true})}),
     el('h2',{textContent:'Share plans together'}),
-    el('p',{textContent:'Sign in with Google to see your calendar, import your Google Tasks, and share tasks and favorite links with each other.'}),
-    Object.assign(el('button',{className:'primary',textContent:'Sign in with Google'}),{onclick:()=>partnersSignIn('plan.html#'+tab)})));
+    el('p',{textContent:'Log in or create an account to share tasks, money, trips and links with each other, and see your calendar.'}),
+    Object.assign(el('button',{className:'primary',textContent:'Log in or create an account'}),{onclick:()=>{ location.href='welcome.html'; }}),
+    Object.assign(el('button',{className:'ghost',textContent:'Sign in with Google',style:'margin-top:8px'}),{onclick:()=>partnersSignIn('plan.html#'+tab)})));
 }
 
 /* ================= TASKS ================= */
@@ -1715,6 +1716,7 @@ async function openSettings(){
       sh.append(el('p',{textContent:`Signed in as ${me().name} (${me().email}).`+(p?` Sharing with ${p.name}${p.signedIn?'':' (not signed in yet)'}.`:'')}));
     }
     sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker(), el('label',{className:'f',textContent:'Symbol (shared by both of you, everywhere)'}), partnersSymbolPicker());
+    if(acct.session){ const ab=el('button',{className:'primary',textContent:'👤 Account, plan & partner invite',style:'width:100%;margin:8px 0'}); ab.onclick=()=>{ location.href='account.html'; }; sh.append(ab); }
     if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings(()=>{ loadMembers().then(render); }));
     if(acct.session){
       sh.append(el('label',{className:'f',textContent:'Calendars to show'}));
