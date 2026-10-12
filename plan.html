@@ -164,6 +164,7 @@ textarea.ta{width:100%;box-sizing:border-box;font:inherit;font-size:15px;padding
 .cim{font-size:30px} .ciw{font-weight:800;font-size:13px;color:var(--dim)} .cia,.cin{line-height:1.35}
 .ustools{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
 @media (min-width:560px){.ustools{grid-template-columns:1fr 1fr}}
+.ustools.solo{grid-template-columns:1fr}
 .ustool{display:flex;gap:12px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;width:100%}
 .ue{font-size:24px;flex:none} .ustool small,.wkrow small{display:block;color:var(--dim);font-weight:600;font-size:13px}
 .unote{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 44px 10px 12px;margin-bottom:6px}
@@ -1339,7 +1340,7 @@ function renderUs(v){
   }
   if(!US_LITE) parts.push(ci);
   // Tools
-  const tools=el('div',{className:'ustools'});
+  const tools=el('div',{className:'ustools'+(US_LITE?' solo':'')});
   const tool=(e,t,s2,fn)=>{ const b=el('button',{className:'ustool'}); b.append(el('span',{className:'ue',textContent:e}),el('span',{},el('b',{textContent:t}),el('small',{textContent:s2}))); b.onclick=fn; tools.append(b); };
   if(!US_LITE) tool('💌','Send an appreciation','A quick note they’ll see here',sendAppreciation);
   if(!US_LITE) tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);

@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="https://mboadway1.github.io/Peggy/apple-touch-icon.png">
 <title>Words · Peggy</title>
 <script src="theme.js"></script>
+<script>try{ if(window.top!==window || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV/i.test(navigator.userAgent)) document.documentElement.classList.add('tv'); }catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
 <style>
@@ -30,6 +31,7 @@ html,body{margin:0}
 body{background:var(--bg);color:var(--fg);font:500 16px/1.5 var(--body);
   padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(96px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:640px;margin:0 auto;display:grid;gap:16px}
+html.tv .wrap{max-width:none}
 .kbd{display:none;font:500 .7rem var(--mono);color:var(--muted)}
 .cols{display:grid;gap:16px;min-width:0}
 .side{display:grid;gap:16px;align-content:start;min-width:0}
