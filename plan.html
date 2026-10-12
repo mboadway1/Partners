@@ -273,6 +273,12 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .themepick{display:flex;gap:10px;flex-wrap:wrap}
 .swatch{width:62px;min-height:62px;border-radius:16px;padding:0;display:flex;align-items:flex-end;justify-content:center;font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);padding-bottom:4px}
 .swatch.on{outline:3px solid var(--ring,var(--accent));outline-offset:2px}
+.hev{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:2px 10px;margin-top:4px}
+.hev-r{padding:6px 0;border-bottom:1px solid var(--line);font-weight:600}
+.hev-r:last-child{border-bottom:0}
+.hev-t{flex:1;min-width:0;overflow-wrap:anywhere}
+.hev-r small{color:var(--dim);font-weight:800}
+.hev-n{margin:8px 0 0!important;font-weight:700}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sb) + 84px);z-index:40;background:var(--text);color:var(--bg);font-weight:700;
   padding:10px 16px;border-radius:12px;font-size:14px;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.25);text-align:center}
 .spin{color:var(--dim);text-align:center;padding:24px}
@@ -932,7 +938,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='128';
+const PARTNERS_VER='129';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -1114,6 +1120,36 @@ async function loadCalendar(force){
   if(tab==='calendar') render();
 }
 function savePrefs(){ prefs.calendars=calendars.map(c=>({id:c.id,name:c.name,color:c.color,show:c.show})); return partnersApi('prefs',{method:'PUT',body:JSON.stringify(prefs)}).catch(()=>{}); }
+async function hideEventsSheet(){
+  if(!calLoaded){ toast('Loading your calendar first…'); await loadCalendar(); }
+  toast('Finding your event names…',20000);
+  // Every event name from 3 months back to a year ahead, in the calendars you show.
+  const from=addDays(today(),-90), to=addDays(today(),365), names=new Map();
+  await Promise.all(calendars.filter(c=>c.show).map(async c=>{ let pt='';
+    try{ do{ const q=new URLSearchParams({timeMin:from.toISOString(),timeMax:to.toISOString(),singleEvents:'true',maxResults:'2500',fields:'items(summary,status),nextPageToken'}); if(pt) q.set('pageToken',pt);
+        const d=await gapi(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(c.id)}/events?${q}`);
+        (d.items||[]).forEach(ev=>{ if(ev.status==='cancelled') return; const k=evName(ev), x=names.get(k)||{name:String(ev.summary||'(No title)').trim(),n:0,cals:new Set()}; x.n++; x.cals.add(c.name); names.set(k,x); });
+        pt=d.nextPageToken||''; }while(pt); }catch(_){} }));
+  (prefs.hiddenNames||[]).forEach(k=>{ if(!names.has(k)) names.set(k,{name:k,n:0,cals:new Set()}); });   // hidden ones you no longer have still show, so you can un-hide them
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const chosen=new Set(hiddenNames());
+  const all=[...names.entries()].sort((a,b)=>(chosen.has(b[0])-chosen.has(a[0]))||b[1].n-a[1].n||a[1].name.localeCompare(b[1].name));
+  const r=await sheet((sh,close)=>{
+    sh.append(el('h3',{textContent:'Hide events'}),el('p',{textContent:`Tick the events you don’t want to see. Every event with that name is hidden, here and on the TV. ${all.length} different names in your calendars.`}));
+    const q=el('input',{type:'search',placeholder:'Search event names',autofocus:true}), cnt=el('p',{className:'hev-n'}), box=el('div',{className:'hev'});
+    const draw=()=>{ const f=q.value.trim().toLowerCase(); box.replaceChildren();
+      all.filter(([k,x])=>!f||k.includes(f)).slice(0,400).forEach(([k,x])=>{ const cb=el('input',{type:'checkbox',checked:chosen.has(k)}); cb.onchange=()=>{ cb.checked?chosen.add(k):chosen.delete(k); count(); };
+        box.append(el('label',{className:'checkrow hev-r'},cb,el('span',{className:'hev-t',textContent:x.name}),el('small',{textContent:x.n?`${x.n}×`:'gone'}))); }); };
+    const count=()=>{ cnt.textContent=chosen.size?`${chosen.size} hidden`:'Nothing hidden'; };
+    q.oninput=draw; draw(); count();
+    const none=el('button',{className:'ghost',textContent:'Show all again'}); none.onclick=()=>{ chosen.clear(); draw(); count(); };
+    const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(null);
+    const ok=el('button',{className:'primary',textContent:'Save'}); ok.onclick=()=>close([...chosen]);
+    sh.append(q,cnt,box,el('div',{className:'btns'},none,c,ok));
+  });
+  if(!r) return;
+  prefs.hiddenNames=r; savePrefs(); render(); toast(r.length?`${r.length} event name${r.length>1?'s':''} hidden`:'All events showing');
+}
 function range(){
   if(cview==='month'){ const f=new Date(cdate.getFullYear(),cdate.getMonth(),1); const s=addDays(f,-f.getDay()); return [s,addDays(s,42)]; }
   if(cview==='week'){ const s=addDays(cdate,-cdate.getDay()); return [s,addDays(s,7)]; }
@@ -1133,8 +1169,11 @@ function evDays(ev){ // day keys this event shows on
   if(ev.start.date){ const a=parseYmd(ev.start.date), b=parseYmd(ev.end.date); const r=[]; for(let d=a; d<b; d=addDays(d,1)) r.push(ymd(d)); return r.length?r:[ev.start.date]; }
   return [ymd(new Date(ev.start.dateTime))];
 }
+// Events hidden by name (your choice, remembered with your calendar settings so the TV hides them too).
+const evName=ev=>String((ev&&ev.summary)||'(No title)').trim().replace(/\s+/g,' ').toLowerCase();
+const hiddenNames=()=>new Set((prefs.hiddenNames||[]).map(n=>String(n).toLowerCase()));
 function byDay(){
-  const [s,e]=range(), list=events[ymd(s)+'|'+ymd(e)]||[], m={};
+  const [s,e]=range(), hid=hiddenNames(), list=(events[ymd(s)+'|'+ymd(e)]||[]).filter(ev=>!hid.has(evName(ev))), m={};
   for(const ev of list) for(const k of evDays(ev)) (m[k]=m[k]||[]).push({type:'ev',ev});
   if(showTasksOnCal) for(const t of store.tasks.items) if(t.due && !t.done) (m[t.due]=m[t.due]||[]).push({type:'task',t});
   for(const k in m) m[k].sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
@@ -1171,7 +1210,8 @@ function renderCalendar(v){
   const next=el('button',{className:'iconbtn',textContent:'›',title:'Later'}); next.onclick=()=>step(1);
   const tdy=el('button',{textContent:'Today',title:'Jump to today'}); tdy.onclick=()=>{ cdate=today(); loadCalendar(); };
   const seg=el('div',{className:'seg'}); [['schedule','List'],['week','Week'],['month','Month']].forEach(([k,l])=>{ const b=el('button',{textContent:l,className:cview===k?'on':'',title:`${l} view`}); b.onclick=()=>{ cview=k; if(k!=='month') cdate=k==='week'?cdate:today(); loadCalendar(); render(); }; seg.append(b); });
-  const parts=[el('div',{className:'calbar'},prev,el('span',{className:'ttl',textContent:title}),next,tdy,seg)];
+  const nh=(prefs.hiddenNames||[]).length, hb=el('button',{className:'iconbtn hevb',title:'Hide events by name',textContent:nh?`🙈 ${nh}`:'🙈'}); hb.onclick=()=>hideEventsSheet();
+  const parts=[el('div',{className:'calbar'},prev,el('span',{className:'ttl',textContent:title}),next,tdy,seg,hb)];
   if(!calLoaded){ parts.push(el('p',{className:'spin',textContent:'Loading your calendar…'})); return v.replaceChildren(...parts); }
   if(!calendars.some(c=>c.show)) parts.push(el('div',{className:'card'},el('p',{textContent:'No calendars are turned on. Choose them in Settings.'})));
   const m=byDay();
@@ -2214,6 +2254,7 @@ async function openSettings(){
         sh.append(el('label',{className:'checkrow'},i,Object.assign(el('span',{className:'dot'}),{style:`background:${c.color}`}),c.name)); });
       const tk=el('input',{type:'checkbox',checked:showTasksOnCal}); tk.onchange=()=>{ showTasksOnCal=tk.checked; try{ localStorage.setItem('partners.calTasks',tk.checked?'1':'0'); }catch(_){} render(); };
       sh.append(el('label',{className:'checkrow'},tk,'Show tasks with due dates on the calendar'));
+      { const hb=el('button',{textContent:`🙈 Hide events by name${(prefs.hiddenNames||[]).length?` (${prefs.hiddenNames.length} hidden)`:''}`,style:'width:100%;margin-top:6px'}); hb.onclick=()=>{ close(); hideEventsSheet(); }; sh.append(hb); }
       const st=el('div',{className:'stack'});
       if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
         const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Partners · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }

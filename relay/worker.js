@@ -617,6 +617,7 @@ async function api(req, env, url, cors) {
       const user = await KV.get('user:' + e, 'json'); if (!user || !user.refresh) continue;
       const prefs = (await KV.get('prefs:' + e, 'json')) || {};
       const cals = (prefs.calendars || []).filter(c => c.show !== false);
+      const hid = new Set((prefs.hiddenNames || []).map(n => String(n).toLowerCase()));   // events this person chose to hide by name
       if (!cals.length) continue;
       const t = await accessFor(env, KV, user); if (!t) { problems.push(e); continue; }
       for (const c of cals) {
@@ -626,6 +627,7 @@ async function api(req, env, url, cors) {
         const d = await r.json();
         for (const ev of d.items || []) {
           if (ev.status === 'cancelled') continue;
+          if (hid.has(String(ev.summary || '(No title)').trim().replace(/\s+/g, ' ').toLowerCase())) continue;
           const k = (ev.iCalUID || ev.id) + '|' + (ev.start && (ev.start.dateTime || ev.start.date));
           if (seen.has(k)) continue; seen.add(k);
           events.push({ id: ev.id, title: ev.summary || '(No title)', start: ev.start, end: ev.end, location: ev.location || '', calendar: c.name || c.id, color: c.color || '', who: user.name });
