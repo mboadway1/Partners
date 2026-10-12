@@ -258,11 +258,11 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 </div>
 
 <div id="words" class="layer hidden">
-  <div class="wtop"><h1 id="wWordmark">Words</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
+  <div class="wtop"><h1 id="wWordmark">Taking Turns</h1><div class="wstat" id="wStat"><span class="wdot"></span><span id="wStatText">Waiting for phone</span></div></div>
   <div class="wempty" id="wEmpty">
-    <h2>Count who talks, and who interrupts</h2>
-    <div>In Partners on your iPhone, tap <b>🎙</b>, then <b>Start listening</b>.</div>
-    <div>Phone code <b id="wCode">····</b> · the scoreboard appears here automatically.</div>
+    <h2>See how evenly you share the talk</h2>
+    <div>In Partners on your iPhone, open <b>Us → Taking Turns</b>, then <b>Start listening</b>.</div>
+    <div>Phone code <b id="wCode">····</b> · the balance appears here automatically.</div>
   </div>
   <section class="board hidden" id="wBoard"></section>
   <section class="captions hidden" id="wCaps"></section>
@@ -604,7 +604,7 @@ function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clear
 async function slideMenu(){
   const wasPaused=ss&&ss.paused; ssPause(true);
   const v=await menu('Partners',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
-    ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings'],['🔄 Refresh','reload']]);
+    ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Taking Turns','words'],['🏠 Home','home'],['⚙ Settings','settings'],['🔄 Refresh','reload']]);
   if(!ss) return;
   if(v==='next'||v==='prev'){ if(!wasPaused) ssPause(false); ssGo(v==='next'?1:-1); return; }
   if(v==='pause'){ ssPause(!wasPaused); return; }
@@ -1041,7 +1041,7 @@ function chime(){
 function wordsAlert(a){
   if(!a || a.id===wLastAlert) return; wLastAlert=a.id;
   const el_=$('#wAlert'); el_.textContent=a.text; el_.classList.add('on'); clearTimeout(el_._t); el_._t=setTimeout(()=>el_.classList.remove('on'),5000);
-  if(/interrupted/.test(a.text)) chime();
+  if(/jumped in|interrupted/.test(a.text)) chime();
 }
 function renderWords(){
   $('#wCode').textContent=code;
@@ -1063,14 +1063,14 @@ function renderWords(){
     L.querySelector('.bar i').style.width=(s.words/max*100)+'%';
     L.querySelector('.clock').classList.toggle('on',!!timer); L.querySelector('.tbar').classList.toggle('on',!!timer);
     const pct=total?Math.round(s.words/total*100):0;
-    L.querySelector('.meta').innerHTML=`<span><b>${pct}%</b> of words</span><span><b>${s.turns}</b> turns</span><span class="int"><b>${s.interrupts}</b> interruptions${timer?` · <b>${s.timerCuts||0}</b> on the clock`:''}</span><span>cut off <b>${s.interrupted}</b>×</span>`;
-    L.querySelector('.count').innerHTML=`${s.words}<small>words</small>`;
+    L.querySelector('.meta').innerHTML=`<span><b>${s.turns}</b> turns</span><span class="int">jumped in <b>${s.interrupts}</b>×${timer?` · <b>${s.timerCuts||0}</b> on the clock`:''}</span><span>talked over <b>${s.interrupted}</b>×</span>`;
+    L.querySelector('.count').innerHTML=`${pct}%<small>of the talk</small>`;
   });
   board.style.gap=sp.length>4?'1vh':'2vh';
   const caps=[...(st.recent||[]).map(r=>({...r,cls:''}))]; if(st.interim) caps.push({...st.interim,cls:'interim'});
-  $('#wCaps').innerHTML=caps.slice(-2).map(c=>`<div class="cap ${c.cls}" style="--c:var(${WORDS_COLORS[c.spk]||'--s1'})"><span class="w">${esc((sp[c.spk]||{name:'?'}).name)}</span><p>${c.cut!=null&&sp[c.cut]?`<span class="cut">cut off ${esc(sp[c.cut].name)}</span>`:''}${esc(c.text)}</p></div>`).join('')||'<div class="cap"><p style="color:var(--muted)">Captions appear here as people talk.</p></div>';
+  $('#wCaps').innerHTML=caps.slice(-2).map(c=>`<div class="cap ${c.cls}" style="--c:var(${WORDS_COLORS[c.spk]||'--s1'})"><span class="w">${esc((sp[c.spk]||{name:'?'}).name)}</span><p>${c.cut!=null&&sp[c.cut]?`<span class="cut">jumped in on ${esc(sp[c.cut].name)}</span>`:''}${esc(c.text)}</p></div>`).join('')||'<div class="cap"><p style="color:var(--muted)">Captions appear here as people talk.</p></div>';
   const ints=sp.reduce((a,s)=>a+s.interrupts,0);
-  $('#wTotal').textContent=`${total} words · ${ints} interruptions`;
+  $('#wTotal').textContent= ints ? `Someone jumped in ${ints}×` : 'Nobody has jumped in';
   $('#wTimerInfo').textContent=timer?`⏱ ${fmtT(timer.len*1000)} per turn · ${timer.mode==='next'?'passes on when time is up':'overtime allowed'}`:'';
   wordsClock();
 }
@@ -1087,7 +1087,7 @@ function onWords(c, m){
 /* ================= butterflies (follow the theme) ================= */
 function paintButterflies(){
   $('#tvWordmark').innerHTML=butterfly({size:60,flutter:true})+'Partners<span class="kiss" aria-hidden="true">😘</span>';
-  $('#wWordmark').innerHTML=butterfly({size:60,flutter:true})+'Words';
+  $('#wWordmark').innerHTML=butterfly({size:60,flutter:true})+'Taking Turns';
   $('#tdWordmark').innerHTML=butterfly({size:60,flutter:true})+'Today';
   const drift=$('#drift'); drift.replaceChildren();
   [[18,'34s','0s',3.2],[30,'46s','-17s',2.4],[62,'40s','-30s',4]].forEach(([top,dur,delay,w])=>{

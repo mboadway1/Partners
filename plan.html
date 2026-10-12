@@ -1366,7 +1366,7 @@ function renderUs(v){
   if(!US_LITE) tool('⏸️','I need a break','Pause a heated talk kindly',askBreak);
   if(!US_LITE) tool('🗣️','Talk it through','Take turns: speaker and listener',talkItThrough);
   if(!US_LITE) tool('✨','Say it kindly','Turn a hard feeling into calm words',sayItKindly);
-  tool('🎙️','Words','Listens and shows who talks and who interrupts',()=>{ location.href='words.html'; });
+  tool('🎙️','Taking Turns','Listens and shows how evenly you share the talk',()=>{ location.href='words.html'; });
   if(!US_LITE) tool('📅','Weekly check-in','A 20-minute “state of us”',weeklyCheckin);
   parts.push(tools);
   // Appreciation wall
@@ -1378,11 +1378,11 @@ function renderUs(v){
       parts.push(r); }); }
   // Conversations measured with Words
   const talks=usItems('talk').sort((a,b)=>(b.at||'').localeCompare(a.at||'')).slice(0,6);
-  if(talks.length){ parts.push(el('div',{className:'mhead',textContent:'🎙️ Recent talks (from Words)'}));
+  if(talks.length){ parts.push(el('div',{className:'mhead',textContent:'🎙️ Recent talks (from Taking Turns)'}));
     talks.forEach(t=>{ const c=el('div',{className:'talkcard'}), sp=t.speakers||[];
       c.append(el('div',{className:'um',textContent:`${new Date(t.at).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})} · ${new Date(t.at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}`+(t.timer?` · ${Math.round(t.timer/60)||1} min turns`:'')}));
       const bar=el('div',{className:'talkbar'}); sp.forEach((x,i)=>{ const seg=el('span',{className:'s'+(i%2),textContent:x.pct>=12?`${x.name} ${x.pct}%`:''}); seg.style.width=Math.max(2,x.pct)+'%'; seg.title=`${x.name}: ${x.words} words (${x.pct}%)`; bar.append(seg); }); c.append(bar);
-      c.append(el('div',{className:'talkst',textContent:sp.map(x=>`${x.name}: ${x.turns} turns, interrupted ${x.interrupts}×`).join(' · ')}));
+      c.append(el('div',{className:'talkst',textContent:sp.map(x=>`${x.name}: ${x.pct!=null?x.pct+'% of the talk, ':''}${x.turns} turns, jumped in ${x.interrupts}×`).join(' · ')}));
       const top=sp.slice().sort((a,b)=>b.pct-a.pct)[0];
       if(top && top.pct>=65) c.append(el('div',{className:'hint',textContent:`${top.name} did most of the talking. Next time, try Talk it through to take even turns.`}));
       else if(sp.length>1 && sp.every(x=>x.pct>=35)) c.append(el('div',{className:'hint',textContent:'Nicely balanced. You both got to be heard. 💞'}));
@@ -1443,7 +1443,7 @@ async function talkItThrough(){
     swap.onclick=()=>{ [st.speaker,st.other]=[st.other,st.speaker]; st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; st.rounds++; draw(); };
     reset.onclick=()=>{ st.left=st.secs; st.run=false; clearInterval(st.t); startB.textContent='Start'; draw(); };
     const len=el('div',{className:'seg wide'}); for(const m of [1,2,3]){ const b=el('button',{type:'button',textContent:`${m} min turns`,className:m===2?'on':''}); b.onclick=()=>{ st.secs=st.left=m*60; len.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); draw(); }; len.append(b); }
-    const words=el('a',{href:'words.html',textContent:'🎙️ Or let Words listen and track who talks, then Save to Us',className:'hint',style:'display:block;margin-top:6px'});
+    const words=el('a',{href:'words.html',textContent:'🎙️ Or let Taking Turns listen and show how you share the talk, then Save to Us',className:'hint',style:'display:block;margin-top:6px'});
     const done=el('button',{className:'ghost',textContent:'Done',style:'width:100%;margin-top:8px'}); done.onclick=()=>{ clearInterval(st.t); close(); };
     draw(); sh.append(topic,len,who,clock,el('div',{className:'btns'},reset,swap,startB),tips,words,done);
   });

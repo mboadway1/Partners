@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#FFE9F1">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<title>Words · Partners</title>
+<title>Taking Turns · Partners</title>
 <script src="theme.js"></script>
 <script>try{ if(window.top!==window) document.documentElement.classList.add('framed'); }catch(e){}</script>
 <script>try{ var inTV=window.top!==window && window.top.document.documentElement.classList.contains('realtv'); if(inTV || (window.top===window && /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV/i.test(navigator.userAgent))) document.documentElement.classList.add('tv'); }catch(e){}</script>
@@ -119,9 +119,9 @@ details summary{cursor:pointer;font-weight:700}
 </head>
 <body>
 <div class="wrap">
-  <div class="warn update" id="update" hidden><span>A newer version of Words is on the TV.</span><button class="btn" id="reload" title="Reload to get the newest version of Words">Reload</button></div>
+  <div class="warn update" id="update" hidden><span>A newer version of Taking Turns is on the TV.</span><button class="btn" id="reload" title="Reload to get the newest version of Taking Turns">Reload</button></div>
   <header>
-    <div><a class="back" href="plan.html#us" title="Back to Us">‹ Us</a><h1 id="wordmark">Words</h1></div>
+    <div><a class="back" href="plan.html#us" title="Back to Us">‹ Us</a><h1 id="wordmark">Taking Turns</h1></div>
     <div class="pills">
       <span class="pill" id="micPill" title="Microphone status"><span class="dot"></span><span id="micText">Mic off</span></span>
       <span class="pill" id="tvPill" title="TV connection status"><span class="dot"></span><span id="tvText">No TV</span></span>
@@ -151,26 +151,26 @@ details summary{cursor:pointer;font-weight:700}
     <div class="alert" id="alertBox" hidden></div>
     <div class="row" id="timerBtns" hidden>
       <button class="btn" id="restartTurn" title="Restart the current speaker’s clock">↺ Restart turn</button>
-      <button class="btn strong" id="floorBack" title="Give the turn back to the person who was interrupted, with their remaining time" hidden></button>
+      <button class="btn strong" id="floorBack" title="Give the turn back to the person who was talked over, with their remaining time" hidden></button>
     </div>
-    <p class="hint" id="timerHint">Give everyone a set time to speak. Switching speakers before their time is up counts as an interruption.</p>
+    <p class="hint" id="timerHint">Give everyone a set time to speak. Switching speakers before their time is up counts as jumping in.</p>
   </section>
 
   <section class="card">
-    <div class="row"><h2>Who's talking?</h2><button class="btn" id="editBtn" title="Change the speakers’ names">Edit names</button></div>
-    <p class="hint">Tap a person when they start talking<span class="kbd"> (or press 1–6)</span>. Tapping while someone is mid-sentence, or still has time on the clock, counts as an interruption.</p>
+    <div class="row"><h2>Whose turn?</h2><button class="btn" id="editBtn" title="Change the speakers’ names">Edit names</button></div>
+    <p class="hint">Tap a person when they start talking<span class="kbd"> (or press 1–6)</span>. Tapping while someone is mid-sentence, or still has time on the clock, counts as jumping in.</p>
     <div class="pad" id="pad"></div>
     <div class="names" id="names" hidden></div>
     <div class="row">
       <div class="row" style="gap:8px"><button class="btn" id="add" title="Add another speaker (up to 6)">+ Person</button><button class="btn" id="remove" title="Remove the last speaker">− Person</button></div>
-      <button class="btn" id="undo" title="Undo the most recent interruption" disabled>Undo interruption</button>
+      <button class="btn" id="undo" title="The last jump-in was fine, so don’t count it" disabled>That was fine</button>
     </div>
-    <div class="totals"><span>Total words</span><span id="total">0 words · 0 interruptions</span></div>
+    <div class="totals"><span>Share of the talk</span><span id="total">Nobody has jumped in</span></div>
   </section>
 
   <section class="card">
     <h2>TV</h2>
-    <p class="hint" id="tvHint">Open Partners on the Fire TV. It shows the scoreboard as soon as you start listening. Uses the same TV code as your photos.</p>
+    <p class="hint" id="tvHint">Open Partners on the Fire TV. It shows the balance as soon as you start listening. Uses the same TV code as your photos.</p>
     <div class="pair">
       <input id="code" title="The 4-letter code shown on Partners on your Fire TV" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" aria-label="TV code">
       <button class="btn" id="connect" title="Connect to Partners on your Fire TV">Connect</button>
@@ -184,9 +184,9 @@ details summary{cursor:pointer;font-weight:700}
       <option value="en-US">English (US)</option><option value="en-GB">English (UK)</option>
       <option value="es-ES">Español</option><option value="fr-FR">Français</option><option value="de-DE">Deutsch</option>
     </select>
-    <label class="hint" for="win">Count a switch as an interruption if it comes within</label>
-    <select id="win" title="How close to someone’s last words a switch counts as an interruption"><option value="0">mid-sentence only</option><option value="500">0.5 s of speech</option><option value="1000" selected>1 s of speech</option><option value="2000">2 s of speech</option></select>
-    <button class="btn" id="reset" title="Clear all counts and the transcript">Reset counts</button>
+    <label class="hint" for="win">Count a switch as jumping in if it comes within</label>
+    <select id="win" title="How close to someone’s last words a switch counts as jumping in"><option value="0">mid-sentence only</option><option value="500">0.5 s of speech</option><option value="1000" selected>1 s of speech</option><option value="2000">2 s of speech</option></select>
+    <button class="btn" id="reset" title="Clear the balance and the transcript">Start fresh</button>
   </details>
     </div>
   <section class="card">
@@ -276,14 +276,14 @@ function render(){
     const b=document.createElement('button');b.className=i===active?'active':'';
     b.style.setProperty('--c',`var(${COLORS[i]})`);b.setAttribute('aria-pressed',i===active);
     const pct=total?Math.round(s.words/total*100):0;
-    b.innerHTML=`<span class="nm"><span class="sw"></span><span class="label"></span><span class="tm"></span></span><span class="ct">${s.words}</span>
-      <span class="st">${pct}% · ${s.turns} turns · <b>${s.interrupts}</b> int${timerOn()?` (${s.timerCuts} on clock)`:''} · cut ${s.interrupted}×</span>`;
+    b.innerHTML=`<span class="nm"><span class="sw"></span><span class="label"></span><span class="tm"></span></span><span class="ct">${pct}%</span>
+      <span class="st">${s.turns} turns · jumped in <b>${s.interrupts}</b>×${timerOn()?` (${s.timerCuts} on the clock)`:''} · talked over ${s.interrupted}×</span>`;
     b.querySelector('.label').textContent=s.name;
     b.title=i===active?`${s.name} is talking`:`Tap when ${s.name} starts talking`;
     b.onclick=()=>setActive(i);
     pad.appendChild(b);
   });
-  $('total').textContent=`${total} words · ${ints} interruption${ints===1?'':'s'}`;
+  $('total').textContent= ints ? `Someone jumped in ${ints}×` : 'Nobody has jumped in';
   $('undo').disabled=!cutLog.length;
   $('add').disabled=speakers.length>=6;$('remove').disabled=speakers.length<=1;
   renderTimer();
@@ -306,7 +306,7 @@ function renderTranscript(){
     const d=document.createElement('div');d.className='line '+cls;d.style.setProperty('--c',`var(${COLORS[spk]})`);
     const w=document.createElement('span');w.className='who-l';w.textContent=(speakers[spk]||{name:'?'}).name;
     const p=document.createElement('p');
-    if(cut!=null&&speakers[cut]){const c=document.createElement('span');c.className='cut';c.textContent='cut off '+speakers[cut].name;p.appendChild(c)}
+    if(cut!=null&&speakers[cut]){const c=document.createElement('span');c.className='cut';c.textContent='jumped in on '+speakers[cut].name;p.appendChild(c)}
     p.appendChild(document.createTextNode(text));
     if(n!=null){const s=document.createElement('span');s.className='n';s.textContent='+'+n;p.appendChild(s)}
     d.append(w,p);box.appendChild(d);
@@ -327,7 +327,7 @@ function setActive(i,opts={}){
   const clock=onClock(), left=timeLeft();
   if(!opts.free&&listening&&(mid||recent||clock)){
     speakers[i].interrupts++;speakers[prev].interrupted++;
-    if(clock){ speakers[i].timerCuts++; floor={victim:prev,by:i,left}; say(`${speakers[i].name} interrupted ${speakers[prev].name} with ${fmt(left)} left.`); }
+    if(clock){ speakers[i].timerCuts++; floor={victim:prev,by:i,left}; say(`${speakers[i].name} jumped in on ${speakers[prev].name} with ${fmt(left)} left.`); }
     pendingCut={by:i,victim:prev};cutLog.push({by:i,victim:prev,line:null,timer:clock});
   }else{ pendingCut=null; if(!opts.free) floor=null; }
   active=i; startTurn(opts.left); render();
@@ -402,8 +402,8 @@ $('remove').onclick=()=>{
 $('undo').onclick=()=>{const c=cutLog.pop();if(!c)return;speakers[c.by].interrupts--;speakers[c.victim].interrupted--;if(c.timer)speakers[c.by].timerCuts--;if(c.line)delete c.line.cut;pendingCut=null;render()};
 $('reset').onclick=()=>{
   const b=$('reset');
-  if(!b.dataset.confirm){b.dataset.confirm=1;b.textContent='Tap again to clear';setTimeout(()=>{delete b.dataset.confirm;b.textContent='Reset counts'},3000);return}
-  delete b.dataset.confirm;b.textContent='Reset counts';
+  if(!b.dataset.confirm){b.dataset.confirm=1;b.textContent='Tap again to clear';setTimeout(()=>{delete b.dataset.confirm;b.textContent='Start fresh'},3000);return}
+  delete b.dataset.confirm;b.textContent='Start fresh';
   speakers.forEach(s=>Object.assign(s,{words:0,turns:0,interrupts:0,interrupted:0,timerCuts:0}));lines=[];cutLog=[];pendingCut=null;floor=null;alertMsg=null;interim={text:'',spk:active};startTurn();render();
 };
 // Save this conversation's balance (no transcript) to the Us tab, shared with your partner.
@@ -420,9 +420,9 @@ $('toUs').onclick=async()=>{
 };
 function exportText(){
   const total=speakers.reduce((a,s)=>a+s.words,0);
-  const head=speakers.map(s=>`${s.name}: ${s.words} words (${total?Math.round(s.words/total*100):0}%), ${s.turns} turns, ${s.interrupts} interruptions${T.len?` (${s.timerCuts} while someone still had time)`:''}, cut off ${s.interrupted} times`).join('\n');
+  const head=speakers.map(s=>`${s.name}: ${s.words} words (${total?Math.round(s.words/total*100):0}%), ${s.turns} turns, jumped in ${s.interrupts}×${T.len?` (${s.timerCuts} while someone still had time)`:''}, cut off ${s.interrupted} times`).join('\n');
   const tline=T.len?`Turn timer: ${fmt(T.len*1000)} per turn\n`:'';
-  return `Words — ${new Date().toLocaleString()}\n${tline}\n${head}\nTotal: ${total} words\n\n`+lines.map(l=>`${speakers[l.spk].name}${l.cut!=null&&speakers[l.cut]?` [cut off ${speakers[l.cut].name}]`:''}: ${l.text}`).join('\n\n');
+  return `Taking Turns — ${new Date().toLocaleString()}\n${tline}\n${head}\nTotal: ${total} words\n\n`+lines.map(l=>`${speakers[l.spk].name}${l.cut!=null&&speakers[l.cut]?` [jumped in on ${speakers[l.cut].name}]`:''}: ${l.text}`).join('\n\n');
 }
 $('save').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([exportText()],{type:'text/plain'}));a.download=`words-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.txt`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.metaKey||e.ctrlKey||e.altKey)return;const n=parseInt(e.key,10);if(n>=1&&n<=6){setActive(n-1);e.preventDefault()}});
@@ -454,7 +454,7 @@ function connectTv(code){
   const go=()=>{
     setTv('Connecting…',false);
     conn=peer.connect(PREFIX+code,{reliable:true});
-    conn.on('open',()=>{setTv('TV '+code,true);$('tvHint').textContent='Connected. The TV shows the scoreboard while you listen, and ◀ ▶ on the Fire remote switch speakers.';conn.send({type:'hello',v:WORDS_VERSION});conn.send(statePayload())});
+    conn.on('open',()=>{setTv('TV '+code,true);$('tvHint').textContent='Connected. The TV shows the balance while you listen, and ◀ ▶ on the Fire remote switch speakers.';conn.send({type:'hello',v:WORDS_VERSION});conn.send(statePayload())});
     conn.on('data',m=>{
       if(!m||typeof m!=='object')return;
       if(m.type==='hello'){$('update').hidden=!m.v||m.v===WORDS_VERSION;return}
@@ -484,7 +484,7 @@ const startCode=(q||store.get('partners.tv')||'').toUpperCase();
 if(startCode){$('code').value=startCode;window.addEventListener('load',()=>connectTv(startCode))}
 if(q)history.replaceState(null,'',location.pathname);
 
-document.getElementById('wordmark').innerHTML=butterfly({size:30,flutter:true})+'Words';
+document.getElementById('wordmark').innerHTML=butterfly({size:30,flutter:true})+'Taking Turns';
 // Every button and link gets a hover tip; ones without a specific tip use their label.
 function addTips(root){ root.querySelectorAll('button:not([title]),a:not([title])').forEach(b=>{ const t=(b.getAttribute('aria-label')||b.textContent||'').replace(/\s+/g,' ').trim(); if(t) b.title=t; }); }
 addTips(document);
