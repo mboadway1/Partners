@@ -1472,11 +1472,30 @@ function tvConnect(){
 async function tvShareExtras(){
   if(!tv.conn || !tv.conn.open) return;
   try{ tv.conn.send({t:'theme', name:peggyThemeName()}); }catch(_){}
+  tvSendDrive();
   if(!acct.session) return;
   try{ let tok=localStorage.getItem('peggy.tvtoken'); if(!tok){ tok=(await peggyApi('tv-token',{method:'POST'})).session; localStorage.setItem('peggy.tvtoken',tok); }
        tv.conn.send({t:'plan', session:tok, relay:acct.relay}); }catch(_){}
 }
 document.addEventListener('peggytheme',()=>{ tvShareExtras(); const w=$('#wordmark .bfly'); if(w) $('#wordmark').innerHTML=butterfly({size:34,flutter:true})+'<span class="wm">Peggy<span class="kiss" aria-hidden="true">😘</span></span>'; renderAll(); });
+// Favorites folder slideshow (replaces the old Photos app): the TV plays a shared Google Drive folder.
+// The link and key stay on this phone and the TV; they are never part of Peggy's public code.
+function tvSendDrive(){ const f=localStorage.getItem('peggy.driveFolder')||'', k=localStorage.getItem('peggy.driveKey')||'';
+  if(f && k && tv.conn && tv.conn.open) try{ tv.conn.send({t:'drive', folder:f, key:k}); }catch(_){} }
+function tvDriveSetup(){ sheet((sh,close)=>{
+  sh.append(el('h3',{textContent:'Favorites folder slideshow'}),
+    el('p',{textContent:'The TV plays every photo in a shared Google Drive folder, with the place, date and a clock. To add a photo, share it from Google Photos into the folder.'}));
+  const f=el('input',{placeholder:'Folder link (drive.google.com/drive/folders/…)',value:localStorage.getItem('peggy.driveFolder')||'',autocapitalize:'off',autocorrect:'off',spellcheck:false,style:'width:100%;margin:6px 0'});
+  const k=el('input',{placeholder:'Google API key (AIza…)',value:localStorage.getItem('peggy.driveKey')||'',autocapitalize:'off',autocorrect:'off',spellcheck:false,style:'width:100%;margin:6px 0'});
+  const save=el('button',{className:'primary',textContent:'Send to TV',style:'width:100%;margin-top:8px'});
+  save.onclick=async()=>{ const fv=f.value.trim(), kv=k.value.trim();
+    if(!/folders\/[\w-]{10,}|^[\w-]{20,}$/.test(fv)) return toast('Paste the folder’s share link from Google Drive');
+    if(!/^AIza[\w-]{30,}$/.test(kv)) return toast('That doesn’t look like a Google API key (it starts with AIza)');
+    localStorage.setItem('peggy.driveFolder',fv); localStorage.setItem('peggy.driveKey',kv); close();
+    try{ await tvConnect(); tvSendDrive(); toast('Sent ✓ The TV starts the slideshow now'); }catch(e){ toast('Saved. It goes to the TV next time you connect.',5000); } };
+  const x=el('button',{className:'ghost',textContent:'Cancel',style:'width:100%'}); x.onclick=()=>close();
+  sh.append(f,k,save,x);
+}); }
 function tvForget(){ try{ tv.conn&&tv.conn.close(); }catch{} try{ tv.peer&&tv.peer.destroy(); }catch{} tv.conn=null; tv.peer=null; tv.code=''; localStorage.removeItem('peggy.tv'); tvSetState('off'); }
 function tvSend(msg, timeout=60000){ return new Promise((res,rej)=>{ const t=setTimeout(()=>{ tv.waits.delete(msg.i); rej(new Error('The TV stopped responding')); },timeout);
   tv.waits.set(msg.i,{res:()=>{clearTimeout(t);res();}, rej:e=>{clearTimeout(t);rej(e);}}); tv.conn.send(msg); }); }
@@ -1496,6 +1515,7 @@ $('#btnTv').onclick=()=>sheet((sh,close)=>{
     const st=el('div',{className:'stack'});
     if(tv.state!=='on'){ const c=el('button',{className:'primary',textContent:'Connect now'}); c.onclick=()=>{ close(); tvConnect().then(()=>toast('Connected ✓')).catch(e=>toast(e.message,6000)); }; st.append(c); }
     else { const r=el('button',{textContent:'Slideshow remote'}); r.onclick=()=>{ close(); tvRemote(); }; st.append(r); }
+    const dv=el('button',{textContent:'🖼 Favorites folder slideshow'}); dv.onclick=()=>{ close(); tvDriveSetup(); }; st.append(dv);
     const f=el('button',{className:'danger',textContent:'Forget this TV'}); f.onclick=()=>{ tvForget(); close(); toast('TV forgotten'); };
     const x=el('button',{className:'ghost',textContent:'Close'}); x.onclick=()=>close();
     st.append(f,x); sh.append(st);

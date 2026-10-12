@@ -72,6 +72,11 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #show .slot canvas{max-width:100%;max-height:100%}
 #show .slot.motion canvas{animation:kb var(--dur,8s) linear forwards}
 @keyframes kb{from{transform:scale(1)}to{transform:scale(1.07)}}
+#show .slot img{max-width:100%;max-height:100%;object-fit:contain}
+#show .slot.motion img{animation:kb var(--dur,8s) linear forwards}
+#dCap,#dClock{position:absolute;bottom:3vh;font-size:1.6vw;color:#fff;text-shadow:0 .1vw .5vw #000,0 0 1vw #000;z-index:3;line-height:1.3}
+#dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
+#dClock{right:3vw;font-variant-numeric:tabular-nums}
 #showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
 #showInfo{position:absolute;right:3vw;bottom:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
 #showInfo.on{opacity:1}
@@ -199,6 +204,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <div class="slot" id="slotA"></div><div class="slot" id="slotB"></div>
   <div id="showMsg" class="hidden"></div>
   <div id="showInfo"></div>
+  <div id="dCap" class="hidden"></div><div id="dClock" class="hidden"></div>
 </div>
 
 <div id="words" class="layer hidden">
@@ -243,6 +249,8 @@ const settings = {
   get motion(){ return store.get('peggy.tv.motion','1')==='1'; }, set motion(v){ store.set('peggy.tv.motion', v?'1':'0'); },
   // Screen fit: shrinks Peggy so TVs that trim the picture edges (overscan) show all of it.
   // The Fire TV app is already sized right (100%); in the TV's web browser start at 90%.
+  get driveFolder(){ return store.get('peggy.tv.driveFolder',''); }, get driveKey(){ return store.get('peggy.tv.driveKey',''); },
+  get driveStart(){ return store.get('peggy.tv.driveStart','1')==='1'; }, set driveStart(v){ store.set('peggy.tv.driveStart', v?'1':'0'); },
   get fit(){ return +store.get('peggy.tv.fit', /; wv\)/.test(navigator.userAgent) ? 100 : 90); }, set fit(v){ store.set('peggy.tv.fit', v); applyFit(); },
 };
 function applyFit(){ const f=settings.fit; document.body.style.transform = f<100 ? `scale(${f/100})` : ''; }
@@ -366,6 +374,7 @@ function renderHome(){
     for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
       add(a.name,()=> view===a.id ? albumOptions(a) : setView(a.id), view===a.id?'on':'', photos.filter(p=>p.albums.includes(a.id)).length);
   }
+  if(driveReady()) add('🖼 Favorites folder',()=>startDrive(),photos.length?'':'primary');
   add('📅 Today',()=>openToday());
   add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
@@ -454,20 +463,21 @@ async function renderFor(item, max){
 
 /* ================= slideshow ================= */
 let ss=null;
-function startSlideshow(items, start, live){
+function startSlideshow(items, start, live, keepOrder){
   if(!items.length && !live) return;
   while(scopes.length>1 && topScope().root!==$('#show')) popScope();
   if(ss) stopSlideshow(true);
   const L=$('#show'); L.classList.remove('hidden');
   let order=items.map((_,i)=>i);
-  if(settings.shuffle){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } order=[start, ...order.filter(i=>i!==start)]; start=0; }
+  if(settings.shuffle && !keepOrder){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } order=[start, ...order.filter(i=>i!==start)]; start=0; }
   else { order=[...order.slice(start), ...order.slice(0,start)]; start=0; }
   ss={items, order, pos:-1, paused:false, timer:null, slot:0, tok:0, live:!!live};
   pushScope(L,{ onkey:slideKey, onclose:()=>stopSlideshow() });
+  awake(true);
   ssGo(1);
 }
 function stopSlideshow(silent){
-  if(!ss) return; clearTimeout(ss.timer); ss=null;
+  if(!ss) return; clearTimeout(ss.timer); ss=null; awake(false); driveStop();
   const L=$('#show'); L.classList.add('hidden'); for(const s of ['#slotA','#slotB']){ $(s).replaceChildren(); $(s).classList.remove('on'); }
   $('#showMsg').classList.add('hidden');
   if(!silent) renderHome();
@@ -477,7 +487,7 @@ async function ssGo(step){
   const n=ss.order.length; if(!n){ return; }
   ss.pos=(ss.pos+step+n)%n;
   const t=++ss.tok, item=ss.items[ss.order[ss.pos]], src=item.p||item;
-  let c; try{ c=await renderFor(src, 1920); }catch(e){ c=null; }
+  let c; try{ c = src.drive ? await driveImg(src.drive) : await renderFor(src, 1920); }catch(e){ c=null; }
   if(!ss || t!==ss.tok) return;
   if(c){
     const next=ss.slot?$('#slotA'):$('#slotB'), prev=ss.slot?$('#slotB'):$('#slotA'); ss.slot^=1;
@@ -486,7 +496,7 @@ async function ssGo(step){
     next.replaceChildren(c); void next.offsetWidth; next.classList.add('on'); prev.classList.remove('on');
     setTimeout(()=>{ if(!prev.classList.contains('on')) prev.replaceChildren(); },1400);
   }
-  ssInfo();
+  ssInfo(); if(src.drive) driveShown(src.drive); else $('#dCap').classList.add('hidden');
   if(!ss.paused) ss.timer=setTimeout(()=>ssGo(1), settings.interval*1000);
 }
 function ssMsg(t,ms){ const m=$('#showMsg'); m.textContent=t; m.classList.remove('hidden'); clearTimeout(m._t); if(ms) m._t=setTimeout(()=>m.classList.add('hidden'),ms); }
@@ -547,6 +557,100 @@ window.peggyBack=()=>{ if(te && te.reframe){ te.reframe=false; edDraw(); return 
   if(vw && topScope().root===$('#viewer') && !$('#vBar').classList.contains('hidden')){ closeBar(); return true; }
   return _goBack(); };
 
+/* ================= Favorites folder (Google Drive) slideshow =================
+   Merged from the old "Photos" Fire TV app. Shows every photo in a shared Google Drive folder:
+   whole photo (black bars, no cropping), place name and date bottom-left, clock bottom-right,
+   each photo once in random order before any repeats (remembered across restarts),
+   re-checks the folder every 30 minutes. The folder link and API key come from the phone
+   and are kept only on this TV, never in Peggy's public code. */
+const DRIVE_API='https://www.googleapis.com/drive/v3/';
+let drive={items:[], timer:null, clock:null, lastErr:''};
+const driveReady=()=>!!(driveFolderId(settings.driveFolder) && settings.driveKey);
+function driveFolderId(link){ link=(link||'').trim(); let m=link.match(/\/folders\/([\w-]{10,})/)||link.match(/[?&]id=([\w-]{10,})/); return m?m[1]:(/^[\w-]{10,}$/.test(link)?link:''); }
+async function driveList(){
+  const q=`'${driveFolderId(settings.driveFolder)}' in parents and trashed = false`;
+  const fields='nextPageToken,files(id,mimeType,thumbnailLink,imageMediaMetadata(time,location))';
+  const out=[]; let page='';
+  do{
+    const u=`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${encodeURIComponent(page)}`:'');
+    const r=await fetch(u); const j=await r.json().catch(()=>({}));
+    if(!r.ok){ const msg=((j.error&&j.error.message)||'').toLowerCase();
+      throw new Error(msg.includes('api key not valid')?'The API key isn’t valid. Check it on your phone.'
+        : msg.includes('has not been used')||msg.includes('disabled')?'Turn on the Google Drive API for this key in Google Cloud.'
+        : r.status===404?'Peggy can’t see the folder. Share it as “Anyone with the link”.'
+        : msg.includes('referer')||msg.includes('blocked')?'This API key is restricted. Allow mboadway1.github.io or remove the restriction.'
+        : `Google Drive said: ${j.error&&j.error.message||r.status}`); }
+    for(const f of (j.files||[])){
+      if(!(f.mimeType||'').startsWith('image/') || !f.thumbnailLink) continue;
+      const m=f.imageMediaMetadata||{}, loc=m.location;
+      out.push({id:f.id, thumb:f.thumbnailLink.replace(/=s\d+$/,''), time:m.time||'', lat:loc&&loc.latitude, lon:loc&&loc.longitude});
+    }
+    page=j.nextPageToken||'';
+  }while(page);
+  return out;
+}
+// Each photo once, in random order, before any repeats. Survives restarts.
+function driveOrder(items){
+  let seen=[]; try{ seen=JSON.parse(store.get('peggy.tv.driveSeen','[]')); }catch(_){}
+  const ids=new Set(items.map(x=>x.id)); seen=seen.filter(id=>ids.has(id));
+  if(seen.length>=items.length) seen=[];
+  store.set('peggy.tv.driveSeen', JSON.stringify(seen));
+  const shuf=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const s=new Set(seen); return [...shuf(items.filter(x=>!s.has(x.id))), ...shuf(items.filter(x=>s.has(x.id)))];
+}
+function driveImg(d){ return new Promise((res,rej)=>{ const w=Math.round(Math.max(screen.width*(devicePixelRatio||1),1280));
+  const i=new Image(); i.decoding='async'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('photo')); i.src=`${d.thumb}=s${Math.min(2560,w)}`; }); }
+function driveDate(t){ if(!t||t.length<10) return ''; const [y,m,dd]=t.slice(0,10).split(/[:-]/).map(Number); const dt=new Date(y,m-1,dd);
+  return isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
+function drivePlaces(){ try{ return JSON.parse(store.get('peggy.tv.places','{}')); }catch(_){ return {}; } }
+let geoLast=0;
+async function drivePlace(d){
+  if(d.lat==null||d.lon==null||(!d.lat&&!d.lon)) return '';
+  const key=`${(+d.lat).toFixed(3)},${(+d.lon).toFixed(3)}`, cache=drivePlaces(); if(key in cache) return cache[key];
+  const wait=1100-(Date.now()-geoLast); if(wait>0) await sleep(wait); geoLast=Date.now();   // OpenStreetMap: one lookup per second
+  try{ const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&addressdetails=1&accept-language=en&lat=${(+d.lat).toFixed(5)}&lon=${(+d.lon).toFixed(5)}`);
+    const j=await r.json(), a=j.address||{}; const cat=j.category||'';
+    const poi=['tourism','leisure','natural','historic','boundary','waterway'].includes(cat)?(j.name||''):'';
+    const loc=a.city||a.town||a.village||a.hamlet||a.municipality||a.suburb||a.county||'';
+    const region=['us','ca','au'].includes(a.country_code)?(a.state||''):(a.country||'');
+    const name=[...new Set([poi,loc,region].filter(Boolean))].join(', ');
+    const c=drivePlaces(); c[key]=name; store.set('peggy.tv.places', JSON.stringify(c)); return name;
+  }catch(_){ return ''; }
+}
+async function driveShown(d){
+  try{ const seen=JSON.parse(store.get('peggy.tv.driveSeen','[]')); if(!seen.includes(d.id)){ seen.push(d.id); store.set('peggy.tv.driveSeen', JSON.stringify(seen)); } }catch(_){}
+  const cap=$('#dCap'), date=driveDate(d.time); cap.replaceChildren(); cap.classList.toggle('hidden', !date && d.lat==null);
+  if(date) cap.append(el('span',{textContent:date}));
+  const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
+}
+function tickClock(){ $('#dClock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+async function startDrive(quiet){
+  if(!driveReady()){ if(!quiet) await menu('Favorites folder',[['OK',true]],'Set it up from your phone: open Peggy, tap 📺, then “Favorites folder slideshow”, and paste the folder link and API key.'); return; }
+  if(!quiet) toast('Checking your Favorites folder…',2500);
+  let items; try{ items=await driveList(); drive.lastErr=''; }catch(e){ drive.lastErr=e.message; if(!quiet) toast(e.message,7000); return; }
+  if(!items.length){ if(!quiet) toast('The Favorites folder has no photos yet.',5000); return; }
+  drive.items=items;
+  startSlideshow(driveOrder(items).map(d=>({drive:d})), 0, false, true);
+  if(ss) ss.driveMode=true;
+  $('#dClock').classList.remove('hidden'); tickClock(); drive.clock=setInterval(tickClock,15000);
+  drive.timer=setInterval(driveRefresh, 30*60*1000);
+}
+// Every 30 minutes: pick up new photos, drop removed ones, refresh Google's photo links.
+async function driveRefresh(){
+  if(!ss || !ss.driveMode) return;
+  let items; try{ items=await driveList(); }catch(_){ return; }
+  const byId=new Map(items.map(x=>[x.id,x])), curId=ss.items[ss.order[ss.pos]]?.drive?.id;
+  const keep=ss.order.map(i=>ss.items[i].drive).filter(d=>byId.has(d.id)).map(d=>byId.get(d.id));
+  const have=new Set(keep.map(d=>d.id)), fresh=items.filter(x=>!have.has(x.id));
+  const list=[...keep]; let pos=Math.max(0,keep.findIndex(d=>d.id===curId)); list.splice(pos+1,0,...fresh);
+  ss.items=list.map(d=>({drive:d})); ss.order=ss.items.map((_,i)=>i); ss.pos=pos; drive.items=items;
+}
+function driveStop(){ clearInterval(drive.timer); clearInterval(drive.clock); drive.timer=drive.clock=null; $('#dClock').classList.add('hidden'); $('#dCap').classList.add('hidden'); }
+// Keep the TV from going to its screensaver while a slideshow plays.
+let wake=null;
+async function awake(on){ try{ if(on){ if(!wake && navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); } else if(wake){ await wake.release(); wake=null; } }catch(_){ wake=null; } }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && ss){ wake=null; awake(true); } });
+
 /* ================= settings / connect ================= */
 async function openSettings(){
   await dialog(async(d,close)=>{
@@ -555,6 +659,8 @@ async function openSettings(){
     d.append(row('Slideshow speed',()=>settings.interval+' seconds', x=>{ const i=INTERVALS.indexOf(settings.interval); settings.interval=INTERVALS[clamp((i<0?1:i)+x,0,INTERVALS.length-1)]; }));
     d.append(row('Order',()=>settings.shuffle?'Shuffle':'Newest first', ()=>{ settings.shuffle=!settings.shuffle; }));
     d.append(row('Gentle zoom',()=>settings.motion?'On':'Off', ()=>{ settings.motion=!settings.motion; }));
+    d.append(row('Favorites folder',()=>driveReady()?(drive.lastErr?'Problem: '+drive.lastErr:'Set up ✓'):'Set up from phone', ()=>{}));
+    if(driveReady()) d.append(row('Open with Favorites slideshow',()=>settings.driveStart?'On':'Off', ()=>{ settings.driveStart=!settings.driveStart; }));
     d.append(row('Screen fit',()=>settings.fit+'%', x=>{ settings.fit=clamp(settings.fit+x*2,70,100); }));
     let used=''; try{ const e=await navigator.storage.estimate(); used=`${photos.length} photos · ${(e.usage/1048576).toFixed(0)} MB on this TV`; }catch(_){ used=`${photos.length} photos on this TV`; }
     d.append(el('p',{textContent:used}));
@@ -607,6 +713,9 @@ async function onData(c, m){
   if(!m || typeof m!=='object') return;
   try{
     if(m.t==='theme'){ setPeggyTheme(m.name); paintButterflies(); return; }
+    if(m.t==='drive'){ const changed=m.folder!==settings.driveFolder||m.key!==settings.driveKey;
+      store.set('peggy.tv.driveFolder', m.folder||''); store.set('peggy.tv.driveKey', m.key||''); renderHome();
+      if(changed && m.folder && m.key){ toast('Favorites folder connected ✓',3000); if(!ss) startDrive(); } return; }
     if(m.t==='plan' && m.session){ store.set('peggy.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); return; }
     if(m.t==='show-start'){
       startSlideshow([],0,true); ssMsg('Receiving photos from your phone…');
@@ -811,6 +920,7 @@ function renderTodayTasks(items, members){
   pushScope($('#home'));
   renderHome();
   startPeer();
+  if(driveReady() && settings.driveStart) startDrive(true);
 })();
 </script>
 </body>
