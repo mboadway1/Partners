@@ -591,9 +591,10 @@ async function loadCalendar(force){
       const saved=new Map((prefs.calendars||[]).map(c=>[c.id,c]));
       calendars=(d.items||[]).filter(c=>!c.hidden).map(c=>({id:c.id,name:c.summaryOverride||c.summary,color:c.backgroundColor||'#D1386E',
         write:['owner','writer'].includes(c.accessRole),primary:!!c.primary,
-        show: saved.has(c.id) ? saved.get(c.id).show!==false : (!!c.primary || (c.selected && ['owner','writer'].includes(c.accessRole)))}));
+        // New calendars show if they're ticked in Google Calendar, including subscribed ones such as an Outlook calendar added by its link.
+        show: saved.has(c.id) ? saved.get(c.id).show!==false : (!!c.primary || !!c.selected)}));
       calendars.sort((a,b)=>(b.primary?1:0)-(a.primary?1:0)||a.name.localeCompare(b.name));
-      calLoaded=true; calErr=''; if(!prefs.calendars) savePrefs();
+      calLoaded=true; calErr=''; if(!prefs.calendars || calendars.some(c=>!saved.has(c.id))) savePrefs();   // new calendars also reach the TV
     }
     await loadEvents();
   }catch(e){ const m=String(e.message||''); calRaw=m;
