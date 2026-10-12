@@ -478,7 +478,7 @@ function applyLocal(doc, op){
 async function change(k, ops){
   if(k==='tasks' && !gApplying){ const add={};   // deleting a task that's also in Google Tasks: remember to delete it there
     ops.forEach(o=>{ if(o.op!=='delete'||o.kind) return; const it=store.tasks.items.find(x=>x.id===o.id); if(!it||!it.gtid) return;
-      const L=store.tasks.lists.find(l=>l.id===(it.list||'')&&l.gsync); if(L) (add[L.id]=add[L.id]||[]).push(it.gtid); });
+      const L=store.tasks.lists.find(l=>l.id===(it.list||'')&&gOn(l)); if(L) (add[L.id]=add[L.id]||[]).push(it.gtid); });
     Object.entries(add).forEach(([id,g])=>{ const L=store.tasks.lists.find(l=>l.id===id); if(!ops.some(o=>o.kind==='list'&&o.op==='delete'&&o.id===id)) ops.push({op:'upsert',kind:'list',item:{...L,gdel:[...(L.gdel||[]),...g]}}); }); }
   if(k==='tasks' && !gApplying) ops=ops.map(o=>o.item&&!o.kind?{...o,item:{...o.item,gdirty:true}}:o);
   ops=ops.map(o=>o.item?{...o,item:{...o.item,updatedAt:Date.now(),updatedBy:me().email}}:o);
@@ -622,7 +622,7 @@ function tGoogleBits(){
 function tListCard(L){
   const sort=L.sort||'my', card=el('section',{className:'gt-card'}); card.dataset.list=L.id;
   const menu=el('button',{className:'gt-dots',textContent:'⋮',title:'List options'}); menu.onclick=e=>{ e.stopPropagation(); tListMenu(L,menu); };
-  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.private?[el('span',{className:'gt-priv',textContent:'🔒 Only you',title:'Only you can see this list'})]:[]),...(L.gsync?[el('span',{className:'gt-priv',textContent:'⇄ Google',title:'Kept in step with Google Tasks'})]:[]),menu));
+  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.private?[el('span',{className:'gt-priv',textContent:'🔒 Only you',title:'Only you can see this list'})]:[]),...(gOn(L)?[el('span',{className:'gt-priv',textContent:'⇄ Google',title:'Kept in step with Google Tasks'})]:[]),menu));
   const add=el('button',{className:'gt-add',innerHTML:'<span class="gt-plus">＋</span>Add a task'}); add.onclick=()=>tInlineAdd(card,L.id,add); card.append(add);
   const all=tItems().filter(t=>(t.list||'')===L.id && tFilter(t));
   const open=all.filter(t=>!t.done && !t.parent), kids=id=>all.filter(t=>!t.done && t.parent===id).sort(tSortFn('my'));
@@ -740,7 +740,7 @@ async function tListMenu(L,anchor){
     const btn=(t,v,cls)=>{ const b=el('button',{className:cls||'',textContent:t,style:'width:100%;margin-top:8px'}); b.onclick=()=>close(v); sh.append(b); };
     const pn=partner()?partner().name:'your partner';
     if(L.id) btn(L.private?`👥 Share this list with ${pn}`:'🔒 Stop sharing (just me)','share');
-    if(L.id && (!L.gowner||L.gowner===me().email)) btn(L.gsync?'Stop syncing with Google Tasks':'☁ Keep this list in Google Tasks too','gsync');
+    if(L.id && (!L.gowner||L.gowner===me().email)) btn(gOn(L)?'Stop syncing with Google Tasks':'☁ Keep this list in Google Tasks too','gsync');
     if(L.id) btn('Rename list','rename');
     const nd=tItems().filter(t=>(t.list||'')===L.id&&t.done).length; if(nd) btn(`Delete all completed tasks (${nd})`,'clear','danger');
     if(L.id) btn('Delete list','delete','danger');
@@ -754,14 +754,14 @@ async function tListMenu(L,anchor){
     const ops=[{op:'upsert',kind:'list',item:{...L,private:true,owner:me().email}}];
     tItems().filter(t=>(t.list||'')===L.id&&t.assignee&&t.assignee!==me().email).forEach(t=>ops.push({op:'upsert',item:{...t,assignee:''}}));
     change('tasks',ops); toast(`“${L.name}” is now just yours`); return; }
-  if(v==='gsync'){ if(L.gsync){ if(!confirm(`Stop syncing “${L.name}” with Google Tasks? Both copies stay; changes just won’t go across anymore.`)) return;
+  if(v==='gsync'){ if(gOn(L)){ if(!confirm(`Stop syncing “${L.name}” with Google Tasks? Both copies stay; changes just won’t go across anymore.`)) return;
       change('tasks',[{op:'upsert',kind:'list',item:{...L,gsync:false}}]); }
     else { change('tasks',[{op:'upsert',kind:'list',item:{...L,gsync:true,gowner:me().email}}]); toast(L.gtlid?'Syncing with Google Tasks again':`Adding “${L.name}” to Google Tasks…`); setTimeout(()=>syncGoogleTasks(true),400); }
     return; }
   if(v==='rename'){ const n=(prompt('Rename list',L.name)||'').trim(); if(n) change('tasks',[{op:'upsert',kind:'list',item:{...L,name:n}}]); return; }
   if(v==='clear'){ const ds=tItems().filter(t=>(t.list||'')===L.id&&t.done); if(confirm(`Delete ${ds.length} completed task${ds.length>1?'s':''} for both of you?`)) change('tasks',ds.map(t=>({op:'delete',id:t.id}))); return; }
   if(v==='delete'){ const ts=tItems().filter(t=>(t.list||'')===L.id);
-    if(!confirm(`Delete “${L.name}”${ts.length?` and its ${ts.length} task${ts.length>1?'s':''}`:''}? This deletes it for both of you.${L.gsync?' The list stays in Google Tasks.':''}`)) return;
+    if(!confirm(`Delete “${L.name}”${ts.length?` and its ${ts.length} task${ts.length>1?'s':''}`:''}? This deletes it for both of you.${gOn(L)?' The list stays in Google Tasks.':''}`)) return;
     tcur=''; change('tasks',[...ts.map(t=>({op:'delete',id:t.id})),{op:'delete',kind:'list',id:L.id}]); }
 }
 async function tNewList(){
@@ -934,12 +934,14 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='119';
+const PARTNERS_VER='120';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
 const gDue=d=>d?d+'T00:00:00.000Z':null;
-const gMine=()=>store.tasks.lists.filter(l=>l.gsync && (l.gowner||me().email)===me().email);
+// Lists brought in from Google before sync existed have a Google id but no on/off setting yet: they sync too.
+const gOn=l=>l.gsync===true||(l.gsync===undefined&&!!l.gtlid);
+const gMine=()=>store.tasks.lists.filter(l=>gOn(l) && (l.gowner||l.owner||l.createdBy||me().email)===me().email);
 // Can Partners change this person's Google Tasks? (Older sign-ins could only read them.)
 let gScopeChecked=false;
 let gScopeMsg='';
