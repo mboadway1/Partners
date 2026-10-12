@@ -1336,7 +1336,7 @@ function theirCheckin(d){ return usItems('checkin').find(x=>x.date===d && x.crea
 function streak(){ let n=0; for(let d=today();;d=addDays(d,-1)){ const k=ymd(d); const both=usItems('checkin').filter(x=>x.date===k).map(x=>x.createdBy); if(new Set(both).size>=2) n++; else if(k!==ymd(today())) break; if(n>400) break; } return n; }
 // Us is trimmed for now; set US_LITE=false to bring back check-ins, appreciations and the rest.
 // US_ON lists the tools shown even while trimmed: the ones for raising and understanding concerns.
-const US_LITE=true, US_ON={concern:1, kindly:1, talk:1, pause:1};
+const US_LITE=true, US_ON={concern:1};
 function renderUs(v){
   $('#chips').replaceChildren(); if(US_LITE) $('#addBtn').classList.add('hidden');
   const p=partner(), pn=(p&&p.name)||'your partner', d=ymd(today()), mine=myCheckin(d), theirs=theirCheckin(d);
@@ -1401,7 +1401,7 @@ function renderUs(v){
       const bar=el('div',{className:'talkbar'}); sp.forEach((x,i)=>{ const seg=el('span',{className:'s'+(i%2),textContent:x.pct>=12?`${x.name} ${x.pct}%`:''}); seg.style.width=Math.max(2,x.pct)+'%'; seg.title=`${x.name}: ${x.words} words (${x.pct}%)`; bar.append(seg); }); c.append(bar);
       c.append(el('div',{className:'talkst',textContent:sp.map(x=>`${x.name}: ${x.pct!=null?x.pct+'% of the talk, ':''}${x.turns} turns, jumped in ${x.interrupts}×`).join(' · ')}));
       const top=sp.slice().sort((a,b)=>b.pct-a.pct)[0];
-      if(top && top.pct>=65) c.append(el('div',{className:'hint',textContent:`${top.name} did most of the talking. Next time, try Talk it through to take even turns.`}));
+      if(top && top.pct>=65) c.append(el('div',{className:'hint',textContent:`${top.name} did most of the talking. Next time, try the turn timer in Taking Turns.`}));
       else if(sp.length>1 && sp.every(x=>x.pct>=35)) c.append(el('div',{className:'hint',textContent:'Nicely balanced. You both got to be heard. 💞'}));
       parts.push(c); }); }
   // Recent check-ins
@@ -1537,7 +1537,7 @@ async function hearConcern(c){
     send.onclick=()=>{ const h=heard.value.trim(); if(!h) return heard.focus();
       concernSave(c,{status:'heard', heard:{text:h, valid:valid.value.trim(), by:me().email, at:Date.now()}},{type:'heard',text:h}); close(); toast('Sent 👂'); };
     const x=el('button',{className:'ghost',textContent:'Not now'}); x.onclick=()=>close();
-    sh.append(why, help, hout, tips, ...field('Say back what you heard',heard), start, ...field('Show it makes sense (optional)',valid), brk, el('div',{className:'btns'},x,send));
+    sh.append(why, help, hout, tips, ...field('Say back what you heard',heard), start, ...field('Show it makes sense (optional)',valid), ...(US_ON.pause?[brk]:[]), el('div',{className:'btns'},x,send));
   });
 }
 async function clarifyConcern(c){
