@@ -295,7 +295,7 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .gt-group{font-size:13px;font-weight:800;color:var(--dim);padding:12px 18px 2px}
 .gt-group.late{color:var(--danger)}
 .gt-none{color:var(--dim);font-size:14px;padding:10px 18px 6px 54px}
-.gt-row{position:relative;display:flex;align-items:flex-start;gap:12px;padding:8px 10px 8px 16px;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.gt-row{position:relative;display:flex;align-items:flex-start;gap:12px;padding:6px 10px 6px 16px;cursor:pointer;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .gt-row:hover{background:var(--panel2)}
 .gt-row.sub{padding-left:52px}
 .gt-row.gt-dragging{opacity:.35}
@@ -310,9 +310,13 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .gt-check.sm{width:18px;height:18px} .gt-check.sm svg{width:13px;height:13px}
 .gt-check.ghost{border-style:dashed;opacity:.5}
 .gt-body{flex:1;min-width:0}
-.gt-title{font-weight:600;overflow-wrap:anywhere;line-height:1.35}
+.gt-title{font-weight:500;overflow-wrap:anywhere;line-height:1.35}
 .gt-row.done .gt-title{text-decoration:line-through;color:var(--dim)}
-.gt-notes{font-size:13px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gt-notes{font-size:13px;color:var(--dim);margin-top:1px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.gt-notes a{color:var(--accent);text-decoration:none;word-break:break-all}
+.gt-notes a:hover{text-decoration:underline}
+.gt-dlinks{display:flex;flex-direction:column;gap:4px;margin:0 0 4px 36px;font-size:14px;font-weight:700}
+.gt-dlinks a{word-break:break-all;text-decoration:none}
 .gt-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
 .gt-date,.gt-in{font-size:12px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--dim);background:var(--panel)}
 .gt-date.late{color:var(--danger);border-color:var(--danger)}
@@ -344,7 +348,9 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .gt-li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gt-li small{color:var(--dim);font-weight:800}
 .gt-cols{flex:1;min-width:0;display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:10px}
-.gt-cols>.gt-card{flex:none;width:360px}
+.gt-cols>.gt-card{flex:none;width:320px}
+@media (hover:hover){ .gt-row .gt-star:not(.on){opacity:0} .gt-row:hover .gt-star{opacity:.7} }
+html.wide .gt-row{font-size:15px} html.wide .gt-row .who{width:22px;height:22px;font-size:11px}
 .gt-cols>.empty{flex:1}
 /* list menu + task details */
 .gt-sorts{display:flex;flex-direction:column;gap:4px}
@@ -575,7 +581,7 @@ function renderTasks(v){
     const n=tItems().filter(t=>!t.done&&(t.list||'')===l.id).length;
     side.append(el('label',{className:'gt-li',title:l.private?'Only you can see this list':`Shared with ${p?p.name:'your partner'}`},cb,el('span',{textContent:tLabel(l)}),el('small',{textContent:n||''}))); });
   const nl=el('button',{className:'gt-nav',innerHTML:'<span class="ic">＋</span>Create new list'}); nl.onclick=()=>tNewList(); side.append(nl);
-  const im=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>Import from Google Tasks'}); im.onclick=()=>importGoogleTasks(); side.append(im);
+  const im=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>Update from Google Tasks'}); im.onclick=()=>importGoogleTasks(); side.append(im);
   const cols=el('div',{className:'gt-cols'});
   if(tview==='starred') cols.append(tStarredCard());
   else if(tview!=='lists') cols.append(tAssignedCard());
@@ -629,14 +635,14 @@ function tRow(t,sort,sub,showList){
   const c=el('button',{className:'gt-check'+(t.done?' on':''),title:t.done?'Mark as not done':'Mark as done',innerHTML:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'});
   c.onclick=e=>{ e.stopPropagation(); toggleDone(t); };
   const body=el('div',{className:'gt-body'},el('div',{className:'gt-title',textContent:t.title}));
-  if(t.notes) body.append(el('div',{className:'gt-notes',textContent:t.notes.split('\n')[0].slice(0,140)}));
+  if(t.notes) body.append(tNotes(t.notes));
   const meta=el('div',{className:'gt-meta'}), dl=dueLabel(t);
   if(dl) meta.append(el('span',{className:'gt-date '+dl.cls,textContent:dl.s+(t.repeat?' ↻':'')}));
   else if(t.repeat) meta.append(el('span',{className:'gt-date',textContent:'↻ '+t.repeat}));
   if(showList){ const L=tListOf(t.list); meta.append(el('span',{className:'gt-in',textContent:L.name})); }
   const nk=tItems().filter(x=>x.parent===t.id&&!x.done).length; if(nk && !sub && t.done) meta.append(el('span',{className:'gt-in',textContent:`${nk} subtasks`}));
   if(meta.children.length) body.append(meta);
-  const w=whoBubble(t.assignee);
+  const w=(t.assignee===me().email&&tPriv(t.list))?null:whoBubble(t.assignee);   // in a list that's just yours, no need to say it's yours
   const s=el('button',{className:'gt-star'+(t.important?' on':''),textContent:t.important?'★':'☆',title:t.important?'Remove star':'Star this task'});
   s.onclick=e=>{ e.stopPropagation(); change('tasks',[{op:'upsert',item:{...t,important:!t.important,starredAt:t.important?null:Date.now()}}]); };
   r.append(c,body); if(w) r.append(w); r.append(s);
@@ -645,6 +651,12 @@ function tRow(t,sort,sub,showList){
   return r;
 }
 // Add a task right in the list (Enter adds it and opens a new line, like Google Tasks).
+// Details under the title, like Google Tasks: up to two lines, web addresses as links you can click.
+const T_URL=/(https?:\/\/[^\s]+)/g;
+function tNotes(txt){ const d=el('div',{className:'gt-notes'});
+  String(txt).split('\n').filter(x=>x.trim()).slice(0,3).forEach((line,i)=>{ if(i) d.append(el('br'));
+    line.split(T_URL).forEach((part,j)=>{ if(j%2){ const a=el('a',{href:part,target:'_blank',rel:'noopener',textContent:part}); a.onclick=e=>e.stopPropagation(); d.append(a); } else if(part) d.append(part); }); });
+  return d; }
 function tInlineAdd(card,listId,btn){
   const ul=card.querySelector('.gt-tasks'), row=el('div',{className:'gt-row gt-new'});
   const inp=el('input',{className:'gt-newin',placeholder:'Title',enterKeyHint:'done'});
@@ -773,7 +785,9 @@ async function editTask(t, opts={}){
     const x=el('button',{className:'gt-dbtn',textContent:'✕',title:'Close'}); x.onclick=()=>{ clearTimeout(st); save(); close(); };
     top.append(el('span',{className:'gt-dlist',textContent:opts.parent?'Subtask':tListOf(t.list).name}),el('span',{style:'flex:1'}),star,del,x);
     const title=el('input',{className:'gt-dtitle',value:t.title,placeholder:'Enter title',autofocus:isNew}); title.oninput=()=>{ t.title=title.value; later(); };
-    const notes=el('textarea',{className:'gt-dnotes',value:t.notes||'',placeholder:'Add details',rows:3}); notes.oninput=()=>{ t.notes=notes.value; later(); };
+    const notes=el('textarea',{className:'gt-dnotes',value:t.notes||'',placeholder:'Add details',rows:3});
+    const lk=el('div',{className:'gt-dlinks'}); const drawLinks=()=>lk.replaceChildren(...((t.notes||'').match(T_URL)||[]).map(u=>el('a',{href:u,target:'_blank',rel:'noopener',textContent:'🔗 '+u.replace(/^https?:\/\/(www\.)?/,'')}))); drawLinks();
+    notes.oninput=()=>{ t.notes=notes.value; drawLinks(); later(); };
     const due=el('input',{type:'date',value:t.due||''}), time=el('input',{type:'time',value:t.time||'',disabled:!t.due});
     due.onchange=()=>{ t.due=due.value||null; time.disabled=!t.due; if(!t.due){ t.time=null; time.value=''; } later(); };
     time.onchange=()=>{ t.time=time.value||null; later(); };
@@ -786,7 +800,7 @@ async function editTask(t, opts={}){
     whoOpts();
     const drawWho=()=>{ whoOpts(); who.replaceChildren(...opts2.map(([v,l])=>{ const b=el('button',{type:'button',textContent:l,className:(t.assignee||'')===v?'on':''}); b.onclick=()=>{ t.assignee=v; drawWho(); later(); }; return b; })); }; drawWho();
     const line=(icon,...k)=>el('div',{className:'gt-dline'},el('span',{className:'gt-dic',textContent:icon}),...k);
-    sh.append(top,title,line('≡',notes),line('🗓',due,time),line('↻',rep),...(opts.parent||t.parent?[]:[line('☰',list)]),line('👤',who));
+    sh.append(top,title,line('≡',notes),lk,line('🗓',due,time),line('↻',rep),...(opts.parent||t.parent?[]:[line('☰',list)]),line('👤',who));
     // Subtasks
     if(!opts.parent && !t.parent){
       const box=el('div',{className:'gt-dsubs'}); const draw=()=>{ box.replaceChildren(el('div',{className:'gt-dsh',textContent:'Subtasks'}));
@@ -831,41 +845,51 @@ async function importGoogleTasks(){
   try{ lists=(await gapi('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=100')).items||[]; }
   catch(e){ return toast(e.status===403?'Google Tasks isn’t turned on for Partners yet (see setup steps), or you need to sign in again.':'Could not reach Google Tasks: '+e.message,6000); }
   if(!lists.length) return toast('No Google Tasks lists found');
+  const pn=partner()?partner().name:'your partner';
   const chosen=await sheet((sh,close)=>{
-    sh.append(el('h3',{textContent:'Import from Google Tasks'}),el('p',{textContent:'Pick the lists to bring into Partners. Tasks come in assigned to you; you can reassign them after. Importing again skips tasks already brought in.'}));
-    const boxes=lists.map(l=>{ const i=el('input',{type:'checkbox',checked:true}); sh.append(el('label',{className:'checkrow'},i,l.title)); return [l,i]; });
+    sh.append(el('h3',{textContent:'Bring in Google Tasks'}),el('p',{textContent:'Pick the lists to bring into Partners. They keep Google’s order and subtasks. Doing this again updates tasks already brought in (order, subtasks, details) and adds new ones. Nothing is deleted.'}));
+    const all=el('input',{type:'checkbox',checked:true}); sh.append(el('label',{className:'checkrow'},all,el('b',{textContent:'All lists'})));
+    const boxes=lists.map(l=>{ const had=store.tasks.lists.find(x=>x.gtlid===l.id||x.name.toLowerCase()===l.title.toLowerCase());
+      const i=el('input',{type:'checkbox',checked:true}); sh.append(el('label',{className:'checkrow'},i,l.title+(had?'  (update)':''))); return [l,i]; });
+    all.onchange=()=>boxes.forEach(b=>b[1].checked=all.checked);
     const comp=el('input',{type:'checkbox'}); sh.append(el('label',{className:'checkrow'},comp,'Also bring in completed tasks'));
-    const go=el('button',{className:'primary',textContent:'Import',title:'Import the chosen lists'}); go.onclick=()=>close({lists:boxes.filter(b=>b[1].checked).map(b=>b[0]),completed:comp.checked});
+    let shared=false; const who=el('div',{className:'pills'});
+    const draw=()=>who.replaceChildren(...[[false,'🔒 Just me'],[true,`👥 Share with ${pn}`]].map(([v,l])=>{ const b=el('button',{type:'button',className:shared===v?'on':'',textContent:l}); b.onclick=()=>{ shared=v; draw(); }; return b; })); draw();
+    sh.append(el('label',{className:'f',textContent:'Who can see these lists'}),who,el('p',{textContent:'You can share single lists later from each list’s ⋮ menu.'}));
+    const go=el('button',{className:'primary',textContent:'Bring them in',title:'Import the chosen lists'}); go.onclick=()=>close({lists:boxes.filter(b=>b[1].checked).map(b=>b[0]),completed:comp.checked,shared});
     const c=el('button',{className:'ghost',textContent:'Cancel'}); c.onclick=()=>close(null);
     sh.append(el('div',{className:'btns'},c,go));
   });
   if(!chosen || !chosen.lists.length) return;
-  toast('Importing…',3000);
-  const have=new Set(store.tasks.items.map(t=>t.gtid).filter(Boolean)); const ops=[]; let n=0;
+  toast('Bringing in your Google Tasks…',60000);
+  const byG={}; store.tasks.items.forEach(t=>{ if(t.gtid) byG[t.gtid]=t; });
+  const ops=[]; let added=0, updated=0;
   for(const gl of chosen.lists){
-    let L=store.tasks.lists.find(l=>l.name.toLowerCase()===gl.title.toLowerCase());
-    if(!L){ L={id:uid(),name:gl.title,sort:'my',order:Date.now()}; ops.push({op:'upsert',kind:'list',item:L}); store.tasks.lists.push(L); }
+    const gi=lists.indexOf(gl);
+    let L=store.tasks.lists.find(l=>l.gtlid===gl.id)||store.tasks.lists.find(l=>l.name.toLowerCase()===gl.title.toLowerCase());
+    const share={private:!chosen.shared,owner:chosen.shared?null:me().email};
+    if(!L){ L={id:uid(),name:gl.title,sort:'my'}; store.tasks.lists.push(L); }
+    L={...L,gtlid:gl.id,order:gi,...share}; ops.push({op:'upsert',kind:'list',item:L});
     let pageToken=''; const got=[];
     do{
       const q=new URLSearchParams({maxResults:'100',showCompleted:String(chosen.completed),showHidden:String(chosen.completed)}); if(pageToken) q.set('pageToken',pageToken);
       const d=await gapi(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(gl.id)}/tasks?${q}`);
-      for(const gt of d.items||[]){
-        if(!gt.title || have.has(gt.id)) continue;
-        got.push(gt);
-      }
+      for(const gt of d.items||[]) if(gt.title) got.push(gt);
       pageToken=d.nextPageToken||'';
     }while(pageToken);
-    // Same order and subtasks as in Google Tasks, below what's already in the list.
+    // Google's own order: "position" sorts tasks among their siblings.
     got.sort((a,b)=>String(a.position||'').localeCompare(String(b.position||'')));
-    const ids={}; got.forEach(gt=>ids[gt.id]=uid());
-    const base=Math.max(0,...store.tasks.items.filter(t=>(t.list||'')===L.id).map(tOrd))+1;
-    got.forEach((gt,i)=>{ const done=gt.status==='completed';
-      ops.push({op:'upsert',item:{id:ids[gt.id],gtid:gt.id,title:gt.title,notes:gt.notes||'',due:gt.due?gt.due.slice(0,10):null,time:null,list:L.id,
-        parent:gt.parent&&ids[gt.parent]?ids[gt.parent]:null,order:base+i,
-        assignee:me().email,done,doneAt:done?Date.parse(gt.completed)||Date.now():null,doneBy:done?me().email:null,important:false,repeat:''}}); n++; });
+    const idOf={}; got.forEach(gt=>idOf[gt.id]=(byG[gt.id]||{}).id||uid());
+    got.forEach((gt,i)=>{ const done=gt.status==='completed', old=byG[gt.id];
+      const links=(gt.links||[]).map(x=>x.link).filter(u=>u&&!(gt.notes||'').includes(u));
+      const notes=[gt.notes||'',...links].filter(Boolean).join('\n');
+      const parent=gt.parent&&idOf[gt.parent]?idOf[gt.parent]:null;
+      if(old){ ops.push({op:'upsert',item:{...old,list:L.id,parent,order:i,notes:old.notes||notes,assignee:L.private&&old.assignee&&old.assignee!==me().email?'':old.assignee}}); updated++; return; }
+      ops.push({op:'upsert',item:{id:idOf[gt.id],gtid:gt.id,title:gt.title,notes,due:gt.due?gt.due.slice(0,10):null,time:null,list:L.id,parent,order:i,
+        assignee:me().email,done,doneAt:done?Date.parse(gt.completed)||Date.now():null,doneBy:done?me().email:null,important:false,repeat:''}}); added++; });
   }
   await change('tasks',ops);
-  toast(`Imported ${n} task${n===1?'':'s'} from Google Tasks`,4000);
+  toast(`Done: ${added} new task${added===1?'':'s'}${updated?`, ${updated} updated`:''} from Google Tasks`,5000);
 }
 
 /* ================= CALENDAR ================= */
