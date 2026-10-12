@@ -298,6 +298,7 @@ textarea.paste{width:100%;min-height:150px;box-sizing:border-box;font:inherit;fo
 .gt-gphone{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
 .gt-gphone .gt-nav{margin:0;padding:4px 10px;min-height:34px;border-radius:999px;background:var(--panel2);font-size:14px}
 .gt-gphone .gt-gstat{padding:0;margin:0}
+.gt-whonote{display:block;color:var(--dim);font-weight:700;margin-top:4px}
 .gt-dots{background:transparent;min-height:36px;width:36px;padding:0;border-radius:50%;font-size:20px;color:var(--dim)}
 .gt-dots:hover,.gt-dbtn:hover{background:var(--panel2)}
 .gt-add{display:flex;align-items:center;gap:14px;width:100%;background:transparent;border-radius:0;padding:8px 18px;min-height:44px;color:var(--accent);font-weight:700;text-align:left}
@@ -551,10 +552,11 @@ const T_DEFAULT='Our Tasks';
 const tget=(k,d)=>{ try{ const v=localStorage.getItem('partners.tasks.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
 const tset=(k,v)=>{ try{ localStorage.setItem('partners.tasks.'+k, JSON.stringify(v)); }catch(_){} };
 const tOpen=new Set(tget('completedOpen',[]));                       // lists with Completed expanded
-function tLists(){ const L=store.tasks.lists.filter(l=>!l.removed).sort((a,b)=>(a.order??a.createdAt??0)-(b.order??b.createdAt??0)||a.name.localeCompare(b.name));
+const tStubName=l=>`From ${nameOf(l.owner)}`;
+function tLists(){ const L=store.tasks.lists.filter(l=>!l.removed).map(l=>l.stub?{...l,name:tStubName(l)}:l).sort((a,b)=>(a.order??a.createdAt??0)-(b.order??b.createdAt??0)||a.name.localeCompare(b.name));
   return [{id:'',name:T_DEFAULT,sort:tget('defaultSort','my')}, ...L]; }
 const tPriv=id=>{ const l=store.tasks.lists.find(x=>x.id===(id||'')); return !!(l&&l.private); };
-const tLabel=L=>(L.private?'🔒 ':'')+L.name;
+const tLabel=L=>L.stub?'📨 '+tStubName(L):(L.private?'🔒 ':'')+L.name;
 function tListOf(id){ return tLists().find(l=>l.id===(id||''))||tLists()[0]; }
 const tHidden=()=>new Set(tget('hidden',[]));
 const tItems=()=>store.tasks.items;
@@ -586,7 +588,7 @@ function renderTasks(v){
     lists.forEach(l=>tab(tLabel(l),tview==='lists'&&tcur===l.id,()=>{ tview='lists'; tcur=l.id; render(); },`Show “${l.name}”`));
     tab('＋ New list',false,()=>tNewList(),'Create a new list');
     const who=el('div',{className:'gt-who'});
-    [['lists','Everyone'],['mine','Mine'],...(p?[['p2',p.name]]:[])].forEach(([k,l])=>{ const b=el('button',{className:(tview===k||(k==='lists'&&tview==='starred'))?'on':'',textContent:l}); b.onclick=()=>{ tview=k; render(); }; who.append(b); });
+    [['mine','Mine'],...(p?[['p2',p.name]]:[])].forEach(([k,l])=>{ const b=el('button',{className:tview===k?'on':'',textContent:l,title:tview===k?'Show everything again':`Only tasks for ${k==='mine'?'you':l}`}); b.onclick=()=>{ tview=tview===k?'lists':k; render(); }; who.append(b); });
     const col=tview==='starred'||tview==='lists' ? (tview==='starred'?tStarredCard():tListCard(tListOf(tcur))) : tAssignedCard();
     const gb=el('div',{className:'gt-gphone'},...tGoogleBits().filter(x=>!/version/.test(x.textContent)));
     v.replaceChildren(el('div',{className:'gt gt-phone'}, ...(gb?[gb]:[]), ...(tview!=='starred'?[who]:[]), col));
@@ -614,7 +616,8 @@ function renderTasks(v){
 
 // Google Tasks: bring lists in, sync now, and how it's going.
 function tGoogleBits(){
-  const out=[]; gCheckScope();
+  const out=[]; if(!gMine().length) return out;   // nothing synced with Google: say nothing about it
+  gCheckScope();
   if(gNeedScope){ const b=el('button',{className:'gt-gwarn',innerHTML:'<b>Reconnect Google</b><small>so Partners and Google Tasks can stay in step</small>'}); b.onclick=()=>partnersSignIn('plan.html#tasks'); out.push(b); }
   const ago=gLast?Math.round((Date.now()-gLast)/60000):null; if(!gMine().length && !gNeedScope) return out;
   out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gSyncing?'⏳ Google syncing…':gLastErr?`Google sync didn’t work: ${gLastErr}`:ago==null?'Google sync starts in a moment':ago<1?'✓ Google synced just now':`✓ Google synced ${ago} min ago`}));
@@ -624,9 +627,9 @@ function tGoogleBits(){
 // One list, Google Tasks style.
 function tListCard(L){
   const sort=L.sort||'my', card=el('section',{className:'gt-card'}); card.dataset.list=L.id;
-  const menu=el('button',{className:'gt-dots',textContent:'⋮',title:'List options'}); menu.onclick=e=>{ e.stopPropagation(); tListMenu(L,menu); };
-  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.private?[el('span',{className:'gt-priv',textContent:'🔒',title:'Only you can see this list'})]:[]),...(gOn(L)?[el('span',{className:'gt-priv',textContent:'⇄ G',title:'Kept in step with Google Tasks'})]:[]),menu));
-  const add=el('button',{className:'gt-add',innerHTML:'<span class="gt-plus">＋</span>Add a task'}); add.onclick=()=>tInlineAdd(card,L.id,add); card.append(add);
+  const menu=L.stub?el('span'):el('button',{className:'gt-dots',textContent:'⋮',title:'List options'}); if(!L.stub) menu.onclick=e=>{ e.stopPropagation(); tListMenu(L,menu); };
+  card.append(el('header',{},el('h3',{textContent:L.name}),...(L.stub?[el('span',{className:'gt-priv',textContent:'📨',title:`Tasks ${nameOf(L.owner)} shared with you`})]:L.private?[el('span',{className:'gt-priv',textContent:'🔒',title:'Only you can see this list'})]:[]),...(gOn(L)?[el('span',{className:'gt-priv',textContent:'⇄ G',title:'Kept in step with Google Tasks'})]:[]),menu));
+  if(!L.stub){ const add=el('button',{className:'gt-add',innerHTML:'<span class="gt-plus">＋</span>Add a task'}); add.onclick=()=>tInlineAdd(card,L.id,add); card.append(add); }
   const all=tItems().filter(t=>(t.list||'')===L.id && tFilter(t));
   const open=all.filter(t=>!t.done && !t.parent), kids=id=>all.filter(t=>!t.done && t.parent===id).sort(tSortFn('my'));
   const ul=el('div',{className:'gt-tasks'}); ul.dataset.list=L.id;
@@ -695,7 +698,7 @@ function tInlineAdd(card,listId,btn){
   const commit=()=>{ const v=inp.value.trim(); if(!v) return false; inp.value='';
     const mine=tItems().filter(t=>(t.list||'')===listId&&!t.parent&&!t.done).map(tOrd);
     const item={id:uid(),title:v,done:false,important:tview==='starred',due:null,time:null,list:listId||null,parent:null,order:(mine.length?Math.min(...mine):0)-1,
-      assignee:tview==='mine'?me().email:(tview==='p2'&&partner()&&!tPriv(listId)?partner().email:''),repeat:'',notes:''};
+      assignee:(tview==='p2'&&partner()&&!tPriv(listId))?partner().email:me().email,repeat:'',notes:''};
     change('tasks',[{op:'upsert',item}]); return true; };
   inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); if(commit()) setTimeout(()=>{ const c=document.querySelector(`.gt-card[data-list="${listId}"] .gt-add`); if(c) c.click(); },60); } if(e.key==='Escape') render(); };
   inp.onblur=()=>setTimeout(()=>{ if(document.activeElement!==inp){ commit(); render(); } },150);
@@ -719,6 +722,7 @@ function tDraggable(r,t){
     document.querySelectorAll('.gt-drop').forEach(x=>x.classList.remove('gt-drop','after'));
     r._justDragged=true; setTimeout(()=>{ r._justDragged=false; },300);
     if(!d.target) return; const listId=d.target.list||'';
+    if(listId!==(t.list||'') && (store.tasks.lists.find(l=>l.id===listId)||{}).stub) return toast('That list belongs to your partner');
     const sib=tItems().filter(x=>(x.list||'')===listId&&!x.done&&(x.parent||null)===(t.parent&&listId===(t.list||'')?t.parent:null)&&x.id!==t.id).sort(tSortFn('my'));
     let order;
     if(d.target.row){ const tid=d.target.row.dataset.id, i=sib.findIndex(x=>x.id===tid);
@@ -727,7 +731,7 @@ function tDraggable(r,t){
       else { const b=tOrd(sib[i]), a=sib[i-1]?tOrd(sib[i-1]):b-2; order=(a+b)/2; } }
     else order=(sib.length?tOrd(sib[sib.length-1]):0)+1;
     const moved={...t,order,list:listId||null}; if(listId!==(t.list||'')) moved.parent=null;
-    if(tPriv(listId) && t.assignee && t.assignee!==me().email) moved.assignee='';
+    if(tPriv(listId) && t.assignee && t.assignee!==me().email) moved.assignee=me().email;
     const ops=[{op:'upsert',item:moved}];
     if(listId!==(t.list||'')) tItems().filter(x=>x.parent===t.id).forEach(k=>ops.push({op:'upsert',item:{...k,list:listId||null}}));
     change('tasks',ops); };
@@ -753,9 +757,9 @@ async function tListMenu(L,anchor){
   if(v.startsWith('sort:')){ const s=v.slice(5); if(!L.id){ tset('defaultSort',s); render(); } else change('tasks',[{op:'upsert',kind:'list',item:{...L,sort:s}}]); return; }
   if(v==='share'){ const pn=partner()?partner().name:'your partner';
     if(L.private){ change('tasks',[{op:'upsert',kind:'list',item:{...L,private:false,owner:null}}]); toast(`“${L.name}” is now shared with ${pn}`); return; }
-    if(!confirm(`Stop sharing “${L.name}”? ${pn} won’t see this list or its tasks anymore. Only you will.`)) return;
+    if(!confirm(`Stop sharing “${L.name}”? ${pn} won’t see this list or its tasks anymore, and its tasks become yours.`)) return;
     const ops=[{op:'upsert',kind:'list',item:{...L,private:true,owner:me().email}}];
-    tItems().filter(t=>(t.list||'')===L.id&&t.assignee&&t.assignee!==me().email).forEach(t=>ops.push({op:'upsert',item:{...t,assignee:''}}));
+    tItems().filter(t=>(t.list||'')===L.id&&t.assignee!==me().email).forEach(t=>ops.push({op:'upsert',item:{...t,assignee:me().email}}));
     change('tasks',ops); toast(`“${L.name}” is now just yours`); return; }
   if(v==='gsync'){ if(gOn(L)){ if(!confirm(`Stop syncing “${L.name}” with Google Tasks? Both copies stay; changes just won’t go across anymore.`)) return;
       change('tasks',[{op:'upsert',kind:'list',item:{...L,gsync:false}}]); }
@@ -785,7 +789,7 @@ async function tNewList(){
   const l={id:uid(),name:r.name,sort:'my',order:Date.now(),private:!r.shared,owner:r.shared?null:me().email,...(r.google?{gsync:true,gowner:me().email}:{})}; await change('tasks',[{op:'upsert',kind:'list',item:l}]);
   tview='lists'; tcur=l.id; const h=tHidden(); h.delete(l.id); tset('hidden',[...h]); render(); if(r.google) setTimeout(()=>syncGoogleTasks(),300); return l;
 }
-function quickAdd(title){ const item={id:uid(),title,done:false,important:false,due:null,time:null,list:tcur||null,parent:null,order:-Date.now()/1e3,assignee:'',repeat:'',notes:''}; change('tasks',[{op:'upsert',item}]); }
+function quickAdd(title){ const item={id:uid(),title,done:false,important:false,due:null,time:null,list:tcur||null,parent:null,order:-Date.now()/1e3,assignee:me().email,repeat:'',notes:''}; change('tasks',[{op:'upsert',item}]); }
 function nextDue(t){
   const d=parseYmd(t.due||ymd(today()));
   if(t.repeat==='daily') d.setDate(d.getDate()+1);
@@ -807,7 +811,7 @@ function toggleDone(t){
 // The task details: changes save as you go, like Google Tasks.
 async function editTask(t, opts={}){
   const isNew=!t;
-  t=t?{...t}:{id:uid(),title:'',done:false,important:false,due:null,time:null,list:(tview==='lists'?tcur:'')||null,parent:opts.parent||null,order:-Date.now()/1e3,assignee:'',repeat:'',notes:''};
+  t=t?{...t}:{id:uid(),title:'',done:false,important:false,due:null,time:null,list:(tview==='lists'?tcur:'')||null,parent:opts.parent||null,order:-Date.now()/1e3,assignee:(tview==='p2'&&partner()&&!tPriv(listId))?partner().email:me().email,repeat:'',notes:''};
   if(opts.parent){ const par=tItems().find(x=>x.id===opts.parent); if(par) t.list=par.list||null; }
   let saved=!isNew;
   const save=()=>{ if(!t.title.trim()) return; change('tasks',[{op:'upsert',item:{...t,title:t.title.trim()}}]); saved=true; };
@@ -830,15 +834,16 @@ async function editTask(t, opts={}){
     due.onchange=()=>{ t.due=due.value||null; time.disabled=!t.due; if(!t.due){ t.time=null; time.value=''; } later(); };
     time.onchange=()=>{ t.time=time.value||null; later(); };
     const rep=el('select'); [['','Does not repeat'],['daily','Daily'],['weekdays','Every weekday'],['weekly','Weekly'],['monthly','Monthly'],['yearly','Yearly']].forEach(([v,l])=>rep.append(el('option',{value:v,textContent:l}))); rep.value=t.repeat||''; rep.onchange=()=>{ t.repeat=rep.value; if(t.repeat&&!t.due){ t.due=ymd(today()); due.value=t.due; time.disabled=false; } later(); };
-    const list=el('select'); tLists().forEach(l=>list.append(el('option',{value:l.id,textContent:tLabel(l)}))); list.value=t.list||'';
+    const list=el('select'); tLists().filter(l=>!l.stub||l.id===(t.list||'')).forEach(l=>list.append(el('option',{value:l.id,textContent:tLabel(l)}))); list.value=t.list||'';
     list.onchange=()=>{ t.list=list.value||null; t.parent=null; drawWho(); const kids=tItems().filter(k=>k.parent===t.id); if(kids.length&&saved) change('tasks',kids.map(k=>({op:'upsert',item:{...k,list:t.list}}))); later(); };
     const who=el('div',{className:'pills'}); let opts2;
-    const whoOpts=()=>{ opts2=[[me().email,'Me']]; if(!tPriv(t.list)){ if(partner()) opts2.push([partner().email,partner().name]); opts2.push(['both','Both']); } opts2.push(['','Anyone']);
-      if(!opts2.some(o=>o[0]===(t.assignee||''))) t.assignee=''; };
+    const whoOpts=()=>{ opts2=[[me().email,'Me']]; if(partner() && !tPriv(t.list)) opts2.push([partner().email,partner().name]);   // each task is for you or your partner; a list that's just yours has only you
+      if(!opts2.some(o=>o[0]===(t.assignee||''))) t.assignee=me().email; };
     whoOpts();
-    const drawWho=()=>{ whoOpts(); who.replaceChildren(...opts2.map(([v,l])=>{ const b=el('button',{type:'button',textContent:l,className:(t.assignee||'')===v?'on':''}); b.onclick=()=>{ t.assignee=v; drawWho(); later(); }; return b; })); }; drawWho();
+    const whoNote=el('small',{className:'gt-whonote'});
+    const drawWho=()=>{ whoOpts(); const pl=store.tasks.lists.find(l=>l.id===(t.list||'')); whoNote.textContent=partner()&&pl&&pl.private?`To give tasks to ${partner().name}, share this list with her (list ⋮ menu).`:''; who.replaceChildren(...opts2.map(([v,l])=>{ const b=el('button',{type:'button',textContent:l,className:(t.assignee||'')===v?'on':''}); b.onclick=()=>{ t.assignee=v; drawWho(); later(); }; return b; })); }; drawWho();
     const line=(icon,...k)=>el('div',{className:'gt-dline'},el('span',{className:'gt-dic',textContent:icon}),...k);
-    sh.append(top,title,line('≡',notes),lk,line('🗓',due,time),line('↻',rep),...(opts.parent||t.parent?[]:[line('☰',list)]),line('👤',who));
+    sh.append(top,title,line('≡',notes),lk,line('🗓',due,time),line('↻',rep),...(opts.parent||t.parent?[]:[line('☰',list)]),line('👤',el('div',{},who,whoNote)));
     // Subtasks
     if(!opts.parent && !t.parent){
       const box=el('div',{className:'gt-dsubs'}); const draw=()=>{ box.replaceChildren(el('div',{className:'gt-dsh',textContent:'Subtasks'}));
@@ -938,7 +943,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='129';
+const PARTNERS_VER='131';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -1038,7 +1043,7 @@ async function syncGoogleTasks(manual){
       const newId={};
       for(const g of fresh){ const done=g.status==='completed', id=uid(); newId[g.id]=id;
         T[id]={id,_new:true,gtid:g.id,glist:tl,gupd:g.updated,gdirty:false,title:g.title||'(no title)',notes:g.notes||'',due:g.due?g.due.slice(0,10):null,time:null,list:l.id||null,
-          parent:g.parent?(newId[g.parent]||(byG[g.parent]||{}).id||null):null,order:0,assignee:l.private?me().email:'',done,doneAt:done?Date.parse(g.completed)||Date.now():null,doneBy:done?me().email:null,important:false,repeat:''}; pulled++; }
+          parent:g.parent?(newId[g.parent]||(byG[g.parent]||{}).id||null):null,order:0,assignee:me().email,done,doneAt:done?Date.parse(g.completed)||Date.now():null,doneBy:done?me().email:null,important:false,repeat:''}; pulled++; }
       // Moved out of a synced list in Partners (to a list that isn't synced) → take it out of Google.
       for(const g of byTl[tl].slice()){ const t=byG[g.id]; if(!t) continue; const c=cur(t); if((c.list||'')!==l.id && !active.some(a=>a.l.id===(c.list||''))){
         try{ await api(`/lists/${encodeURIComponent(tl)}/tasks/${encodeURIComponent(g.id)}`,{method:'DELETE'}); }catch(_){} putT(t,{gtid:null,glist:null,gupd:null}); byTl[tl]=byTl[tl].filter(x=>x.id!==g.id); pushed++; } }
@@ -2119,7 +2124,7 @@ async function proposeStep(c){
 }
 function agreeStep(c){
   concernSave(c,{status:'agreed', agreedAt:Date.now()},{type:'agree'});
-  if(c.step && c.step.task) change('tasks',[{op:'upsert',item:{id:uid(),title:c.step.text,done:false,important:false,due:null,time:null,list:null,assignee:c.step.who==='both'?'':c.step.who,repeat:'',notes:'From a concern in Us: '+concernText(c)}}]);
+  if(c.step && c.step.task) change('tasks',[{op:'upsert',item:{id:uid(),title:c.step.text,done:false,important:false,due:null,time:null,list:null,assignee:c.step.who==='both'?me().email:c.step.who,repeat:'',notes:'From a concern in Us: '+concernText(c)}}]);
   toast(c.step && c.step.task?'Agreed 🌱 Added to Tasks':'Agreed 🌱');
 }
 function concernCard(c){
