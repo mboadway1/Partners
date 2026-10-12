@@ -582,7 +582,7 @@ function renderTasks(v){
     const who=el('div',{className:'gt-who'});
     [['lists','Everyone'],['mine','Mine'],...(p?[['p2',p.name]]:[])].forEach(([k,l])=>{ const b=el('button',{className:(tview===k||(k==='lists'&&tview==='starred'))?'on':'',textContent:l}); b.onclick=()=>{ tview=k; render(); }; who.append(b); });
     const col=tview==='starred'||tview==='lists' ? (tview==='starred'?tStarredCard():tListCard(tListOf(tcur))) : tAssignedCard();
-    const gb=gNeedScope||gMine().length?el('div',{className:'gt-gphone'},...tGoogleBits().filter(x=>!/Add more|Update from/.test(x.textContent))):null;
+    const gb=gNeedScope||gMine().length?el('div',{className:'gt-gphone'},...tGoogleBits().filter(x=>!/Update from/.test(x.textContent))):null;
     v.replaceChildren(el('div',{className:'gt gt-phone'}, ...(gb?[gb]:[]), ...(tview!=='starred'?[who]:[]), col));
     return;
   }
@@ -616,7 +616,7 @@ function tGoogleBits(){
     b.onclick=()=>syncGoogleTasks(true); out.push(b);
     const ago=gLast?Math.round((Date.now()-gLast)/60000):null;
     out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gLastErr?`Last try didn’t work: ${gLastErr}`:ago==null?'Not synced yet':ago<1?'Synced just now':`Synced ${ago} min ago`})); }
-  const g=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>'}); g.append(linked?'Add more Google lists':'Update from Google Tasks'); g.onclick=()=>importGoogleTasks(); out.push(g);
+  const g=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>'}); g.append('Update from Google Tasks'); g.onclick=()=>importGoogleTasks(); out.push(g);
   return out; }
 // One list, Google Tasks style.
 function tListCard(L){
@@ -934,7 +934,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='121';
+const PARTNERS_VER='122';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
