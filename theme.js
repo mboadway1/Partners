@@ -81,3 +81,32 @@ applyPeggyTheme(peggyThemeName());
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', setup); else setup();
 })();
+
+// Big screens (Chromebook, laptop): lay pages out like the Fire TV: every section in the bottom bar
+// (no More menu), pages use the full width, and the calendar month fills the screen.
+(function(){
+  const kind=document.documentElement.dataset.peggy||'phone'; if (kind==='tv') return;
+  const mq=window.matchMedia('(min-width: 900px)');
+  const set=()=>document.documentElement.classList.toggle('wide', mq.matches);
+  set(); try{ mq.addEventListener('change', set); }catch(_){ mq.addListener(set); }
+  const st=document.createElement('style'); st.textContent=`
+html.wide main{max-width:none!important;padding-left:28px;padding-right:28px}
+html.wide .wrap{max-width:none!important}
+html.wide .bnav a{max-width:none!important;font-size:13px}
+html.wide .bnav .more{display:none!important}
+html.wide .bnav .tvonly,html.wide .bnav .wideonly{display:flex!important}
+html.wide:not(.tv) .bnav #navTv{display:none!important}
+html.wide:not(.tv) .bnav .notv{display:flex!important}
+html.wide:not(.tv) .bnav .notv.more{display:none!important}
+.bnav .wideonly{display:none}`;
+  document.head.append(st);
+  const ICON={fuel:'<rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/>',
+    us:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+    links:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
+  const add=()=>{ const nav=document.querySelector('.bnav'), more=nav&&nav.querySelector('.more'); if(!nav||!more) return;
+    for (const [k,l] of [['fuel','Fuel'],['us','Us'],['links','Links']]){
+      if (nav.querySelector(`[data-k="${k}"]`)) continue;
+      const a=document.createElement('a'); a.href='plan.html#'+k; a.dataset.k=k; a.className='wideonly'; a.title=l;
+      a.innerHTML=`<svg class="ic" viewBox="0 0 24 24">${ICON[k]}</svg>${l}`; nav.insertBefore(a, more); } };
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', add); else add();
+})();

@@ -632,7 +632,7 @@ function byDay(){
 function sortKey(x){ if(x.type==='task') return '1'+(x.t.time||'99'); const ev=x.ev; return ev.start.date?'0':'1'+fmt24(new Date(ev.start.dateTime)); }
 const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 // On the TV the month fills the screen: weeks share all the height between the top bar and the bottom bar.
-const onTV=()=>document.documentElement.classList.contains('tv');
+const onTV=()=>document.documentElement.classList.contains('tv')||document.documentElement.classList.contains('wide');
 function fitMonth(g){ if(!g.isConnected) return;
   const nav=document.querySelector('.bnav'), bottom=nav?nav.getBoundingClientRect().top:innerHeight;
   const z=(g.getBoundingClientRect().width/g.offsetWidth)||1;   // page zoom on the TV
