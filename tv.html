@@ -1309,7 +1309,7 @@ async function loadToday(){
   try{
     const [ag,tasks,mem]=await Promise.all([call('agenda?days=7&from='+encodeURIComponent(start.toISOString())), call('data/tasks'), call('members')]);
     window._tdLoaded=Date.now(); $('#tdUpdated').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-    renderTodayEvents(ag.events||[], start); renderTodayTasks(tasks.items||[], mem.members||[]);
+    renderTodayEvents(ag.events||[], start); const priv=new Set((tasks.lists||[]).filter(l=>l.private).map(l=>l.id)); renderTodayTasks((tasks.items||[]).filter(t=>!priv.has(t.list)), mem.members||[]);   // private lists stay off the TV
   }catch(e){
     if(e===401 && !plan.own){ store.set('partners.tvplan',''); }
     E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Partners on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));

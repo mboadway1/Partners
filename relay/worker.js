@@ -289,14 +289,14 @@ async function api(req, env, url, cors) {
   const dm = path.match(/^data\/(\w+)$/);
   if (dm && DOCS.includes(dm[1])) {
     const key = K('doc:' + dm[1]);
-    if (req.method === 'GET') return json((await KV.get(key, 'json')) || { v: 0, items: [], lists: [] }, 200, cors);
+    if (req.method === 'GET') return json(viewFor((await KV.get(key, 'json')) || { v: 0, items: [], lists: [] }, s.email), 200, cors);
     if (req.method === 'POST' && full) {
       const { ops } = await body();
       const doc = (await KV.get(key, 'json')) || { v: 0, items: [], lists: [] };
-      for (const op of (ops || []).slice(0, 2000)) applyOp(doc, op, s.email);
+      for (const op of (ops || []).slice(0, 2000)) if (mayChange(doc, op, s.email)) applyOp(doc, op, s.email);
       doc.v = (doc.v || 0) + 1; doc.updated = Date.now();
       await KV.put(key, JSON.stringify(doc));
-      return json(doc, 200, cors);
+      return json(viewFor(doc, s.email), 200, cors);
     }
   }
 
@@ -639,6 +639,20 @@ async function api(req, env, url, cors) {
   return json({ error: 'Not found' }, 404, cors);
 }
 
+// Private lists (list.private + list.owner): only the owner gets them or their items, and only the owner can change them.
+function othersPrivate(doc, email) { return new Set((doc.lists || []).filter(l => l.private && l.owner && l.owner !== email).map(l => l.id)); }
+function viewFor(doc, email) {
+  const hide = othersPrivate(doc, email); if (!hide.size) return doc;
+  return { ...doc, lists: doc.lists.filter(l => !hide.has(l.id)), items: (doc.items || []).filter(t => !hide.has(t.list)) };
+}
+function mayChange(doc, op, email) {
+  if (!op || typeof op !== 'object') return false;
+  const hide = othersPrivate(doc, email); if (!hide.size) return true;
+  if (op.kind === 'list') return !hide.has(op.op === 'delete' ? op.id : op.item && op.item.id);
+  const id = op.op === 'delete' ? op.id : op.item && op.item.id, cur = (doc.items || []).find(x => x.id === id);
+  if (cur && hide.has(cur.list)) return false;
+  return !(op.item && hide.has(op.item.list));
+}
 function applyOp(doc, op, email) {
   if (!op || typeof op !== 'object') return;
   const now = Date.now();
