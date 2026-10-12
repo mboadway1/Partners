@@ -144,19 +144,6 @@ async function api(req, env, url, cors) {
       return json(cur, 200, cors);
     }
   }
-  // One-time move of shared-album photos from the old bucket to the new one (the app calls this until done).
-  if (path === 'move-photos' && req.method === 'POST' && full) {
-    const NEW = env.PARTNERS_R2, OLD = env.PARTNERS_R2 && (env.OLD_PHOTOS || env.PEGGY_R2);
-    if (!OLD) return json({ done: true, moved: 0 }, 200, cors);
-    const { cursor } = await body(); let moved = 0;
-    const page = await OLD.list({ cursor: cursor || undefined, limit: 50 });
-    for (const o of page.objects) {
-      if (await NEW.head(o.key)) continue;
-      const g = await OLD.get(o.key); if (!g) continue;
-      await NEW.put(o.key, await g.arrayBuffer(), { httpMetadata: g.httpMetadata, customMetadata: g.customMetadata }); moved++;
-    }
-    return json({ done: !page.truncated, cursor: page.truncated ? page.cursor : null, moved }, 200, cors);
-  }
   // Each partner's own name, color and theme (shown to both of you and on the TV).
   if (path === 'profile' && req.method === 'PUT' && full) {
     const b = await body(), cur = (await KV.get('profile:' + s.email, 'json')) || {};
@@ -213,15 +200,11 @@ async function api(req, env, url, cors) {
   // --- shared album photos, kept in Cloudflare R2 (binding PARTNERS_R2) ---
   const pm = path.match(/^photo\/([\w-]{8,64})(?:\/(full))?$/);
   if (pm) {
-    const R2 = env.PARTNERS_R2 || env.PEGGY_R2, OLD_R2 = env.PARTNERS_R2 && (env.OLD_PHOTOS || env.PEGGY_R2);
+    const R2 = env.PARTNERS_R2;
     if (!R2) return json({ error: 'Shared albums need the PARTNERS_R2 photo storage connected to the relay.' }, 500, cors);
     const key = 'photos/' + pm[1] + '/full';
     if (req.method === 'GET') {
-      let o = await R2.get(key);
-      if (!o && OLD_R2) {   // not moved yet: copy it from the old bucket into the new one
-        const old = await OLD_R2.get(key);
-        if (old) { const b = await old.arrayBuffer(); await R2.put(key, b, { httpMetadata: old.httpMetadata, customMetadata: old.customMetadata }); o = await R2.get(key); }
-      }
+      const o = await R2.get(key);
       if (!o) return json({ error: 'Photo not found' }, 404, cors);
       return new Response(o.body, { status: 200, headers: { ...cors, 'Content-Type': (o.httpMetadata && o.httpMetadata.contentType) || 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' } });
     }
@@ -233,7 +216,7 @@ async function api(req, env, url, cors) {
       await R2.put(key, buf, { httpMetadata: { contentType: req.headers.get('Content-Type') || 'image/jpeg' }, customMetadata: { by: s.email } });
       return json({ ok: true, size: buf.byteLength }, 200, cors);
     }
-    if (req.method === 'DELETE' && full) { await R2.delete(key); if (OLD_R2) await OLD_R2.delete(key); return json({ ok: true }, 200, cors); }
+    if (req.method === 'DELETE' && full) { await R2.delete(key); return json({ ok: true }, 200, cors); }
     return json({ error: 'Not allowed' }, 405, cors);
   }
 
