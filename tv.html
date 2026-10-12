@@ -389,7 +389,6 @@ function renderHome(){
   if(driveReady()) add('🖼 Photos',()=>startDrive(),photos.length?'':'primary');
   add('📅 Today',()=>openToday());
   for(const [label,tab] of PLAN_TABS) add(label,()=>openPlan(tab));
-  add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
   add('🔄 Refresh',()=>location.reload());
