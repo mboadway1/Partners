@@ -183,6 +183,20 @@ function sharpness(img){
 // Lightroom or the camera carry the camera's make.
 const SHOT_NAME=/screen ?shot|screenshot|screen_shot|scrnli|^simulator/i;
 const skipShots = () => { try{ return localStorage.getItem('peggy.skipShots')!=='0'; }catch(_){ return true; } };
+// On-phone guess, for when Claude can't sort photos: tall phone-shaped pictures with no camera info are screenshots;
+// mostly grey-white, colourless pictures full of fine lines (maps, papers, signs, menus) are papers.
+// Measured on real photos: maps/papers 0.53+ paper-white, colour ≤0.05, lines 0.4+; real photos colour 0.17+.
+function localKind(img, make){
+  const W=img.naturalWidth||img.width, H=img.naturalHeight||img.height, r=Math.max(W,H)/Math.min(W,H);
+  if(!make && r>=2.0 && r<=2.3) return 'screenshot';
+  const N=96, c=document.createElement('canvas'); c.width=N; c.height=N; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(img,0,0,N,N);
+  const d=x.getImageData(0,0,N,N).data, L=new Float32Array(N*N); let paper=0, sat=0;
+  for(let i=0;i<N*N;i++){ const R=d[i*4]/255,G=d[i*4+1]/255,B=d[i*4+2]/255, s=Math.max(R,G,B)-Math.min(R,G,B); L[i]=.299*R+.587*G+.114*B; sat+=s; if(s<.16 && L[i]>.5) paper++; }
+  let edges=0; for(let y=1;y<N-1;y++) for(let X=1;X<N-1;X++){ const i=y*N+X; if(Math.hypot(L[i+1]-L[i-1], L[i+N]-L[i-N])>.12) edges++; }
+  paper/=N*N; sat/=N*N; edges/=(N-2)*(N-2);
+  if(paper>=.42 && sat<=.08 && edges>=.28) return 'paper';
+  return null;
+}
 function looksLikeScreenshot({name, type, make}){ return SHOT_NAME.test(name||'') || (/png/i.test(type||'') && !make); }
 const PEER_PREFIX='peggy-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';

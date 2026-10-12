@@ -552,21 +552,26 @@ async function repairThumb(p, im, cell){
 }
 /* ---------- clean up what's already here ---------- */
 async function openTidy(){
-  if(!acct.session){ toast('Sign in with Google first (Settings → Sign in).',5000); return; }
-  const todo=photos.filter(p=>!p.kind);
+  const todo=photos.filter(p=>!p.kind); let note='';
   if(todo.length){ let bar;
     sheet((sh,close)=>{ const b=el('div'), st=el('p',{textContent:`Looking at ${todo.length} photos…`}); sh.append(el('h3',{textContent:'🧹 Checking your photos'}), st, el('div',{className:'progress'},b)); bar={b,st,close}; });
-    try{ const m=await classifyBlobs(todo.map(p=>({key:p.id, blob:p.blob})), (d,t)=>{ bar.b.style.width=(100*d/t)+'%'; bar.st.textContent=`${d} of ${t}`; });
+    try{ if(!acct.session) throw new Error('not signed in');
+      const m=await classifyBlobs(todo.map(p=>({key:p.id, blob:p.blob})), (d,t)=>{ bar.b.style.width=(100*d/t)+'%'; bar.st.textContent=`${d} of ${t}`; });
       for(const p of todo){ const k=m.get(p.id); if(k){ p.kind=k; await dbPut('photos',p); } } }
-    catch(e){ bar.close(); return toast('Couldn’t check photos: '+e.message, 6000); }
+    catch(e){ // Claude couldn't help: make an on-phone guess instead (kept separate, so Claude can sort them properly later).
+      note=`Claude couldn’t check these: ${sortProblem(e)}. Peggy made its own guess, which only catches screenshots and maps or papers.`;
+      let d=0; for(const p of todo){ try{ const img=await loadImage(p.blob); p.guess=localKind(img, '')||'photo'; if(p.guess!=='photo') await dbPut('photos',p); }catch(_){}
+        d++; bar.b.style.width=(100*d/todo.length)+'%'; bar.st.textContent=`${d} of ${todo.length}`; if(d%10===0) await sleep(0); } }
     bar.close(); }
-  const flagged=photos.filter(p=>p.kind && p.kind!=='photo');
+  const kindOf=p=>p.kind||p.guess;
+  const flagged=photos.filter(p=>kindOf(p) && kindOf(p)!=='photo');
   sheet((sh,close)=>{
     sh.append(el('h3',{textContent:flagged.length?`Found ${flagged.length} to tidy up`:'All tidy 🦋'}),
+      ...(note?[el('p',{className:'tip',textContent:note})]:[]),
       el('p',{textContent:flagged.length?'Ticked ones will be removed from Peggy (not from Google Photos or your phone). Untick anything you want to keep. Favorites start unticked.':'No screenshots, maps or item photos found.'}));
     const pick=new Set(flagged.filter(p=>!p.fav).map(p=>p.id));
     const btn=el('button',{className:'danger',style:'width:100%;margin-top:10px'}); const upd=()=>{ btn.textContent=`Remove ${pick.size} photo${pick.size===1?'':'s'}`; btn.disabled=!pick.size; };
-    for(const k of ['screenshot','paper','item']){ const ps=flagged.filter(p=>p.kind===k); if(!ps.length) continue;
+    for(const k of ['screenshot','paper','item']){ const ps=flagged.filter(p=>kindOf(p)===k); if(!ps.length) continue;
       sh.append(el('div',{className:'lab2',textContent:`${k==='screenshot'?'📱':k==='paper'?'🗺️':'🔧'} ${KIND_NAMES[k][1][0].toUpperCase()+KIND_NAMES[k][1].slice(1)} (${ps.length})`}));
       const g=el('div',{className:'tidygrid'});
       ps.forEach(p=>{ const c=el('button',{className:'tidyc'+(pick.has(p.id)?' on':''),title:'Tap to keep or remove'}); c.append(el('img',{src:urlFor(p),alt:''}),el('span',{className:'tk',textContent:'✓'}));
@@ -812,7 +817,7 @@ $('#fileIn').onchange=async e=>{
   const list=[]; let shots=0;
   for(const f of files){ const taken=await photoTaken(f), make=photoTaken.make;
     if(skipShots() && looksLikeScreenshot({name:f.name, type:f.type, make})){ shots++; continue; }
-    list.push({blob:f, name:f.name, created:taken||f.lastModified||Date.now(), src:'device'}); }
+    list.push({blob:f, name:f.name, created:taken||f.lastModified||Date.now(), src:'device', make}); }
   if(shots) setTimeout(()=>toast(`${shots} screenshot${shots>1?'s':''} skipped. Turn this off in Settings if you want them.`,5000), list.length?3400:0);
   if(list.length) await importBlobs(list);
 };
@@ -832,6 +837,19 @@ async function classifyBlobs(entries, onProgress){
   }
   return out;
 }
+// Why Claude couldn't sort photos, in plain words, with what to do.
+function sortProblem(e){
+  const m=String(e&&e.message||e||'');
+  if(!acct.session) return 'you’re not signed in (Settings → Sign in with Google)';
+  if(e&&e.status===404 || /not found/i.test(m)) return 'the relay needs the newest code (Peggy checklist → “Paste the newest relay code”)';
+  if(/x-api-key|api key|authentication|invalid.*key/i.test(m)) return 'the Claude key isn’t working (Peggy checklist → “Fix invalid x-api-key”)';
+  if(/ANTHROPIC_API_KEY/.test(m)) return 'the relay has no Claude key yet (Peggy checklist → “Add the key to the relay”)';
+  if(/credit|balance|billing/i.test(m)) return 'the Claude account is out of credit (Claude Console → Billing)';
+  return m;
+}
+let sortWarned=0;
+function warnSort(e, extra){ if(Date.now()-sortWarned<60000) return; sortWarned=Date.now();
+  setTimeout(()=>toast(`Claude couldn’t sort photos: ${sortProblem(e)}. ${extra||'Peggy left out the obvious screenshots and maps itself.'}`, 10000), 3500); }
 const kindSummary = c => Object.entries(c).filter(([,n])=>n).map(([k,n])=>`${n} ${KIND_NAMES[k][n>1?1:0]}`).join(', ');
 // Imports wait their turn, so two at once can't both bring in the same photos.
 let importQ=Promise.resolve();
@@ -845,10 +863,12 @@ async function importBlobsNow(list, prog){
     sh.append(el('h3',{textContent:'Bringing in your photos'}), st, el('div',{className:'progress'},b)); bar={b,st,close}; });
   // Leave out screenshots, maps/papers and item shots before saving anything.
   let kinds=null;
+  let sortErr=null;
+  if(skipShots() && !acct.session && list.length) sortErr={message:'not signed in'};
   if(skipShots() && acct.session && list.length){
     if(bar) bar.st.textContent='Sorting out screenshots, maps and item photos…';
     try{ kinds=await classifyBlobs(list.map((it,i)=>({key:'i'+i, blob:it.blob})), (d,t)=>{ if(bar){ bar.b.style.width=(30*d/t)+'%'; bar.st.textContent=`Sorting ${d} of ${t}…`; } }); }
-    catch(e){ console.warn('classify',e); setTimeout(()=>toast('Couldn’t check for maps and item photos ('+e.message+'). Everything was imported.',5000),3500); }
+    catch(e){ console.warn('classify',e); sortErr=e; kinds=null; }
   }
   // Look at each one: its fingerprint, sharpness and a thumbnail.
   const cand=[]; let looked=0;
@@ -862,6 +882,8 @@ async function importBlobsNow(list, prog){
       // iPhone Safari can lose files picked from the photo library once they're saved, so keep a plain copy of the bytes instead.
       if(typeof File!=='undefined' && it.blob instanceof File) it.blob=new Blob([await it.blob.arrayBuffer()],{type:it.blob.type||'image/jpeg'});
       const img=await loadImage(it.blob), hash=photoHash(img), sharp=sharpness(img);
+      // Claude couldn't sort these, so make an on-phone guess.
+      if(skipShots() && !kd){ const lk=localKind(img, it.make); if(lk){ skipped[lk]++; step(); continue; } }
       const me={it, kd, hash, sharp, created:it.created};
       // Already in Peggy (the same photo, or a look-alike shot of the same moment).
       if(photos.some(q=>q.hash && (skipBursts()?lookAlike(me,q):sameShot(me,q)))){ dup++; step(); continue; }
@@ -883,6 +905,7 @@ async function importBlobsNow(list, prog){
     }catch(err){ console.error(err); fail++; }
   }
   bar && bar.close();
+  if(sortErr) warnSort(sortErr);
   if(added.length){ try{ localStorage.setItem('peggy.lastBatch', batch); }catch(_){} }
   const sk=kindSummary(skipped);
   const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} duplicate${dup===1?'':'s'} left out`:'')+(sk?` · skipped ${sk}`:'')+(fail?` · ${fail} failed`:'');
@@ -1071,7 +1094,7 @@ async function downloadPicked(sessionId){
     const worker=async()=>{ while(items.length){ const it=items.shift();
       try{ const r=await fetch(cfg.relay+'/media?u='+encodeURIComponent(it.mediaFile.baseUrl+'=w2560-h2560'),{headers:{Authorization:'Bearer '+t}});
            if(!r.ok) throw new Error(r.status);
-           got.push({blob:await r.blob(), name:it.mediaFile.filename, created:Date.parse(it.createTime)||Date.now(), src:'google', gid:it.id});
+           got.push({blob:await r.blob(), name:it.mediaFile.filename, created:Date.parse(it.createTime)||Date.now(), src:'google', gid:it.id, make:md(it).cameraMake||md(it).cameraModel||''});
       }catch(e){ console.error('download',e); }
       prog.set(++done, total); } };
     await Promise.all([worker(),worker(),worker()]);
@@ -1116,6 +1139,10 @@ async function openSettings(note){
     sh.append(el('label',{className:'checkrow',title:'Leave out screenshots, maps, papers and item photos when bringing in photos'},sk,el('span',{textContent:'Skip screenshots, maps, papers and item photos when importing'})));
     const sb=el('input',{type:'checkbox',checked:skipBursts()}); sb.onchange=()=>{ try{ localStorage.setItem('peggy.skipBursts', sb.checked?'1':'0'); }catch(_){} toast(sb.checked?'Only the sharpest of a few quick shots will be imported':'Every shot will be imported, even near-copies'); };
     sh.append(el('label',{className:'checkrow',title:'When you took a few shots of the same moment, bring in only the sharpest'},sb,el('span',{textContent:'Only import the sharpest of a few quick shots of the same moment'})));
+    const ss=el('p',{className:'hint',textContent:'Photo sorting: checking…'}); sh.append(ss);
+    (async()=>{ try{ if(!acct.session) throw new Error('not signed in'); const c=document.createElement('canvas'); c.width=c.height=16; const b=await toBlob(c,'image/jpeg',.5);
+        await classifyBlobs([{key:'t',blob:b}]); ss.textContent='Photo sorting: working ✓ (Claude checks each import)'; }
+      catch(e){ ss.textContent='Photo sorting with Claude isn’t working: '+sortProblem(e)+'. Until then Peggy guesses on the phone (screenshots and maps only).'; } })();
     const tidy=el('button',{textContent:'🧹 Clean up screenshots, maps & item photos',title:'Find ones already in Peggy and remove them'}); tidy.onclick=()=>{ close(); openTidy(); }; sh.append(tidy);
     const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
     st.append(dups,save,out,wipe,c); sh.append(st);
