@@ -1,6 +1,6 @@
 // Partners service worker: lets the app open offline. Pages load network-first so updates arrive right away.
-const CACHE = 'partners-v132';
-const SHELL = ['./', 'index.html', 'plan.html', 'tv.html', 'theme.js', 'account.js', 'core.js', 'magic.js', 'share.js', 'costumes.js', 'core-butterfly.js', 'partners.js', 'words.html', 'words-version.js', 'manifest.json', 'icon-180.png', 'icon-512.png', 'welcome.html', 'account.html'];
+const CACHE = 'partners-v133';
+const SHELL = ['./', 'index.html', 'plan.html', 'tv.html', 'theme.js', 'account.js', 'core.js', 'magic.js', 'share.js', 'costumes.js', 'core-butterfly.js', 'partners.js', 'words.html', 'words-version.js', 'manifest.json', 'icon-180.png', 'icon-512.png', 'welcome.html', 'account.html', 'mail.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

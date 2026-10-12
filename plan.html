@@ -516,22 +516,22 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncAll(
 
 /* ================= routing ================= */
 let tab='tasks';
-const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Fuel',us:'Us'};
+const SECT={tasks:'Tasks',calendar:'Calendar',links:'Links',money:'Money',flights:'Flights',fuel:'Fuel',us:'Us',mail:'Mail'};
 function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tasks';
   document.documentElement.classList.toggle('cal', tab==='calendar');   // calendar uses normal-size text so more events fit
   document.querySelectorAll('.bnav a').forEach(a=>a.classList.toggle('on',a.dataset.k===tab));
   $('#sect').textContent=SECT[tab];
-  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':tab==='us'?'Send an appreciation':'Add a link';
+  $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':tab==='us'?'Send an appreciation':tab==='mail'?'Add an email account':'Add a link';
   render(); if(tab==='calendar') loadCalendar(); }
 window.addEventListener('hashchange', route);
-$('#addBtn').onclick=()=>{ if(!acct.session) return partnersSignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):tab==='us'?sendAppreciation():editLink(null); };
+$('#addBtn').onclick=()=>{ if(!acct.session) return partnersSignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):tab==='us'?sendAppreciation():tab==='mail'?mAccounts():editLink(null); };
 $('#setBtn').onclick=()=>openSettings();
 
 function render(){
   const v=$('#view');
   if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
   $('#addBtn').classList.remove('hidden');
-  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else if(tab==='us') renderUs(v); else renderLinks(v);
+  if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else if(tab==='us') renderUs(v); else if(tab==='mail'){ if(typeof renderMail==='function') renderMail(v); else v.replaceChildren(el('p',{className:'spin',textContent:'Opening Mail…'})); } else renderLinks(v);
 }
 function renderSignIn(v){
   v.replaceChildren(el('div',{className:'card signin'},
@@ -943,7 +943,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='131';
+const PARTNERS_VER='133';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -2297,5 +2297,6 @@ document.addEventListener('partnerstheme',()=>{ $('#logo').innerHTML=butterfly({
   a.style.cssText='position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:50;background:var(--accent,#e0558f);color:#fff;font-weight:800;padding:12px 18px;border-radius:999px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.3)';
   document.body.appendChild(a); })();
 </script>
+<script src="mail.js"></script>
 </body>
 </html>

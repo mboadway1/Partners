@@ -34,8 +34,18 @@ async function partnersFinishSignIn(){
   const q = new URLSearchParams(location.search);
   if (!q.get('code') && !q.get('error')) return null;
   const clean = () => history.replaceState(null, '', location.pathname + location.hash);
-  if (q.get('error')){ clean(); throw new Error('Google sign-in was cancelled'); }
+  if (q.get('error')){ clean(); const wasMail=localStorage.getItem('partners.mailAuth'); localStorage.removeItem('partners.mailAuth'); throw new Error(wasMail?'Adding the email account was cancelled'+(q.get('error_description')?': '+q.get('error_description').slice(0,160):''):'Google sign-in was cancelled'); }
   if (q.get('state') !== localStorage.getItem('partners.authState')){ clean(); throw new Error('Sign-in check failed, please try again'); }
+  // Adding an email account to Mail (Gmail or Outlook): hand the code to the relay, which keeps that account's access.
+  const mailKind = localStorage.getItem('partners.mailAuth');
+  if (mailKind){ localStorage.removeItem('partners.mailAuth');
+    const r = await fetch(acct.relay + '/api/mail/connect/' + (mailKind==='microsoft'?'microsoft':'google'), { method:'POST', headers:{'Content-Type':'application/json','X-Partners-Session':acct.session},
+      body: JSON.stringify({ code: q.get('code'), redirect_uri: partnersRedirect() }) });
+    const d = await r.json().catch(()=>({})); clean();
+    const back = localStorage.getItem('partners.authReturn') || 'plan.html#mail'; localStorage.removeItem('partners.authReturn');
+    if (!r.ok) throw new Error(d.error || ('Couldn’t add that email account (' + r.status + ')'));
+    try{ localStorage.setItem('partners.mailAdded', d.account ? d.account.address : '1'); }catch(_){}
+    return back; }
   // Signed in with email already? Then this connects Google to that account. A saved invite joins the partner's couple.
   let invite=''; try{ invite=localStorage.getItem('partners.invite')||''; }catch(_){}
   const r = await fetch(acct.relay + '/api/auth/exchange', { method:'POST', headers:{'Content-Type':'application/json', ...(acct.session?{'X-Partners-Session':acct.session}:{})},

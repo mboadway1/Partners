@@ -75,7 +75,7 @@ applyPartnersTheme(partnersThemeName());
 
 /* ---------- bottom menu: the "More" button opens Links and Words ---------- */
 (function(){
-  const MORE=[['plan.html#us','💞','Us','Share a concern, Taking Turns'],['plan.html#fuel','⛽','Fuel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites']];
+  const MORE=[['plan.html#mail','✉️','Mail','All your email in one inbox (only you see it)'],['plan.html#us','💞','Us','Share a concern, Taking Turns'],['plan.html#fuel','⛽','Fuel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites']];
   function setup(){
     const more=document.querySelector('.bnav a.more'); if(!more) return;
     const st=document.createElement('style');
@@ -87,7 +87,7 @@ applyPartnersTheme(partnersThemeName());
     more.addEventListener('click',e=>{ e.preventDefault(); menu.hidden=!menu.hidden; });
     document.addEventListener('click',e=>{ if(!menu.hidden && !menu.contains(e.target) && !more.contains(e.target)) menu.hidden=true; });
     const mark=()=>{ if(/(^|\/)(index\.html)?$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="photos"]').forEach(a=>a.classList.add('on'));
-      const inMore=/words\.html$/.test(location.pathname) || /plan\.html$/.test(location.pathname)&&['#links','#fuel','#us'].includes(location.hash); more.classList.toggle('on', inMore);
+      const inMore=/words\.html$/.test(location.pathname) || /plan\.html$/.test(location.pathname)&&['#links','#fuel','#us','#mail'].includes(location.hash); more.classList.toggle('on', inMore);
       if(/words\.html$/.test(location.pathname)) document.querySelectorAll('.bnav a[data-k="words"]').forEach(a=>a.classList.remove('on')); };
     mark(); addEventListener('hashchange', mark);
   }
@@ -116,9 +116,10 @@ html.framed .bnav .notv,html.wide.framed:not(.tv) .bnav .notv{display:none!impor
   document.head.append(st);
   const ICON={fuel:'<rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/>',
     us:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+    mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
     links:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const add=()=>{ const nav=document.querySelector('.bnav'), more=nav&&nav.querySelector('.more'); if(!nav||!more) return;
-    for (const [k,l] of [['fuel','Fuel'],['us','Us'],['links','Links']]){
+    for (const [k,l] of [['mail','Mail'],['fuel','Fuel'],['us','Us'],['links','Links']]){
       if (nav.querySelector(`[data-k="${k}"]`)) continue;
       const a=document.createElement('a'); a.href='plan.html#'+k; a.dataset.k=k; a.className='wideonly'; a.title=l;
       a.innerHTML=`<svg class="ic" viewBox="0 0 24 24">${ICON[k]}</svg>${l}`; nav.insertBefore(a, more); } };
