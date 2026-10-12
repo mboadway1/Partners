@@ -392,6 +392,7 @@ function renderHome(){
   add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
+  add('🔄 Refresh',()=>location.reload());
   const keepPid = cur && cur._pid; const grid=$('#grid');
   grid.replaceChildren(...list.map((p,i)=>{ const c=el('div',{className:'cell f'}); c._pid=p.id;
     c.append(el('img',{src:urlFor(p),alt:'',loading:'lazy',decoding:'async'}));
@@ -520,13 +521,13 @@ function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clear
 async function slideMenu(){
   const wasPaused=ss&&ss.paused; ssPause(true);
   const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
-    ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
+    ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings'],['🔄 Refresh','reload']]);
   if(!ss) return;
   if(v==='next'||v==='prev'){ if(!wasPaused) ssPause(false); ssGo(v==='next'?1:-1); return; }
   if(v==='pause'){ ssPause(!wasPaused); return; }
   if(!v || v==='stay'){ if(!wasPaused) ssPause(false); return; }
   while(scopes.length>1) popScope();   // leave the slideshow
-  if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu();
+  if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu(); else if(v==='reload') location.reload();
 }
 $('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')) slideMenu(); });
 // Peggy's planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
