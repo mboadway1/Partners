@@ -934,7 +934,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='126';
+const PARTNERS_VER='127';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -952,7 +952,7 @@ async function gCheckScope(force){ if((gScopeChecked&&!force)||!acct.session) re
     const can=/auth\/tasks(\s|$)/.test(d.scope||''); gNeedScope=!can; gScopeMsg=can?'✓ Partners can update your Google Tasks':'Partners can only read your Google Tasks right now'; }
   catch(e){ gNeedScope=true; gScopeMsg='Google isn’t connected: '+(e.message||e); }
   if(tab==='tasks') render(); }
-function gKick(ms=5000){ clearTimeout(gKickT); if(gMine().length) gKickT=setTimeout(()=>syncGoogleTasks(),ms); }
+function gKick(ms=2000){ clearTimeout(gKickT); if(gMine().length) gKickT=setTimeout(()=>syncGoogleTasks(),ms); }
 function gBody(t){ const b={title:t.title,notes:t.notes||'',due:gDue(t.due),status:t.done?'completed':'needsAction'}; if(!t.done) b.completed=null; return b; }
 const gDiffers=(g,t)=>g.title!==t.title||(g.notes||'')!==(t.notes||'')||(g.due||'').slice(0,10)!==(t.due||'')||(g.status==='completed')!==!!t.done;
 async function gFetch(tl){ const out=[]; let pt='';
@@ -1076,7 +1076,7 @@ async function syncGoogleTasks(manual){
     if(manual||gNeedScope) toast(gNeedScope?'To send changes back to Google Tasks, reconnect Google once (button in Tasks).':'Google Tasks sync stopped: '+gLastErr,7000);
   }finally{ gSyncing=false; if(tab==='tasks') render(); }
 }
-setInterval(()=>{ if(!document.hidden && Date.now()-gLast>120000) syncGoogleTasks(); }, 30000);
+setInterval(()=>{ if(!document.hidden && Date.now()-gLast>60000) syncGoogleTasks(); }, 15000);   // every minute while Partners is on screen
 // Coming back to Partners (e.g. from Google Tasks in another tab) syncs right away.
 const gBack=()=>{ if(!document.hidden && Date.now()-gLast>10000) gKick(500); };
 document.addEventListener('visibilitychange',gBack); window.addEventListener('focus',gBack);
