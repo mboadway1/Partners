@@ -6,7 +6,7 @@ const PARTNERS = {
   relay: 'https://ezrad-partners-relay.mboadway1.workers.dev',
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/tasks.readonly',
+    'https://www.googleapis.com/auth/tasks',
     'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'],
 };
 const acct = {
