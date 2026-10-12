@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Partners TV</title>
+<title>Partners</title>
 <script src="theme.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;700;800&display=swap">
@@ -907,7 +907,7 @@ function startPeer(){
   peer=new Peer(PEER_PREFIX+code);
   peer.on('open',()=>setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0));
   peer.on('connection',c=>{
-    c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Partners TV', count:photos.length}); });
+    c.on('open',()=>{ conns.add(c); setStatus('Phone connected',true); c.send({t:'hi', name:'Partners', count:photos.length}); });
     c.on('data',m=>{ if(m && m.type) return onWords(c,m); onData(c,m); });
     c.on('close',()=>{ conns.delete(c); if(c===wConn){ wConn=null; if(wordsOpen()) renderWords(); } setStatus(conns.size?'Phone connected':'Ready for phone',conns.size>0); });
     c.on('error',()=>{});
