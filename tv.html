@@ -112,7 +112,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #edStage canvas{max-width:100%;max-height:100%;box-shadow:0 0 0 .1vw rgba(255,255,255,.2)}
 #edPanel{width:30vw;background:var(--panel);padding:2.5vh 1.6vw;display:flex;flex-direction:column;gap:.9vh;overflow:hidden}
 #edPanel h3{margin:0 0 1vh;font:600 2vw var(--display);color:var(--accent)}
-.erow{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border-radius:.7vw;padding:.8vw 1.2vw;font-size:1.35vw}
+.erow{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border-radius:.7vw;padding:.8vw 1.2vw;font-size:1.35vw;cursor:pointer}
 .erow .v{color:var(--dim)} .erow .v::before{content:"◀  "} .erow .v::after{content:"  ▶"}
 .erow.act{justify-content:center}
 .ebtns{display:flex;gap:.8vw}.ebtns .erow{flex:1}
@@ -808,6 +808,11 @@ let wake=null;
 async function awake(on){ try{ if(on){ if(!wake && navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); } else if(wake){ await wake.release(); wake=null; } }catch(_){ wake=null; } }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && ss){ wake=null; awake(true); } });
 
+// Settings rows with ◀ ▶ values also work by pointing and clicking (TV browsers use the arrows for the pointer):
+// click the ◀ end of the value to go down, anywhere else on the row to go up.
+document.addEventListener('click',e=>{ const r=e.target.closest('.erow'); if(!r || !r._lr) return;
+  const v=r.querySelector('.v'), b=(v||r).getBoundingClientRect();
+  r._lr(v && e.clientX < b.left + Math.min(b.width*.35, b.height*2) ? -1 : 1); if(r.classList.contains('f')) focusEl(r); });
 /* ================= settings / connect ================= */
 async function openSettings(){
   await dialog(async(d,close)=>{
