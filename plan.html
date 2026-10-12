@@ -58,6 +58,9 @@ main{padding:10px calc(var(--sr) + 12px) calc(var(--sb) + 96px) calc(var(--sl) +
 /* On the TV: use the whole screen */
 html.tv main{max-width:none;padding-left:24px;padding-right:24px}
 html.tv .bnav a{max-width:none}
+html.tv .mc{min-height:0}
+html.tv .mc .n{font-size:15px}
+html.tv .mc .e{font-size:13px}
 .bnav .tvonly{display:none} html.tv .bnav .tvonly{display:flex} html.tv .bnav .notv{display:none}
 
 /* bottom navigation (same on every Peggy page) */
@@ -624,6 +627,13 @@ function byDay(){
 }
 function sortKey(x){ if(x.type==='task') return '1'+(x.t.time||'99'); const ev=x.ev; return ev.start.date?'0':'1'+fmt24(new Date(ev.start.dateTime)); }
 const fmt24=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+// On the TV the month fills the screen: weeks share all the height between the top bar and the bottom bar.
+const onTV=()=>document.documentElement.classList.contains('tv');
+function fitMonth(g){ if(!g.isConnected) return;
+  const nav=document.querySelector('.bnav'), bottom=nav?nav.getBoundingClientRect().top:innerHeight;
+  const h=Math.max(300, bottom-g.getBoundingClientRect().top-12), weeks=(g.children.length-7)/7;
+  g.style.height=h+'px'; g.style.gridTemplateRows=`auto repeat(${weeks},1fr)`; }
+addEventListener('resize',()=>{ const g=document.querySelector('.month'); if(g && onTV()) fitMonth(g); });
 function renderCalendar(v){
   $('#chips').replaceChildren();
   if(calErr){ const det=el('p',{className:'diag',textContent:'Checking what Google allowed…'});
@@ -645,11 +655,13 @@ function renderCalendar(v){
     for(let d=new Date(s); d<e; d=addDays(d,1)){
       const k=ymd(d), items=m[k]||[], c=el('div',{className:'mc'+(d.getMonth()!==cdate.getMonth()?' out':'')+(k===ymd(today())?' today':''),title:fmtDay(d)});
       c.append(el('span',{className:'n',textContent:d.getDate()}));
-      items.slice(0,3).forEach(x=>{ const t=el('div',{className:'e'+(x.type==='task'?' task':''),textContent:x.type==='task'?'☐ '+x.t.title:(x.ev.summary||'(No title)')}); if(x.type==='ev') t.style.setProperty('--c',x.ev._cal.color); c.append(t); });
-      if(items.length>3) c.append(el('div',{className:'more',textContent:`+${items.length-3} more`}));
+      const fit=onTV()?6:3;
+      items.slice(0,fit).forEach(x=>{ const t=el('div',{className:'e'+(x.type==='task'?' task':''),textContent:x.type==='task'?'☐ '+x.t.title:(x.ev.summary||'(No title)')}); if(x.type==='ev') t.style.setProperty('--c',x.ev._cal.color); c.append(t); });
+      if(items.length>fit) c.append(el('div',{className:'more',textContent:`+${items.length-fit} more`}));
       const day=new Date(d); c.onclick=()=>daySheet(day, items); g.append(c);
     }
     parts.push(g);
+    if(onTV()) requestAnimationFrame(()=>fitMonth(g));
   } else {
     const days=[]; for(let d=new Date(s); d<e; d=addDays(d,1)) days.push(new Date(d));
     let any=false;
