@@ -115,7 +115,8 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dCap,#dClock{position:absolute;bottom:3vh;font-size:1.6vw;color:#fff;text-shadow:0 .1vw .5vw #000,0 0 1vw #000;z-index:3;line-height:1.3}
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
 #dClock{right:3vw;font-variant-numeric:tabular-nums;text-align:right}
-#dClock small{display:block;font-size:.8em;color:#ddd} #dClock .nowplaying{font-size:.7em;margin-top:.8vh;max-width:42vw;margin-left:auto;display:grid;justify-items:end} #dClock .nowplaying b,#dClock .nowplaying span{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #dClock .nowplaying span{font-size:.85em;color:#ddd}
+#dClock small{display:block;font-size:.8em;color:#ddd} #dClock .nowplaying{font-size:.8em;margin-top:.8vh;max-width:42vw;margin-left:auto;display:grid;justify-items:end} #dClock .nowplaying b,#dClock .nowplaying span{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #dClock .nowplaying span{font-size:.85em;color:#ddd}
+#dClock .nprow{display:flex;gap:.6vw;margin-top:.6vh} #dClock .npbtn{font:700 .8em var(--body,inherit);color:#fff;background:rgba(0,0,0,.45);border:.15vw solid rgba(255,255,255,.35);border-radius:999px;padding:.4vh 1vw;cursor:pointer;text-shadow:none} #dClock .npbtn:hover,#dClock .npbtn.focus{background:var(--accent);border-color:#fff}
 #nowBanner{position:fixed;left:50%;top:5vh;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.6);color:#fff;border-radius:1.2vw;padding:1.2vh 2vw;text-align:center;font-size:1.8vw;opacity:0;transition:opacity .6s;pointer-events:none;max-width:70vw} #nowBanner.on{opacity:1} #nowBanner small{display:block;font-size:.75em;color:#ddd} html.desk #nowBanner{font-size:1.2vw}
 #home>#homeNow{position:absolute;right:3vw;bottom:13vh;z-index:5;background:rgba(0,0,0,.45);color:#fff;border-radius:.8vw;padding:.6vw 1.2vw;font-size:1.2vw;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dClock .dEvents{font-size:.62em;margin-bottom:1vh;display:grid;gap:.4vh;justify-items:end}
@@ -617,7 +618,7 @@ async function slideMenu(){
   if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu(); else if(v==='reload') location.reload();
 }
 // Clicking the slideshow goes back to Partners' home screen (every feature is a button there).
-$('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')){ while(scopes.length>1) popScope(); } });
+$('#show').addEventListener('click',e=>{ if(e.target.closest('.npbtn')) return; if(ss && e.target.closest('#show') && !e.target.closest('.scrim')){ while(scopes.length>1) popScope(); } });
 // Partners' planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
 const ICONS={
   photos:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/>',
@@ -821,7 +822,13 @@ function tickClock(){ const c=$('#dClock'); c.replaceChildren();
   else if(slideEv.note){ const box=el('div',{className:'dEvents'}); box.append(el('div',{className:'dEv',textContent:slideEv.note})); c.append(box); }
   c.append(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
   if(wx.line) c.append(el('small',{textContent:wx.line}));
-  if(music.title) c.append(el('div',{className:'nowplaying'},el('b',{textContent:'♪ '+music.title}),music.artist?el('span',{textContent:music.artist}):null)); }
+  if(music.title){ const np=el('div',{className:'nowplaying'},el('b',{textContent:'♪ '+music.title}),music.artist?el('span',{textContent:music.artist}):null);
+    // Buttons right under the song: skip it, or never play it again (songs from the Music folder only).
+    if(musicCfg.mode==='drive' && music.cur){ const row=el('div',{className:'nprow'});
+      const nx=el('button',{className:'npbtn f',textContent:'⏭ Next'}); nx.onclick=e=>{ e.stopPropagation(); musicNext(); };
+      const del=el('button',{className:'npbtn f',textContent:'👎 Don’t play again'}); del.onclick=e=>{ e.stopPropagation(); const n=music.cur.title||music.cur.name; musicHide(music.cur); toast(`Removed “${n}”. It won’t play again.`,4000); };
+      row.append(nx,del); np.append(row); }
+    c.append(np); } }
 /* ---------- local weather (Open-Meteo, no key needed) ----------
    Where the TV is: the browser's location if it shares it, otherwise worked out from the internet connection,
    re-checked every 3 hours so it follows the RV. Weather refreshes every 30 minutes. */
