@@ -853,8 +853,11 @@ function keepVideo(){
   let v=$('#keepAwake');
   if(!v){ v=el('video',{id:'keepAwake',src:'keepawake.mp4',muted:true,loop:true,playsInline:true});
     v.setAttribute('muted',''); v.setAttribute('playsinline','');
-    v.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
-    document.body.append(v); }
+    // TV browsers only hold the screen on for a video that's on screen and big enough, so it fills the
+    // screen behind everything (nearly see-through, under the page).
+    v.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;opacity:.02;pointer-events:none;z-index:-1';
+    v.addEventListener('pause',()=>setTimeout(keepVideo,1000)); v.addEventListener('ended',()=>{ v.currentTime=0; keepVideo(); });
+    document.body.prepend(v); }
   if(v.paused){ const p=v.play(); p && p.catch && p.catch(()=>{}); }
 }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ wake=null; awake(); } });
