@@ -386,7 +386,7 @@ function renderHome(){
     for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
       add(a.name,()=> view===a.id ? albumOptions(a) : setView(a.id), view===a.id?'on':'', photos.filter(p=>p.albums.includes(a.id)).length);
   }
-  if(driveReady()) add('🖼 Favorites folder',()=>startDrive(),photos.length?'':'primary');
+  if(driveReady()) add('🖼 Photos',()=>startDrive(),photos.length?'':'primary');
   add('📅 Today',()=>openToday());
   for(const [label,tab] of PLAN_TABS) add(label,()=>openPlan(tab));
   add('🎙 Words',()=>openWords());
@@ -755,7 +755,7 @@ async function openSettings(){
     d.append(row('Order',()=>settings.shuffle?'Shuffle':'Newest first', ()=>{ settings.shuffle=!settings.shuffle; }));
     d.append(row('Gentle zoom',()=>settings.motion?'On':'Off', ()=>{ settings.motion=!settings.motion; }));
     d.append(row('Favorites folder',()=>driveReady()?(drive.lastErr?'Problem: '+drive.lastErr:'Set up ✓'):'Set up from phone', ()=>{}));
-    if(driveReady()) d.append(row('Open with Favorites slideshow',()=>settings.driveStart?'On':'Off', ()=>{ settings.driveStart=!settings.driveStart; }));
+    if(driveReady()) d.append(row('Open with Photos slideshow',()=>settings.driveStart?'On':'Off', ()=>{ settings.driveStart=!settings.driveStart; }));
     d.append(row('Screen fit',()=>settings.fit+'%', x=>{ settings.fit=clamp(settings.fit+x*2,70,100); }));
     let used=''; try{ const e=await navigator.storage.estimate(); used=`${photos.length} photos · ${(e.usage/1048576).toFixed(0)} MB on this TV`; }catch(_){ used=`${photos.length} photos on this TV`; }
     d.append(el('p',{textContent:used}));
