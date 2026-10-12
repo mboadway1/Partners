@@ -302,6 +302,15 @@ document.addEventListener('keydown',e=>{
   if(k==='back' && e.key!=='Escape') return; // real Back comes from the app shell via peggyBack()
   e.preventDefault(); handleKey(k);
 });
+// In the TV's web browser, hide the browser's toolbar: go full screen on the first remote press or click.
+// (Browsers only allow this from a button press. Inside the Fire TV app it's already full screen, so this does nothing.)
+function goFull(){
+  const d=document.documentElement, req=d.requestFullscreen||d.webkitRequestFullscreen;
+  if(!req || document.fullscreenElement || document.webkitFullscreenElement) return;
+  try{ const p=req.call(d); p && p.catch && p.catch(()=>{}); }catch(_){}
+}
+document.addEventListener('keydown',goFull,true);
+document.addEventListener('click',goFull,true);
 // Called by the Fire TV app shell. Return true if the page handled it.
 window.peggyBack=()=>goBack();
 window.peggyKey=k=>{ handleKey(k); return true; };
