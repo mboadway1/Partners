@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-peggy="tv">
+<html lang="en" data-partners="tv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -291,14 +291,14 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 const PHONE_URL = new URL('./', location.href).href;
 const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(_){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(_){} } };
 const settings = {
-  get interval(){ return +store.get('peggy.tv.interval', 8); }, set interval(v){ store.set('peggy.tv.interval', v); },
-  get shuffle(){ return store.get('peggy.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('peggy.tv.shuffle', v?'1':'0'); },
-  get motion(){ return store.get('peggy.tv.zoom','0')==='1'; }, set motion(v){ store.set('peggy.tv.zoom', v?'1':'0'); },   // gentle zoom: off unless turned on in Settings
+  get interval(){ return +store.get('partners.tv.interval', 8); }, set interval(v){ store.set('partners.tv.interval', v); },
+  get shuffle(){ return store.get('partners.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('partners.tv.shuffle', v?'1':'0'); },
+  get motion(){ return store.get('partners.tv.zoom','0')==='1'; }, set motion(v){ store.set('partners.tv.zoom', v?'1':'0'); },   // gentle zoom: off unless turned on in Settings
   // Screen fit: shrinks Partners so TVs that trim the picture edges (overscan) show all of it.
   // The Fire TV app is already sized right (100%); in the TV's web browser start at 90%.
-  get driveFolder(){ return store.get('peggy.tv.driveFolder',''); }, get driveKey(){ return store.get('peggy.tv.driveKey',''); },
-  get driveStart(){ return store.get('peggy.tv.driveStart','1')==='1'; }, set driveStart(v){ store.set('peggy.tv.driveStart', v?'1':'0'); },
-  get fit(){ return +store.get('peggy.tv.fit', (/; wv\)/.test(navigator.userAgent) || !/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent)) ? 100 : 90); }, set fit(v){ store.set('peggy.tv.fit', v); applyFit(); },
+  get driveFolder(){ return store.get('partners.tv.driveFolder',''); }, get driveKey(){ return store.get('partners.tv.driveKey',''); },
+  get driveStart(){ return store.get('partners.tv.driveStart','1')==='1'; }, set driveStart(v){ store.set('partners.tv.driveStart', v?'1':'0'); },
+  get fit(){ return +store.get('partners.tv.fit', (/; wv\)/.test(navigator.userAgent) || !/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent)) ? 100 : 90); }, set fit(v){ store.set('partners.tv.fit', v); applyFit(); },
 };
 function applyFit(){ const f=settings.fit; document.body.style.transform = f<100 ? `scale(${f/100})` : ''; }
 applyFit();
@@ -349,7 +349,7 @@ const KEYMAP={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',
   MediaPlayPause:'play',MediaPlay:'play',MediaPause:'play',MediaFastForward:'ff',MediaTrackNext:'ff',MediaRewind:'rew',MediaTrackPrevious:'rew',ContextMenu:'menu'};
 function handleKey(k){
   const sc=topScope();
-  if(k==='back') return window.peggyBack();
+  if(k==='back') return window.partnersBack();
   if(sc.onkey && sc.onkey(k)) return true;
   if(cur && cur._lr && (k==='left'||k==='right')){ cur._lr(k==='left'?-1:1); return true; }
   if(k==='left'||k==='right'||k==='up'||k==='down'){ move(k); return true; }
@@ -361,7 +361,7 @@ document.addEventListener('keydown',e=>{
   const k=KEYMAP[e.key]; if(!k) return;
   if(cur && cur.tagName==='INPUT' && (k==='left'||k==='right')) return; // let the text box move its cursor
   if(cur && cur.tagName==='INPUT' && k==='back' && e.key==='Backspace') return;
-  if(k==='back' && e.key!=='Escape') return; // real Back comes from the app shell via peggyBack()
+  if(k==='back' && e.key!=='Escape') return; // real Back comes from the app shell via partnersBack()
   e.preventDefault(); handleKey(k);
 });
 // In the TV's web browser, hide the browser's toolbar: go full screen on the first remote press or click.
@@ -388,14 +388,14 @@ function fullPrompt(){ const p=$('#fullPrompt'); if(!p) return; p.classList.togg
 document.addEventListener('fullscreenchange',fullPrompt); document.addEventListener('webkitfullscreenchange',fullPrompt);
 setTimeout(()=>{ if(REAL_TV) goFull(); setTimeout(fullPrompt,600); },300);
 if(!/; wv\)/.test(navigator.userAgent) && history.pushState){
-  try{ history.pushState({peggy:1},''); }catch(_){}
-  addEventListener('popstate',()=>{ try{ history.pushState({peggy:1},''); }catch(_){}
+  try{ history.pushState({partners:1},''); }catch(_){}
+  addEventListener('popstate',()=>{ try{ history.pushState({partners:1},''); }catch(_){}
     if(!goBack()) toast('Press the Home button on the remote to leave Partners',3000); });
 }
 document.addEventListener('fullscreenchange',()=>{ if(REAL_TV && !document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
 // Called by the Fire TV app shell. Return true if the page handled it.
-window.peggyBack=()=>goBack();
-window.peggyKey=k=>{ handleKey(k); return true; };
+window.partnersBack=()=>goBack();
+window.partnersKey=k=>{ handleKey(k); return true; };
 
 /* ================= dialogs ================= */
 function dialog(build){ return new Promise(resolve=>{
@@ -674,7 +674,7 @@ async function edSave(){
 }
 // Back while reframing just leaves reframe mode
 const _goBack=goBack;
-window.peggyBack=()=>{ if(te && te.reframe){ te.reframe=false; edDraw(); return true; }
+window.partnersBack=()=>{ if(te && te.reframe){ te.reframe=false; edDraw(); return true; }
   if(vw && topScope().root===$('#viewer') && !$('#vBar').classList.contains('hidden')){ closeBar(); return true; }
   return _goBack(); };
 
@@ -714,20 +714,20 @@ async function driveList(){
 // Leave out screenshots and item photos (things photographed for reference, not memories).
 // Obvious screenshots are caught here; Claude sorts the rest through Partners' relay, once per photo.
 const SKIP_KINDS=new Set(['screenshot','item']);
-function driveKinds(){ try{ return JSON.parse(store.get('peggy.tv.kinds','{}')); }catch(_){ return {}; } }
+function driveKinds(){ try{ return JSON.parse(store.get('partners.tv.kinds','{}')); }catch(_){ return {}; } }
 function driveKeep(items){ const k=driveKinds(); return items.filter(d=>!d.shot && !SKIP_KINDS.has(k[d.id])); }
 let sorting=false;
 async function driveSort(items){
-  if(sorting) return; let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){} if(!plan || !plan.session) return;
+  if(sorting) return; let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){} if(!plan || !plan.session) return;
   const known=driveKinds(), todo=items.filter(d=>!d.shot && !(d.id in known)); if(!todo.length) return;
   sorting=true;
   try{
     for(let i=0;i<todo.length;i+=12){
       const part=todo.slice(i,i+12);
-      const r=await fetch(plan.relay+'/api/classify',{method:'POST',headers:{'X-Peggy-Session':plan.session,'Content-Type':'application/json'},
+      const r=await fetch(plan.relay+'/api/classify',{method:'POST',headers:{'X-Partners-Session':plan.session,'Content-Type':'application/json'},
         body:JSON.stringify({images:part.map(d=>({id:d.id, url:d.thumb}))})});
       if(!r.ok) break;   // relay not updated yet or no Claude key: keep showing them rather than hiding everything
-      const j=await r.json(), k=driveKinds(); (j.results||[]).forEach(x=>{ if(x.id) k[x.id]=x.kind; }); store.set('peggy.tv.kinds', JSON.stringify(k));
+      const j=await r.json(), k=driveKinds(); (j.results||[]).forEach(x=>{ if(x.id) k[x.id]=x.kind; }); store.set('partners.tv.kinds', JSON.stringify(k));
       driveDrop();
     }
   }catch(_){} finally{ sorting=false; }
@@ -740,10 +740,10 @@ function driveDrop(){
 }
 // Each photo once, in random order, before any repeats. Survives restarts.
 function driveOrder(items){
-  let seen=[]; try{ seen=JSON.parse(store.get('peggy.tv.driveSeen','[]')); }catch(_){}
+  let seen=[]; try{ seen=JSON.parse(store.get('partners.tv.driveSeen','[]')); }catch(_){}
   const ids=new Set(items.map(x=>x.id)); seen=seen.filter(id=>ids.has(id));
   if(seen.length>=items.length) seen=[];
-  store.set('peggy.tv.driveSeen', JSON.stringify(seen));
+  store.set('partners.tv.driveSeen', JSON.stringify(seen));
   const shuf=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
   const s=new Set(seen); return [...shuf(items.filter(x=>!s.has(x.id))), ...shuf(items.filter(x=>s.has(x.id)))];
 }
@@ -751,7 +751,7 @@ function driveImg(d){ return new Promise((res,rej)=>{ const w=Math.round(Math.ma
   const i=new Image(); i.decoding='async'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('photo')); i.src=`${d.thumb}=s${Math.min(2560,w)}`; }); }
 function driveDate(t){ if(!t||t.length<10) return ''; const [y,m,dd]=t.slice(0,10).split(/[:-]/).map(Number); const dt=new Date(y,m-1,dd);
   return isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
-function drivePlaces(){ try{ return JSON.parse(store.get('peggy.tv.places','{}')); }catch(_){ return {}; } }
+function drivePlaces(){ try{ return JSON.parse(store.get('partners.tv.places','{}')); }catch(_){ return {}; } }
 let geoLast=0;
 async function drivePlace(d){
   if(d.lat==null||d.lon==null||(!d.lat&&!d.lon)) return '';
@@ -763,11 +763,11 @@ async function drivePlace(d){
     const loc=a.city||a.town||a.village||a.hamlet||a.municipality||a.suburb||a.county||'';
     const region=['us','ca','au'].includes(a.country_code)?(a.state||''):(a.country||'');
     const name=[...new Set([poi,loc,region].filter(Boolean))].join(', ');
-    const c=drivePlaces(); c[key]=name; store.set('peggy.tv.places', JSON.stringify(c)); return name;
+    const c=drivePlaces(); c[key]=name; store.set('partners.tv.places', JSON.stringify(c)); return name;
   }catch(_){ return ''; }
 }
 async function driveShown(d){
-  try{ const seen=JSON.parse(store.get('peggy.tv.driveSeen','[]')); if(!seen.includes(d.id)){ seen.push(d.id); store.set('peggy.tv.driveSeen', JSON.stringify(seen)); } }catch(_){}
+  try{ const seen=JSON.parse(store.get('partners.tv.driveSeen','[]')); if(!seen.includes(d.id)){ seen.push(d.id); store.set('partners.tv.driveSeen', JSON.stringify(seen)); } }catch(_){}
   const cap=$('#dCap'), date=driveDate(d.time); cap.replaceChildren(); cap.classList.toggle('hidden', !date && d.lat==null);
   if(date) cap.append(el('span',{textContent:date}));
   const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
@@ -775,9 +775,9 @@ async function driveShown(d){
 // Today's calendar on the slideshow, above the clock and weather: what's still ahead today (all-day items first).
 const slideEv={list:[], at:0};
 async function loadSlideEvents(){
-  let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){} if(!plan||!plan.session) return;
+  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){} if(!plan||!plan.session) return;
   const start=new Date(); start.setHours(0,0,0,0);
-  try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Peggy-Session':plan.session}});
+  try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Partners-Session':plan.session}});
     if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); }catch(_){}
 }
 function todayLines(){
@@ -891,7 +891,7 @@ function showConnect(){
 
 /* ================= phone link (PeerJS) ================= */
 const newCode=()=>Array.from({length:4},()=>CODE_ALPH[Math.floor(Math.random()*CODE_ALPH.length)]).join('');
-let code=store.get('peggy.tv.code',''); if(!/^[A-Z0-9]{4}$/.test(code)){ code=newCode(); store.set('peggy.tv.code',code); }
+let code=store.get('partners.tv.code',''); if(!/^[A-Z0-9]{4}$/.test(code)){ code=newCode(); store.set('partners.tv.code',code); }
 let peer=null; const conns=new Set();
 function setStatus(t,live){ $('#statusText').textContent=t; $('#status').classList.toggle('live',!!live); }
 function showCode(){
@@ -923,11 +923,11 @@ let incoming=null;
 async function onData(c, m){
   if(!m || typeof m!=='object') return;
   try{
-    if(m.t==='theme'){ setPeggyTheme(m.name); paintButterflies(); return; }
+    if(m.t==='theme'){ setPartnersTheme(m.name); paintButterflies(); return; }
     if(m.t==='drive'){ const changed=m.folder!==settings.driveFolder||m.key!==settings.driveKey;
-      store.set('peggy.tv.driveFolder', m.folder||''); store.set('peggy.tv.driveKey', m.key||''); renderHome();
+      store.set('partners.tv.driveFolder', m.folder||''); store.set('partners.tv.driveKey', m.key||''); renderHome();
       if(changed && m.folder && m.key){ toast('Favorites folder connected ✓',3000); if(!ss) startDrive(); } return; }
-    if(m.t==='plan' && m.session){ store.set('peggy.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); partnersLoad().then(renderHome).catch(()=>{}); return; }
+    if(m.t==='plan' && m.session){ store.set('partners.tvplan', JSON.stringify({session:m.session, relay:m.relay})); if(todayOpen()) loadToday(); partnersLoad().then(renderHome).catch(()=>{}); return; }
     if(m.t==='show-start'){
       startSlideshow([],0,true); ssMsg('Receiving photos from your phone…');
     }
@@ -1074,17 +1074,17 @@ function openToday(){
 }
 function tick(){ const n=new Date(); $('#tdClock').textContent=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); $('#tdDate').textContent=n.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}); }
 async function loadToday(){
-  let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){}
+  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){}
   const E=$('#tdEvents'), T=$('#tdTasks');
   if(!plan){ E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:'Open Partners on your phone, sign in under Tasks, then connect to this TV. Today’s plans will appear here.'})); T.replaceChildren(el('h2',{textContent:'Tasks'})); return; }
-  const call=p=>fetch(plan.relay+'/api/'+p,{headers:{'X-Peggy-Session':plan.session}}).then(r=>r.ok?r.json():Promise.reject(r.status));
+  const call=p=>fetch(plan.relay+'/api/'+p,{headers:{'X-Partners-Session':plan.session}}).then(r=>r.ok?r.json():Promise.reject(r.status));
   const start=new Date(); start.setHours(0,0,0,0);
   try{
     const [ag,tasks,mem]=await Promise.all([call('agenda?days=7&from='+encodeURIComponent(start.toISOString())), call('data/tasks'), call('members')]);
     window._tdLoaded=Date.now(); $('#tdUpdated').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
     renderTodayEvents(ag.events||[], start); renderTodayTasks(tasks.items||[], mem.members||[]);
   }catch(e){
-    if(e===401){ store.set('peggy.tvplan',''); }
+    if(e===401){ store.set('partners.tvplan',''); }
     E.replaceChildren(el('h2',{textContent:'Calendar'}),el('div',{className:'quiet',textContent:e===401?'This TV’s pass expired. Reconnect from Partners on your phone.':'Can’t reach your calendar right now. Trying again soon.'}));
   }
 }

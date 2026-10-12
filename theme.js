@@ -1,7 +1,19 @@
 // Partners color themes. Pink is the default. Loaded in <head> so the colors are right before anything draws.
-// Each page says what it is with <html data-peggy="phone|words|tv">.
+// Each page says what it is with <html data-partners="phone|words|tv">.
 'use strict';
-const PEGGY_THEMES = {
+// One-time move of this device's saved data from the app's old name (peggy.*) to partners.*,
+// so nothing is lost by the rename. Runs before anything else reads saved data.
+(function(){ try{
+  if (localStorage.getItem('partners.moved')) return;
+  const OLD='peg'+'gy.', ks=[];
+  for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if (k && k.indexOf(OLD)===0) ks.push(k); }
+  for (const k of ks){ const n='partners.'+k.slice(OLD.length); if (localStorage.getItem(n)==null) localStorage.setItem(n, localStorage.getItem(k)); localStorage.removeItem(k); }
+  // the settings-sync stamps name keys inside them too
+  const st=localStorage.getItem('partners.syncAt');
+  if (st){ const o=JSON.parse(st), out={}; for (const [k,v] of Object.entries(o)) out[k.indexOf(OLD)===0 ? 'partners.'+k.slice(OLD.length) : k]=v; localStorage.setItem('partners.syncAt', JSON.stringify(out)); }
+  localStorage.setItem('partners.moved','1');
+}catch(_){} })();
+const PARTNERS_THEMES = {
   pink:     { name:'Pink',     bg:'#FFE9F1', panel:'#FFF8FB', panel2:'#FBDCE8', line:'#F4C6D8', text:'#4A1D3F', dim:'#9B6B8E', accent:'#D1386E', accentDark:'#A82556', second:'#8B6CE0', bf1:'#F06A9B', bf2:'#9B7BEA', deep:'#2A1230' },
   lavender: { name:'Lavender', bg:'#F1ECFF', panel:'#FBF9FF', panel2:'#E4DAFB', line:'#D3C5F5', text:'#33215C', dim:'#7A68A6', accent:'#7B4FD6', accentDark:'#5A35AE', second:'#D1386E', bf1:'#A98BF0', bf2:'#F06A9B', deep:'#1E1438' },
   ocean:    { name:'Ocean',    bg:'#E6F4FA', panel:'#F7FCFE', panel2:'#CFE9F3', line:'#B5DCEA', text:'#10324A', dim:'#557A92', accent:'#17709F', accentDark:'#0F5376', second:'#0E8F7B', bf1:'#4FB3E8', bf2:'#3DD6B5', deep:'#0C2233' },
@@ -9,31 +21,31 @@ const PEGGY_THEMES = {
   sunset:   { name:'Sunset',   bg:'#FFF0E3', panel:'#FFFAF5', panel2:'#FFDFC4', line:'#F7CBA6', text:'#4A2614', dim:'#9A6A4E', accent:'#C24A17', accentDark:'#933510', second:'#B5306F', bf1:'#FF9A4D', bf2:'#E8559A', deep:'#2A140A' },
   midnight: { name:'Midnight', dark:true, bg:'#1C1426', panel:'#261C33', panel2:'#34274A', line:'#43345C', text:'#F5EAFB', dim:'#B9A6CC', accent:'#E0508A', accentDark:'#A83361', second:'#A98BF0', bf1:'#F06A9B', bf2:'#A98BF0', deep:'#120C18' },
 };
-const PEGGY_THEME_ORDER = ['pink','lavender','ocean','mint','sunset','midnight'];
+const PARTNERS_THEME_ORDER = ['pink','lavender','ocean','mint','sunset','midnight'];
 
-function peggyThemeName(){ try{ const t=localStorage.getItem('peggy.theme'); return PEGGY_THEMES[t]?t:'pink'; }catch(_){ return 'pink'; } }
-function peggyTheme(){ return PEGGY_THEMES[peggyThemeName()]; }
+function partnersThemeName(){ try{ const t=localStorage.getItem('partners.theme'); return PARTNERS_THEMES[t]?t:'pink'; }catch(_){ return 'pink'; } }
+function partnersTheme(){ return PARTNERS_THEMES[partnersThemeName()]; }
 
 // Blend two hex colors; w = share of b.
-function peggyMix(a,b,w){ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const x=p(a), y=p(b);
+function partnersMix(a,b,w){ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const x=p(a), y=p(b);
   return '#'+x.map((v,i)=>Math.round(v*(1-w)+y[i]*w).toString(16).padStart(2,'0')).join(''); }
-function peggyRgba(h,a){ return `rgba(${[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',')},${a})`; }
+function partnersRgba(h,a){ return `rgba(${[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',')},${a})`; }
 
-function applyPeggyTheme(name){
-  const t = PEGGY_THEMES[name] || PEGGY_THEMES.pink, kind = document.documentElement.dataset.peggy || 'phone';
+function applyPartnersTheme(name){
+  const t = PARTNERS_THEMES[name] || PARTNERS_THEMES.pink, kind = document.documentElement.dataset.partners || 'phone';
   const st = document.documentElement.style, set=(k,v)=>st.setProperty(k,v);
-  window.PEGGY_BF = [t.bf1, t.bf2];
+  window.PARTNERS_BF = [t.bf1, t.bf2];
   if (kind === 'tv'){
     // The TV is always a dark room: the theme's deep color with its bright accents.
     const bg=t.deep;
-    set('--bg',bg); set('--panel',peggyMix(bg,'#ffffff',.08)); set('--panel2',peggyMix(bg,'#ffffff',.15)); set('--line',peggyMix(bg,'#ffffff',.22));
-    set('--text',peggyMix(t.bf1,'#ffffff',.88)); set('--dim',peggyMix(t.bf1,'#ffffff',.55)); set('--accent',t.bf1); set('--lilac',t.bf2);
-    set('--photo',peggyMix(bg,'#000000',.35)); set('--scrim',peggyRgba(peggyMix(bg,'#000000',.4),.78));
+    set('--bg',bg); set('--panel',partnersMix(bg,'#ffffff',.08)); set('--panel2',partnersMix(bg,'#ffffff',.15)); set('--line',partnersMix(bg,'#ffffff',.22));
+    set('--text',partnersMix(t.bf1,'#ffffff',.88)); set('--dim',partnersMix(t.bf1,'#ffffff',.55)); set('--accent',t.bf1); set('--lilac',t.bf2);
+    set('--photo',partnersMix(bg,'#000000',.35)); set('--scrim',partnersRgba(partnersMix(bg,'#000000',.4),.78));
   } else {
     set('--bg',t.bg); set('--panel',t.panel); set('--panel2',t.panel2); set('--line',t.line); set('--text',t.text); set('--dim',t.dim);
     set('--accent',t.accent); set('--accent2',t.accent); set('--accentDark',t.accentDark); set('--lilac',t.second); set('--photo',t.deep);
-    set('--headerbg',peggyRgba(t.bg,.9)); set('--inputbg',t.dark?peggyMix(t.panel,'#000000',.2):'#ffffff');
-    set('--wash1',peggyRgba(t.bg,.72)); set('--wash2',peggyRgba(t.bg,.5)); set('--card',peggyRgba(t.panel,.86));
+    set('--headerbg',partnersRgba(t.bg,.9)); set('--inputbg',t.dark?partnersMix(t.panel,'#000000',.2):'#ffffff');
+    set('--wash1',partnersRgba(t.bg,.72)); set('--wash2',partnersRgba(t.bg,.5)); set('--card',partnersRgba(t.panel,.86));
     set('--onaccent','#ffffff');
     if (kind === 'words'){
       set('--surface',t.panel); set('--fg',t.text); set('--muted',t.dim); set('--s1',t.accent); set('--s2',t.second);
@@ -43,23 +55,23 @@ function applyPeggyTheme(name){
   }
   document.documentElement.dataset.theme = name;
 }
-function setPeggyTheme(name){
-  if (!PEGGY_THEMES[name]) return;
-  try{ localStorage.setItem('peggy.theme', name); }catch(_){}
-  applyPeggyTheme(name);
-  document.dispatchEvent(new CustomEvent('peggytheme',{detail:name}));
+function setPartnersTheme(name){
+  if (!PARTNERS_THEMES[name]) return;
+  try{ localStorage.setItem('partners.theme', name); }catch(_){}
+  applyPartnersTheme(name);
+  document.dispatchEvent(new CustomEvent('partnerstheme',{detail:name}));
 }
 // A row of color swatches; tapping one switches the theme everywhere.
-function peggyThemePicker(){
+function partnersThemePicker(){
   const wrap=document.createElement('div'); wrap.className='themepick'; wrap.setAttribute('role','radiogroup'); wrap.setAttribute('aria-label','Theme color');
-  const draw=()=>{ wrap.replaceChildren(...PEGGY_THEME_ORDER.map(k=>{ const t=PEGGY_THEMES[k], b=document.createElement('button');
-    b.type='button'; b.className='swatch'+(k===peggyThemeName()?' on':''); b.title=`${t.name} theme`; b.setAttribute('role','radio'); b.setAttribute('aria-checked',k===peggyThemeName());
+  const draw=()=>{ wrap.replaceChildren(...PARTNERS_THEME_ORDER.map(k=>{ const t=PARTNERS_THEMES[k], b=document.createElement('button');
+    b.type='button'; b.className='swatch'+(k===partnersThemeName()?' on':''); b.title=`${t.name} theme`; b.setAttribute('role','radio'); b.setAttribute('aria-checked',k===partnersThemeName());
     b.style.background=`linear-gradient(135deg, ${t.bf1}, ${t.bf2})`; b.style.setProperty('--ring', t.accent);
     const l=document.createElement('span'); l.textContent=t.name; b.append(l);
-    b.onclick=()=>{ setPeggyTheme(k); draw(); }; return b; })); };
+    b.onclick=()=>{ setPartnersTheme(k); draw(); }; return b; })); };
   draw(); return wrap;
 }
-applyPeggyTheme(peggyThemeName());
+applyPartnersTheme(partnersThemeName());
 
 /* ---------- bottom menu: the "More" button opens Links and Words ---------- */
 (function(){
@@ -85,7 +97,7 @@ applyPeggyTheme(peggyThemeName());
 // Big screens (Chromebook, laptop): lay pages out like the Fire TV: every section in the bottom bar
 // (no More menu), pages use the full width, and the calendar month fills the screen.
 (function(){
-  const kind=document.documentElement.dataset.peggy||'phone'; if (kind==='tv') return;
+  const kind=document.documentElement.dataset.partners||'phone'; if (kind==='tv') return;
   const mq=window.matchMedia('(min-width: 900px)');
   const set=()=>document.documentElement.classList.toggle('wide', mq.matches);
   set(); try{ mq.addEventListener('change', set); }catch(_){ mq.addListener(set); }

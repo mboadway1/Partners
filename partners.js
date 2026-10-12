@@ -5,16 +5,16 @@ const PARTNER_COLORS = ['#D1386E','#7B4FD6','#17709F','#1B7F51','#C24A17','#B530
 
 function partnersAuth(){
   try{ if (typeof acct!=='undefined' && acct.session) return { relay:acct.relay, session:acct.session, full:true }; }catch(_){}
-  try{ const p=JSON.parse(localStorage.getItem('peggy.tvplan')||'null'); if (p && p.session) return { relay:p.relay, session:p.session, full:false }; }catch(_){}
+  try{ const p=JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (p && p.session) return { relay:p.relay, session:p.session, full:false }; }catch(_){}
   return null;
 }
 async function partnersFetch(path, opts={}){
   const a=partnersAuth(); if (!a){ const e=new Error('Not signed in'); e.status=401; throw e; }
-  const r=await fetch(a.relay+'/api/'+path, { ...opts, headers:{ 'X-Peggy-Session':a.session, ...(opts.headers||{}) } });
+  const r=await fetch(a.relay+'/api/'+path, { ...opts, headers:{ 'X-Partners-Session':a.session, ...(opts.headers||{}) } });
   if (!r.ok){ let m=''; try{ m=(await r.json()).error||''; }catch(_){} const e=new Error(m||('Error '+r.status)); e.status=r.status; throw e; }
   return r;
 }
-function partnersCached(){ try{ return JSON.parse(localStorage.getItem('peggy.partners')||'null'); }catch(_){ return null; } }
+function partnersCached(){ try{ return JSON.parse(localStorage.getItem('partners.partners')||'null'); }catch(_){ return null; } }
 function partnersMyEmail(){ try{ return (typeof acct!=='undefined' && acct.me && acct.me.email) || ''; }catch(_){ return ''; } }
 
 // Both partners, me first when I'm signed in, each with a color.
@@ -28,10 +28,10 @@ function coupleNames(d){ const l=partnersList(d).map(m=>m.name).filter(Boolean);
 
 async function partnersLoad(){
   const d = await (await partnersFetch('members')).json();
-  try{ localStorage.setItem('peggy.partners', JSON.stringify(d)); }catch(_){}
+  try{ localStorage.setItem('partners.partners', JSON.stringify(d)); }catch(_){}
   // My own theme follows me to every device I sign in on.
   const mine = (d.members||[]).find(m=>m.email===partnersMyEmail());
-  if (mine && mine.theme && typeof setPeggyTheme==='function' && typeof peggyThemeName==='function' && mine.theme!==peggyThemeName()){ partnersSyncing=true; setPeggyTheme(mine.theme); partnersSyncing=false; }
+  if (mine && mine.theme && typeof setPartnersTheme==='function' && typeof partnersThemeName==='function' && mine.theme!==partnersThemeName()){ partnersSyncing=true; setPartnersTheme(mine.theme); partnersSyncing=false; }
   document.dispatchEvent(new CustomEvent('partners', { detail:d }));
   return d;
 }
@@ -41,10 +41,10 @@ async function partnersSaveProfile(fields){
   await r.json(); return partnersLoad();
 }
 // Picking a theme on a phone saves it as that partner's theme.
-document.addEventListener('peggytheme', e=>{ const a=partnersAuth(); if (a && a.full && !partnersSyncing) partnersSaveProfile({ theme:e.detail }).catch(()=>{}); });
+document.addEventListener('partnerstheme', e=>{ const a=partnersAuth(); if (a && a.full && !partnersSyncing) partnersSaveProfile({ theme:e.detail }).catch(()=>{}); });
 
 /* ---- couples photo: kept on this device too, so it shows instantly and offline ---- */
-function couplePhotoCached(){ try{ return JSON.parse(localStorage.getItem('peggy.couple')||'null'); }catch(_){ return null; } }
+function couplePhotoCached(){ try{ return JSON.parse(localStorage.getItem('partners.couple')||'null'); }catch(_){ return null; } }
 async function couplePhotoURL(){
   const d = partnersCached(), at = (d && d.couplePhoto) || 0, c = couplePhotoCached();
   if (!at) return c ? c.url : '';
@@ -52,7 +52,7 @@ async function couplePhotoURL(){
   try{
     const b = await (await partnersFetch('couple-photo')).blob();
     const url = await new Promise(res=>{ const f=new FileReader(); f.onload=()=>res(String(f.result)); f.readAsDataURL(b); });
-    try{ localStorage.setItem('peggy.couple', JSON.stringify({ at, url })); }catch(_){}
+    try{ localStorage.setItem('partners.couple', JSON.stringify({ at, url })); }catch(_){}
     return url;
   }catch(_){ return c ? c.url : ''; }
 }
@@ -63,7 +63,7 @@ async function couplePhotoUpload(file){
   c.getContext('2d').drawImage(img,0,0,c.width,c.height);
   const blob = await new Promise(r=>c.toBlob(r,'image/jpeg',.85));
   await partnersFetch('couple-photo', { method:'PUT', headers:{'Content-Type':'image/jpeg'}, body:blob });
-  localStorage.removeItem('peggy.couple');
+  localStorage.removeItem('partners.couple');
   await partnersLoad();
   return couplePhotoURL();
 }
@@ -112,7 +112,7 @@ function partnersSettings(onDone){
 }
 
 /* ---- shared styles for the phone pages ---- */
-(function(){ if (document.documentElement.dataset.peggy==='tv') return;
+(function(){ if (document.documentElement.dataset.partners==='tv') return;
   const st=document.createElement('style'); st.textContent=`
 .couplehero{position:relative;border-radius:18px;overflow:hidden;margin:4px 0 12px;background:var(--panel2);min-height:84px;display:flex;flex-direction:column;justify-content:flex-end}
 .couplehero img{display:block;width:100%;max-height:46vh;object-fit:cover}
@@ -132,19 +132,19 @@ function partnersSettings(onDone){
    Every change to one of these is stamped and sent to the relay; each device pulls the newest
    on open, every few minutes and when it comes back to the screen. Newest change wins.
    Not synced on purpose: Screen fit (each TV is different), sign-ins, caches. */
-const SYNC_KEYS = ['peggy.tv.interval','peggy.tv.shuffle','peggy.tv.zoom','peggy.tv.driveStart','peggy.tv.driveFolder','peggy.tv.driveKey',
-  'peggy.driveFolder','peggy.driveKey','peggy.skipShots','peggy.skipBursts','peggy.albumSort','peggy.calTasks','peggy.homeAirport',
-  'peggy.aiTone','peggy.audience','peggy.tv.kinds'];
-const isSynced = k => SYNC_KEYS.includes(k) || k.startsWith('peggy.fuel.') && k!=='peggy.fuel.last';
+const SYNC_KEYS = ['partners.tv.interval','partners.tv.shuffle','partners.tv.zoom','partners.tv.driveStart','partners.tv.driveFolder','partners.tv.driveKey',
+  'partners.driveFolder','partners.driveKey','partners.skipShots','partners.skipBursts','partners.albumSort','partners.calTasks','partners.homeAirport',
+  'partners.aiTone','partners.audience','partners.tv.kinds'];
+const isSynced = k => SYNC_KEYS.includes(k) || k.startsWith('partners.fuel.') && k!=='partners.fuel.last';
 // The phone keeps the Drive folder under one name and the TV under another: keep both the same.
-const SYNC_TWINS = { 'peggy.driveFolder':'peggy.tv.driveFolder', 'peggy.tv.driveFolder':'peggy.driveFolder', 'peggy.driveKey':'peggy.tv.driveKey', 'peggy.tv.driveKey':'peggy.driveKey' };
+const SYNC_TWINS = { 'partners.driveFolder':'partners.tv.driveFolder', 'partners.tv.driveFolder':'partners.driveFolder', 'partners.driveKey':'partners.tv.driveKey', 'partners.tv.driveKey':'partners.driveKey' };
 let syncOut = {}, syncT = 0, syncApplying = false;
-function syncStamps(){ try{ return JSON.parse(localStorage.getItem('peggy.syncAt')||'{}'); }catch(_){ return {}; } }
+function syncStamps(){ try{ return JSON.parse(localStorage.getItem('partners.syncAt')||'{}'); }catch(_){ return {}; } }
 (function(){
   const S = Storage.prototype, set0 = S.setItem, rem0 = S.removeItem;
   const note = (store, k, v) => {
     if (syncApplying || store !== window.localStorage || !isSynced(k)) return;
-    const at = Date.now(), st = syncStamps(); st[k] = at; set0.call(localStorage, 'peggy.syncAt', JSON.stringify(st));
+    const at = Date.now(), st = syncStamps(); st[k] = at; set0.call(localStorage, 'partners.syncAt', JSON.stringify(st));
     syncOut[k] = { v, at }; clearTimeout(syncT); syncT = setTimeout(syncPush, 1500);
   };
   S.setItem = function(k, v){ set0.call(this, k, v); note(this, k, String(v)); };
@@ -166,7 +166,7 @@ async function syncPull(){
       for (const kk of keys){ if (x.v == null) localStorage.removeItem(kk); else localStorage.setItem(kk, x.v); st[kk] = x.at; }
       changed.push(k);
     }
-    localStorage.setItem('peggy.syncAt', JSON.stringify(st));
+    localStorage.setItem('partners.syncAt', JSON.stringify(st));
   } finally { syncApplying = false; }
   // Send up anything this device changed that the relay hasn't heard about (for example, set before syncing existed).
   const up = {}; for (const [k, at] of Object.entries(st)) if (!remote[k] || remote[k].at < at){ const v = localStorage.getItem(k); up[k] = { v, at }; }
@@ -174,9 +174,9 @@ async function syncPull(){
   if (changed.length) document.dispatchEvent(new CustomEvent('partnerssettings', { detail: changed }));
 }
 // First time on this device: offer the settings it already has, marked as old so newer ones elsewhere win.
-(function(){ try{ if (localStorage.getItem('peggy.syncAt')) return; const st={};
+(function(){ try{ if (localStorage.getItem('partners.syncAt')) return; const st={};
   for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if (isSynced(k)) st[k]=1; }
-  localStorage.setItem('peggy.syncAt', JSON.stringify(st)); }catch(_){} })();
+  localStorage.setItem('partners.syncAt', JSON.stringify(st)); }catch(_){} })();
 // Start syncing once this device can reach the relay.
 setTimeout(()=>{ if (partnersAuth()) syncPull(); }, 800);
 setInterval(()=>{ if (!document.hidden && partnersAuth()) syncPull(); }, 3*60*1000);

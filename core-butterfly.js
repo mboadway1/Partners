@@ -1,7 +1,7 @@
 'use strict';
 // Partners' butterfly: one original drawing used across the app. `flutter` animates the wings.
 let _bfly=0;
-function butterfly({size=40, flutter=false, cls='', a=(window.PEGGY_BF||['#F06A9B'])[0], b=(window.PEGGY_BF||[0,'#9B7BEA'])[1], title=''}={}){
+function butterfly({size=40, flutter=false, cls='', a=(window.PARTNERS_BF||['#F06A9B'])[0], b=(window.PARTNERS_BF||[0,'#9B7BEA'])[1], title=''}={}){
   const id='bf'+(++_bfly);
   return `<svg class="bfly ${flutter?'flutter':''} ${cls}" width="${size}" height="${Math.round(size*.8)}" viewBox="0 0 100 80" ${title?`role="img" aria-label="${title}"`:'aria-hidden="true"'}>
   <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>

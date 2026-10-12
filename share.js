@@ -3,24 +3,24 @@
 // The relay's "shared" document holds the albums (lists) and which photos are in them (items, id "album:photo").
 'use strict';
 
-const SHARED_KNOWN = 'peggy.sharedKnown';     // the album/photo pairs both sides had at the last sync
+const SHARED_KNOWN = 'partners.sharedKnown';     // the album/photo pairs both sides had at the last sync
 const shared = { doc:null, busy:false, again:false, timer:0, warned:false, partner:null };
 const knownGet = () => { try{ return new Set(JSON.parse(localStorage.getItem(SHARED_KNOWN)||'[]')); }catch(_){ return new Set(); } };
 const knownSet = s => { try{ localStorage.setItem(SHARED_KNOWN, JSON.stringify([...s])); }catch(_){} };
 const sharedPid = p => p.sid || p.id;          // the photo's name in shared storage
 
 async function sharedBlob(pid){
-  const r=await fetch(acct.relay+'/api/photo/'+pid+'/full',{headers:{'X-Peggy-Session':acct.session}});
+  const r=await fetch(acct.relay+'/api/photo/'+pid+'/full',{headers:{'X-Partners-Session':acct.session}});
   if(!r.ok){ let m='Error '+r.status; try{ m=(await r.json()).error||m; }catch(_){} throw new Error(m); }
   return r.blob();
 }
 async function sharedUpload(p){
   const img=await loadImage(p.blob), b=await toBlob(render(img, p.edits||DEF, 2560),'image/jpeg',.9);
-  const r=await fetch(acct.relay+'/api/photo/'+sharedPid(p)+'/full',{method:'PUT', headers:{'X-Peggy-Session':acct.session,'Content-Type':'image/jpeg'}, body:b});
+  const r=await fetch(acct.relay+'/api/photo/'+sharedPid(p)+'/full',{method:'PUT', headers:{'X-Partners-Session':acct.session,'Content-Type':'image/jpeg'}, body:b});
   if(!r.ok){ let m='Error '+r.status; try{ m=(await r.json()).error||m; }catch(_){} throw new Error(m); }
   if(!p.sid){ p.sid=p.id; await dbPut('photos',p); }
 }
-const sharedOps = ops => ops.length ? peggyApi('data/shared',{method:'POST', body:JSON.stringify({ops})}) : null;
+const sharedOps = ops => ops.length ? partnersApi('data/shared',{method:'POST', body:JSON.stringify({ops})}) : null;
 
 // Called after any change in the app; batches up and syncs a moment later.
 function sharedSoon(ms){ clearTimeout(shared.timer); shared.timer=setTimeout(sharedSync, ms==null?1500:ms); }
@@ -33,7 +33,7 @@ async function sharedSync(){
   if(shared.busy){ shared.again=true; return; }
   shared.busy=true;
   try{
-    let doc=await peggyApi('data/shared');
+    let doc=await partnersApi('data/shared');
     const known=knownGet(), lists=(doc.lists||[]), live=new Set(lists.map(l=>l.id));
     let changed=false;
     // Albums
@@ -80,7 +80,7 @@ async function sharedSync(){
     if(ops.length) doc=await sharedOps(ops);
     // Shared photos nobody uses any more: tidy them out of storage.
     const used=new Set((doc.items||[]).map(i=>i.photo));
-    for(const it of server.values()) if(!used.has(it.photo) && it.createdBy===(acct.me&&acct.me.email)) fetch(acct.relay+'/api/photo/'+it.photo+'/full',{method:'DELETE',headers:{'X-Peggy-Session':acct.session}}).catch(()=>{});
+    for(const it of server.values()) if(!used.has(it.photo) && it.createdBy===(acct.me&&acct.me.email)) fetch(acct.relay+'/api/photo/'+it.photo+'/full',{method:'DELETE',headers:{'X-Partners-Session':acct.session}}).catch(()=>{});
     shared.doc=doc;
     knownSet(new Set((doc.items||[]).map(i=>i.id)));
     if(changed) renderAll(true);
@@ -89,7 +89,7 @@ async function sharedSync(){
 }
 async function sharedPartner(){
   if(shared.partner) return shared.partner;
-  try{ const d=await peggyApi('members'); shared.partner=(d.members||[]).find(m=>m.email!==(acct.me&&acct.me.email))||null; }catch(_){}
+  try{ const d=await partnersApi('members'); shared.partner=(d.members||[]).find(m=>m.email!==(acct.me&&acct.me.email))||null; }catch(_){}
   return shared.partner;
 }
 async function shareAlbum(a){
@@ -101,12 +101,12 @@ async function shareAlbum(a){
   finally{ delete a.sharing; }
 }
 async function unshareAlbum(a){
-  const doc=shared.doc||await peggyApi('data/shared');
+  const doc=shared.doc||await partnersApi('data/shared');
   const ops=[{kind:'list', op:'delete', id:a.id}, ...(doc.items||[]).filter(i=>i.list===a.id).map(i=>({op:'delete', id:i.id}))];
   await sharedOps(ops); a.shared=false; await dbPut('albums',a);
   // Free up online storage for my photos that no other shared album uses.
   const left=new Set((doc.items||[]).filter(i=>i.list!==a.id).map(i=>i.photo)), me=acct.me&&acct.me.email;
-  for(const i of (doc.items||[])) if(i.list===a.id && i.createdBy===me && !left.has(i.photo)) fetch(acct.relay+'/api/photo/'+i.photo+'/full',{method:'DELETE',headers:{'X-Peggy-Session':acct.session}}).catch(()=>{});
+  for(const i of (doc.items||[])) if(i.list===a.id && i.createdBy===me && !left.has(i.photo)) fetch(acct.relay+'/api/photo/'+i.photo+'/full',{method:'DELETE',headers:{'X-Partners-Session':acct.session}}).catch(()=>{});
   const k=knownGet(); for(const id of [...k]) if(id.startsWith(a.id+':')) k.delete(id); knownSet(k);
   renderAll(); sharedSoon(0);
 }

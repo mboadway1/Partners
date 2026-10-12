@@ -25,10 +25,34 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString
 
 /* ---------- IndexedDB ---------- */
 let db;
-function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('peggy',2);
+function openDB0(){ return new Promise((res,rej)=>{ const r=indexedDB.open('partners',2);
   r.onupgradeneeded=()=>{ const d=r.result;
     for(const s of ['photos','albums','meta']) if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id'}); };
   r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+// The photo library used to be stored under the app's old name. Copy it across once, then remove the old copy.
+async function openDB(){
+  const d=await openDB0();
+  try{
+    if(localStorage.getItem('partners.dbMoved')) return d;
+    const OLD='peg'+'gy';
+    const has = indexedDB.databases ? (await indexedDB.databases()).some(x=>x.name===OLD) : true;
+    if(has){
+      const od=await new Promise((res,rej)=>{ const r=indexedDB.open(OLD); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); r.onupgradeneeded=()=>{}; });
+      const stores=['photos','albums','meta'].filter(s=>od.objectStoreNames.contains(s));
+      let ok=true;
+      for(const s of stores){
+        const rows=await new Promise((res,rej)=>{ const q=od.transaction(s,'readonly').objectStore(s).getAll(); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+        await new Promise((res,rej)=>{ const t=d.transaction(s,'readwrite'), st=t.objectStore(s); rows.forEach(r=>st.put(r)); t.oncomplete=res; t.onerror=()=>rej(t.error); });
+        const n=await new Promise(res=>{ const q=d.transaction(s,'readonly').objectStore(s).count(); q.onsuccess=()=>res(q.result); q.onerror=()=>res(-1); });
+        if(n<rows.length) ok=false;
+      }
+      od.close();
+      if(ok) indexedDB.deleteDatabase(OLD); else return d;   // keep the old copy if anything didn't come across
+    }
+    localStorage.setItem('partners.dbMoved','1');
+  }catch(_){}
+  return d;
+}
 function tx(store, mode, fn){ return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); let out;
   if(r) r.onsuccess=()=>{ out=r.result; }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); }
 const dbAll = s => tx(s,'readonly',st=>st.getAll());
@@ -158,7 +182,7 @@ function sameShot(a, b){
 // Compared on a coarser 8×8 grid with the overall brightness taken out, so a small wobble of the phone doesn't matter.
 // Measured: a 1–3% wobble gives 0.1–0.55; different pictures 0.7 and up.
 const BURST_MS=20000, BURST_D=.5;
-const skipBursts = () => { try{ return localStorage.getItem('peggy.skipBursts')!=='0'; }catch(_){ return true; } };
+const skipBursts = () => { try{ return localStorage.getItem('partners.skipBursts')!=='0'; }catch(_){ return true; } };
 function coarse(h){ const v=[]; for(let y=0;y<8;y++) for(let x=0;x<8;x++){ let s=0; for(const [a,b] of [[0,0],[1,0],[0,1],[1,1]]) s+=parseInt(h[2+(y*2+b)*16+x*2+a],16); v.push(s/4); }
   const m=v.reduce((a,b)=>a+b,0)/64; return v.map(x=>x-m); }
 function coarseDist(a,b){
@@ -182,7 +206,7 @@ function sharpness(img){
 // Screenshots: named like one, or a PNG with no camera information. Real photos and exports from
 // Lightroom or the camera carry the camera's make.
 const SHOT_NAME=/screen ?shot|screenshot|screen_shot|scrnli|^simulator/i;
-const skipShots = () => { try{ return localStorage.getItem('peggy.skipShots')!=='0'; }catch(_){ return true; } };
+const skipShots = () => { try{ return localStorage.getItem('partners.skipShots')!=='0'; }catch(_){ return true; } };
 // On-phone guess, for when Claude can't sort photos: tall phone-shaped pictures with no camera info are screenshots;
 // mostly grey-white, colourless pictures full of fine lines (maps, papers, signs, menus) are papers.
 // Measured on real photos: maps/papers 0.53+ paper-white, colour ≤0.05, lines 0.4+; real photos colour 0.17+.
@@ -198,12 +222,12 @@ function localKind(img, make){
   return null;
 }
 function looksLikeScreenshot({name, type, make}){ return SHOT_NAME.test(name||'') || (/png/i.test(type||'') && !make); }
-const PEER_PREFIX='peggy-tv-';
+const PEER_PREFIX='partners-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';
 
 // The relay was renamed from peggy-relay to partners-relay: move any saved address over (phones, Chromebook and TV).
 (function(){ try{
   const fix = u => typeof u==='string' ? u.replace('//peggy-relay.', '//partners-relay.') : u;
-  const r = localStorage.getItem('peggy.relay'); if (r && r!==fix(r)) localStorage.setItem('peggy.relay', fix(r));
-  const t = JSON.parse(localStorage.getItem('peggy.tvplan')||'null'); if (t && t.relay && t.relay!==fix(t.relay)){ t.relay=fix(t.relay); localStorage.setItem('peggy.tvplan', JSON.stringify(t)); }
+  const r = localStorage.getItem('partners.relay'); if (r && r!==fix(r)) localStorage.setItem('partners.relay', fix(r));
+  const t = JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (t && t.relay && t.relay!==fix(t.relay)){ t.relay=fix(t.relay); localStorage.setItem('partners.tvplan', JSON.stringify(t)); }
 }catch(_){} })();

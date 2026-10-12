@@ -28,16 +28,16 @@ jobs:
         run: gradle assembleDebug --no-daemon
 
       - name: Rename
-        run: cp app/build/outputs/apk/debug/app-debug.apk Peggy.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Partners.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Peggy-apk
-          path: Peggy.apk
+          name: Partners-apk
+          path: Partners.apk
 
       - name: Publish to the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Peggy.apk --title "Peggy for Fire TV (latest build)" --notes "Install on Fire TV with Downloader." --latest
+          gh release create latest Partners.apk --title "Partners for Fire TV (latest build)" --notes "Install on Fire TV with Downloader." --latest

@@ -9,7 +9,7 @@ Partners is a web app you add to your home screen. It runs entirely on your devi
 - **Import** from Google Photos (Google's own picker opens; you choose the photos) or from the device's camera roll.
 - **Organize** with albums, ★ favorites, and automatic *Not posted* / *Posted* views. Select many at once to tag, move, or delete.
 - **Edit** non-destructively: crop to Facebook-friendly shapes (Square, Portrait 4:5, Wide 16:9, Story 9:16), zoom and drag to reframe, rotate, flip, brightness, contrast, saturation, warmth, and eight filters. *Revert* always gets the original back.
-- **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Partners on Fire TV](#peggy-on-fire-tv).
+- **Fire TV:** show photos on the TV instantly, or copy them (with albums and edits) into the TV's own library to browse, slideshow, and edit with the remote. See [Partners on Fire TV](#partners-on-fire-tv).
 - **Words** (🎙 in the header): counts the words each person says and who interrupts whom, with an optional **turn timer**, and shows a live scoreboard on the TV. See [Words](#words).
 - **Tasks** (shared by two people): lists, due dates and times, repeats, ★ important, assign to you, your partner or both; import once from Google Tasks.
 - **Calendar**: your Google calendars in List, Week and Month views; add, edit and delete events; one tap creates a shared “Partners · Shared” calendar for the two of you. Tasks with due dates show on the calendar.
@@ -150,8 +150,8 @@ Partners' relay keeps the shared tasks and links, and keeps each person signed i
 3. [Clients](https://console.cloud.google.com/auth/clients) → Partners → **Add secret**, copy the client secret.
 
 **Cloudflare** (partners-relay worker)
-1. **Storage & databases → Workers KV → Create**, name it `peggy`.
-2. partners-relay → **Bindings → Add → KV namespace**: variable name `PEGGY_KV`, namespace `peggy`.
+1. **Storage & databases → Workers KV → Create**, name it `partners`.
+2. partners-relay → **Bindings → Add → KV namespace**: variable name `PARTNERS_KV`, namespace `partners`.
 3. partners-relay → **Settings → Variables and Secrets**: add text `ALLOWED_EMAILS` (both Gmail addresses, comma-separated), text `GOOGLE_CLIENT_ID`, and secret `GOOGLE_CLIENT_SECRET`.
 4. **Edit code**: replace it with the new `relay/worker.js`, then **Deploy**.
 
@@ -192,5 +192,5 @@ sw.js           lets the app open offline
 manifest.json   home-screen app settings
 icon-*.png      app icons
 relay/          Cloudflare Worker relay (worker.js + wrangler.toml)
-app/            Fire TV app shell (Android, com.peggy.tv); built by .github/workflows/build.yml
+app/            Fire TV app shell (Android, com.partners.tv); built by .github/workflows/build.yml
 ```

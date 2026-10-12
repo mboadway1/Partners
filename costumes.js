@@ -11,8 +11,8 @@ const slug = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace
 const costume = { closet:null, scanning:false, stop:false, ideas:[] };
 const unscanned = () => photos.filter(p=>!p.costume || p.costume.v!==COSTUME_V);
 
-async function closetLoad(){ try{ costume.closet=await peggyApi('data/closet'); }catch(e){ costume.closet=costume.closet||{items:[],lists:[]}; } return costume.closet; }
-async function closetOps(ops){ if(!ops.length) return; costume.closet=await peggyApi('data/closet',{method:'POST', body:JSON.stringify({ops})}); }
+async function closetLoad(){ try{ costume.closet=await partnersApi('data/closet'); }catch(e){ costume.closet=costume.closet||{items:[],lists:[]}; } return costume.closet; }
+async function closetOps(ops){ if(!ops.length) return; costume.closet=await partnersApi('data/closet',{method:'POST', body:JSON.stringify({ops})}); }
 
 async function scanJpeg(p){ const img=await loadImage(p.blob); const b=await toBlob(render(img, p.edits||DEF, 512),'image/jpeg',.72);
   return new Promise(r=>{ const f=new FileReader(); f.onload=()=>r(String(f.result).split(',')[1]); f.readAsDataURL(b); }); }
@@ -27,7 +27,7 @@ async function scanCostumes(onProgress){
     for(let i=0;i<todo.length && !costume.stop;i+=6){
       const batch=todo.slice(i,i+6);
       const images=await Promise.all(batch.map(async p=>({id:p.id, data:await scanJpeg(p)})));
-      const d=await peggyApi('costume-scan',{method:'POST', body:JSON.stringify({images})});
+      const d=await partnersApi('costume-scan',{method:'POST', body:JSON.stringify({images})});
       const byId=new Map((d.results||[]).map(r=>[r.id,r]));
       const ops=[], have=new Map((costume.closet.items||[]).map(x=>[x.id,x])), worn=new Map((costume.closet.lists||[]).map(x=>[x.id,x]));
       for(const p of batch){ const r=byId.get(p.id)||{costume:false,items:[]};
@@ -99,12 +99,12 @@ function openCostumes(){
         if(i.how) c.append(el('p',{textContent:i.how}));
         if((i.need||[]).length){ const t=el('button',{textContent:'🛒 Add what’s needed to Tasks',title:'Make a shared task for each thing to get'});
           t.onclick=async()=>{ const ops=i.need.map(n=>({op:'upsert', item:{id:uid(), title:`Get ${n} (for ${i.name} costume)`, done:false, important:false, due:null, time:null, list:null, assignee:'', repeat:'', notes:'From Partners costume ideas', updatedAt:Date.now()}}));
-            try{ await peggyApi('data/tasks',{method:'POST', body:JSON.stringify({ops})}); t.textContent='✓ Added to Tasks'; t.disabled=true; }catch(e){ toast('Couldn’t add tasks: '+e.message); } };
+            try{ await partnersApi('data/tasks',{method:'POST', body:JSON.stringify({ops})}); t.textContent='✓ Added to Tasks'; t.disabled=true; }catch(e){ toast('Couldn’t add tasks: '+e.message); } };
           c.append(t); }
         return c; })); };
     go.onclick=async()=>{ go.disabled=true; go.textContent='💡 Thinking…';
       try{ const cl=costume.closet||await closetLoad();
-        const d=await peggyApi('costume-ideas',{method:'POST', body:JSON.stringify({closet:(cl.items||[]).map(x=>x.name), past:(cl.lists||[]).map(x=>x.name), wish:wish.value.trim()})});
+        const d=await partnersApi('costume-ideas',{method:'POST', body:JSON.stringify({closet:(cl.items||[]).map(x=>x.name), past:(cl.lists||[]).map(x=>x.name), wish:wish.value.trim()})});
         costume.ideas=d.ideas||[]; drawIdeas(); if(!costume.ideas.length) out.replaceChildren(el('p',{className:'hint',textContent:'No ideas came back. Try again.'})); }
       catch(e){ out.replaceChildren(el('p',{className:'hint',textContent:'Couldn’t get ideas: '+e.message})); }
       finally{ go.disabled=false; go.textContent='💡 More ideas'; } };

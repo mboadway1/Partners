@@ -1,4 +1,4 @@
-package com.peggy.tv;
+package com.partners.tv;
 
 import android.app.Activity;
 import android.graphics.Color;
@@ -15,14 +15,14 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 /**
- * Peggy for Fire TV. The TV screen itself lives on GitHub Pages so it updates
+ * Partners for Fire TV. The TV screen itself lives on GitHub Pages so it updates
  * without reinstalling; this shell runs it full screen, keeps the screen on,
  * and hands remote-control buttons (Back, Play/Pause, Rewind, Fast-forward,
  * Menu) to the page. Photos are stored in the page's own storage on the TV.
  */
 public class MainActivity extends Activity {
 
-    private static final String TV_URL = "https://mboadway1.github.io/Peggy/tv.html";
+    private static final String TV_URL = "https://mboadway1.github.io/Partners/tv.html";
 
     private WebView web;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -66,14 +66,14 @@ public class MainActivity extends Activity {
         showingError = true;
         String html = "<html><body style='margin:0;background:#2A1230;color:#FFEAF3;font-family:sans-serif;"
                 + "display:flex;align-items:center;justify-content:center;height:100vh;text-align:center'>"
-                + "<div><h1 style='font-size:3vw'>Peggy can't reach the internet</h1>"
+                + "<div><h1 style='font-size:3vw'>Partners can't reach the internet</h1>"
                 + "<p style='font-size:1.8vw;color:#D9AECB'>Check the Fire TV's Wi-Fi. Retrying in 10 seconds.</p></div></body></html>";
         web.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
         handler.postDelayed(() -> { if (showingError) load(); }, 10000);
     }
 
     private void sendKey(String name) {
-        web.evaluateJavascript("window.peggyKey && window.peggyKey('" + name + "')", null);
+        web.evaluateJavascript("window.partnersKey && window.partnersKey('" + name + "')", null);
     }
 
     @Override
@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 if (showingError) { finish(); return true; }
                 // Let the page close whatever is open; leave the app only from the home screen.
-                web.evaluateJavascript("(window.peggyBack && window.peggyBack()) ? 'y' : 'n'", value -> {
+                web.evaluateJavascript("(window.partnersBack && window.partnersBack()) ? 'y' : 'n'", value -> {
                     if (value == null || !value.contains("y")) finish();
                 });
             }

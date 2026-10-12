@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-peggy="phone">
+<html lang="en" data-partners="phone">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -343,8 +343,8 @@ const store = {
   us: { items:[], lists:[], v:0 },
 };
 const pending = { tasks: [], links: [], expenses: [], flights: [], us: [] };
-function loadCache(){ for(const k of ['tasks','links','expenses','flights','us']){ try{ const c=JSON.parse(localStorage.getItem('peggy.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('peggy.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
-function saveCache(k){ try{ localStorage.setItem('peggy.cache.'+k, JSON.stringify(store[k])); localStorage.setItem('peggy.pending.'+k, JSON.stringify(pending[k])); }catch(_){} }
+function loadCache(){ for(const k of ['tasks','links','expenses','flights','us']){ try{ const c=JSON.parse(localStorage.getItem('partners.cache.'+k)||'null'); if(c) store[k]=c; const p=JSON.parse(localStorage.getItem('partners.pending.'+k)||'[]'); pending[k]=p; }catch(_){} } }
+function saveCache(k){ try{ localStorage.setItem('partners.cache.'+k, JSON.stringify(store[k])); localStorage.setItem('partners.pending.'+k, JSON.stringify(pending[k])); }catch(_){} }
 function applyLocal(doc, op){
   const coll = op.kind==='list' ? doc.lists : doc.items;
   if(op.op==='upsert'){ const i=coll.findIndex(x=>x.id===op.item.id); if(i<0) coll.push({createdAt:Date.now(),createdBy:me().email,...op.item}); else coll[i]={...coll[i],...op.item}; }
@@ -359,18 +359,18 @@ let flushing={};
 async function flush(k){
   if(flushing[k] || !pending[k].length || !acct.session) return;
   flushing[k]=true; const ops=pending[k].slice();
-  try{ const doc=await peggyApi('data/'+k,{method:'POST',body:JSON.stringify({ops})}); pending[k]=pending[k].slice(ops.length);
+  try{ const doc=await partnersApi('data/'+k,{method:'POST',body:JSON.stringify({ops})}); pending[k]=pending[k].slice(ops.length);
        store[k]=doc; pending[k].forEach(o=>applyLocal(store[k],o)); saveCache(k); render(); }
   catch(e){ if(e.status!==401) toast('Saved on this device. Will sync when online.',2500); }
   finally{ flushing[k]=false; }
 }
 async function pull(k){
   if(!acct.session) return;
-  try{ const doc=await peggyApi('data/'+k); if(doc.v!==store[k].v || pending[k].length){ store[k]=doc; pending[k].forEach(o=>applyLocal(store[k],o)); saveCache(k); render(); } }
+  try{ const doc=await partnersApi('data/'+k); if(doc.v!==store[k].v || pending[k].length){ store[k]=doc; pending[k].forEach(o=>applyLocal(store[k],o)); saveCache(k); render(); } }
   catch(e){ if(e.status===401) render(); }
 }
 let membersAt=0;
-async function loadMembers(){ if(!acct.session) return; try{ members=(await peggyApi('members')).members||[]; membersAt=Date.now(); }catch(e){ if(e.status===401) toast('Please sign in again',4000); } }
+async function loadMembers(){ if(!acct.session) return; try{ members=(await partnersApi('members')).members||[]; membersAt=Date.now(); }catch(e){ if(e.status===401) toast('Please sign in again',4000); } }
 async function syncAll(){ if(acct.session && (!members.length || !partner() || !partner().signedIn || Date.now()-membersAt>600000)){ await loadMembers(); render(); }
   for(const k of ['tasks','links','expenses','flights','us']){ await flush(k); await pull(k); } }
 setInterval(()=>{ if(!document.hidden) syncAll(); }, 20000);
@@ -386,7 +386,7 @@ function route(){ tab=(location.hash.slice(1)||'tasks'); if(!SECT[tab]) tab='tas
   $('#addBtn').title = tab==='tasks'?'Add a task':tab==='calendar'?'Add an event':tab==='money'?'Add something you paid for':tab==='flights'?'Add a flight':tab==='fuel'?'Log a fill-up in Money':tab==='us'?'Send an appreciation':'Add a link';
   render(); if(tab==='calendar') loadCalendar(); }
 window.addEventListener('hashchange', route);
-$('#addBtn').onclick=()=>{ if(!acct.session) return peggySignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):tab==='us'?sendAppreciation():editLink(null); };
+$('#addBtn').onclick=()=>{ if(!acct.session) return partnersSignIn('plan.html#'+tab); tab==='tasks'?editTask(null):tab==='calendar'?editEvent(null):tab==='money'?editExpense(null):tab==='flights'?addFlight():tab==='fuel'?logFillUp(null):tab==='us'?sendAppreciation():editLink(null); };
 $('#setBtn').onclick=()=>openSettings();
 
 function render(){
@@ -400,7 +400,7 @@ function renderSignIn(v){
     Object.assign(el('div'),{innerHTML:butterfly({size:64,flutter:true})}),
     el('h2',{textContent:'Share plans together'}),
     el('p',{textContent:'Sign in with Google to see your calendar, import your Google Tasks, and share tasks and favorite links with each other.'}),
-    Object.assign(el('button',{className:'primary',textContent:'Sign in with Google'}),{onclick:()=>peggySignIn('plan.html#'+tab)})));
+    Object.assign(el('button',{className:'primary',textContent:'Sign in with Google'}),{onclick:()=>partnersSignIn('plan.html#'+tab)})));
 }
 
 /* ================= TASKS ================= */
@@ -577,7 +577,7 @@ async function importGoogleTasks(){
 
 /* ================= CALENDAR ================= */
 let cview=matchMedia('(min-width:700px)').matches?'month':'schedule', cdate=today(), calendars=[], events={}, calLoaded=false, calErr='', showTasksOnCal=true;
-try{ showTasksOnCal=localStorage.getItem('peggy.calTasks')!=='0'; }catch(_){}
+try{ showTasksOnCal=localStorage.getItem('partners.calTasks')!=='0'; }catch(_){}
 let prefs={};
 // What this sign-in is actually allowed to do, straight from Google, to explain a refusal.
 let calRaw='';
@@ -593,7 +593,7 @@ async function loadCalendar(force){
   try{
     if(!calLoaded || force){
       const d=await gapi('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250');
-      prefs=await peggyApi('prefs').catch(()=>({}));
+      prefs=await partnersApi('prefs').catch(()=>({}));
       const saved=new Map((prefs.calendars||[]).map(c=>[c.id,c]));
       calendars=(d.items||[]).filter(c=>!c.hidden).map(c=>({id:c.id,name:c.summaryOverride||c.summary,color:c.backgroundColor||'#D1386E',
         write:['owner','writer'].includes(c.accessRole),primary:!!c.primary,
@@ -609,7 +609,7 @@ async function loadCalendar(force){
       : e.status===403 ? 'Google refused calendar access: '+m : m; }
   if(tab==='calendar') render();
 }
-function savePrefs(){ prefs.calendars=calendars.map(c=>({id:c.id,name:c.name,color:c.color,show:c.show})); return peggyApi('prefs',{method:'PUT',body:JSON.stringify(prefs)}).catch(()=>{}); }
+function savePrefs(){ prefs.calendars=calendars.map(c=>({id:c.id,name:c.name,color:c.color,show:c.show})); return partnersApi('prefs',{method:'PUT',body:JSON.stringify(prefs)}).catch(()=>{}); }
 function range(){
   if(cview==='month'){ const f=new Date(cdate.getFullYear(),cdate.getMonth(),1); const s=addDays(f,-f.getDay()); return [s,addDays(s,42)]; }
   if(cview==='week'){ const s=addDays(cdate,-cdate.getDay()); return [s,addDays(s,7)]; }
@@ -658,7 +658,7 @@ addEventListener('resize',()=>{ const g=document.querySelector('.month'); if(g &
 function renderCalendar(v){
   $('#chips').replaceChildren();
   if(calErr){ const det=el('p',{className:'diag',textContent:'Checking what Google allowed…'});
-    v.replaceChildren(el('div',{className:'card'},el('p',{textContent:calErr}),Object.assign(el('button',{className:'primary',textContent:'Sign in again'}),{onclick:()=>{ try{ localStorage.removeItem('peggy.gtoken'); }catch(_){} peggySignIn('plan.html#calendar'); }}),det));
+    v.replaceChildren(el('div',{className:'card'},el('p',{textContent:calErr}),Object.assign(el('button',{className:'primary',textContent:'Sign in again'}),{onclick:()=>{ try{ localStorage.removeItem('partners.gtoken'); }catch(_){} partnersSignIn('plan.html#calendar'); }}),det));
     calDiag().then(t=>{ det.textContent=t; }); return; }
   const [s,e]=range();
   const title = cview==='month' ? cdate.toLocaleDateString(undefined,{month:'long',year:'numeric'}) : cview==='week' ? `${fmtShort(s)} – ${fmtShort(addDays(e,-1))}` : 'Coming up';
@@ -838,7 +838,7 @@ async function editLink(x){
     title.oninput=()=>{ titled=!!title.value; };
     const look=async()=>{ let u=url.value.trim(); if(!u) return; if(!/^https?:\/\//i.test(u)){ u='https://'+u; url.value=u; }
       if(titled) return; title.placeholder='Looking up the title…';
-      try{ const d=await peggyApi('linkinfo?url='+encodeURIComponent(u)); if(d.title && !titled) title.value=d.title; }catch(_){}
+      try{ const d=await partnersApi('linkinfo?url='+encodeURIComponent(u)); if(d.title && !titled) title.value=d.title; }catch(_){}
       title.placeholder='Title'; };
     url.onblur=look; url.onpaste=()=>setTimeout(look,50);
     const folder=el('select',{title:'Folder'}); folder.append(el('option',{value:'',textContent:'No folder'}));
@@ -967,13 +967,13 @@ async function receiptJpeg(f){ const img=await loadImage(f), k=Math.min(1,1800/M
   const x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(img,0,0,c.width,c.height); const b=await toBlob(c,'image/jpeg',.85);
   return new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); }); }
 async function scanExpenses(){
-  if(!acct.session) return peggySignIn('plan.html#money');
+  if(!acct.session) return partnersSignIn('plan.html#money');
   const files=(await pickImages()).slice(0,4); if(!files.length) return;
   let closeWait;
   sheet((sh,close)=>{ closeWait=close; sh.append(el('h3',{textContent:'📷 Reading…'}), el('p',{textContent:`Claude is reading ${files.length>1?files.length+' pictures':'the picture'} for prices, stores and dates. This takes a few seconds.`}), el('div',{className:'spin',textContent:'✨'})); });
   let items=[];
   try{ const images=await Promise.all(files.map(receiptJpeg));
-    const d=await peggyApi('receipt-scan',{method:'POST', body:JSON.stringify({images, today:ymd(new Date())})}); items=d.items||[]; }
+    const d=await partnersApi('receipt-scan',{method:'POST', body:JSON.stringify({images, today:ymd(new Date())})}); items=d.items||[]; }
   catch(e){ closeWait&&closeWait(); return toast('Couldn’t read it: '+e.message, 6000); }
   closeWait&&closeWait();
   if(!items.length) return toast('No purchases found in that picture. Try a clearer photo, or add it by hand with ＋.', 6000);
@@ -1129,7 +1129,7 @@ async function pasteFlights(){
     const out=el('div');
     const go=el('button',{className:'primary',textContent:'Read it'});
     go.onclick=async()=>{ if(!ta.value.trim()) return ta.focus(); go.disabled=true; go.textContent='Reading…';
-      try{ const d=await peggyApi('flight-parse',{method:'POST',body:JSON.stringify({text:ta.value})});
+      try{ const d=await partnersApi('flight-parse',{method:'POST',body:JSON.stringify({text:ta.value})});
         const fl=(d.flights||[]).filter(f=>f.date && (f.from||f.to));
         if(!fl.length){ out.replaceChildren(el('p',{textContent:'No flights found in that text. Try copying the whole email, or type it in instead.'})); return; }
         out.replaceChildren(el('p',{className:'owep',textContent:`Found ${fl.length} flight${fl.length>1?'s':''}:`}), ...fl.map(f=>el('div',{className:'fprev',textContent:`${fmtShort(parseYmd(f.date))} · ${f.airline||''} ${f.number||''} · ${(f.from||'').toUpperCase()} → ${(f.to||'').toUpperCase()} · ${hm(f.depart)}${f.conf?' · '+f.conf:''}`})));
@@ -1168,7 +1168,7 @@ async function editFlight(f){
   });
 }
 async function findFlights(){
-  const home=(()=>{ try{ return localStorage.getItem('peggy.homeAirport')||''; }catch(_){ return ''; } })();
+  const home=(()=>{ try{ return localStorage.getItem('partners.homeAirport')||''; }catch(_){ return ''; } })();
   await sheet((sh,close)=>{
     sh.append(el('h3',{textContent:'🔎 Find flights'}), el('p',{textContent:'Partners opens the search for you. When you book, paste the confirmation email here with ＋ so you both have it.'}));
     const up=i=>{ i.autocapitalize='characters'; i.oninput=()=>{ i.value=i.value.toUpperCase(); }; return i; };
@@ -1180,7 +1180,7 @@ async function findFlights(){
     const two=(a,b)=>el('div',{className:'two'},el('div',{},...a),el('div',{},...b));
     sh.append(two(field('From',from),field('To',to)), two(field('Leave',go),field('Return',back)), el('label',{className:'checkrow'},oneWay,el('span',{textContent:'One way'})), ...field('Travelers',seg));
     const open=site=>{ const f=from.value.trim(), t=to.value.trim(); if(!f||!t) return toast('Add both airports');
-      try{ localStorage.setItem('peggy.homeAirport', f); }catch(_){}
+      try{ localStorage.setItem('partners.homeAirport', f); }catch(_){}
       const rt=!oneWay.checked && back.value;
       const url = site==='google'
         ? 'https://www.google.com/travel/flights?q='+encodeURIComponent(`Flights from ${f} to ${t} on ${go.value}${rt?' returning '+back.value:' one way'} for ${ppl.n} adult${ppl.n>1?'s':''}`)
@@ -1197,8 +1197,8 @@ async function findFlights(){
 const FUELS=[['DIESEL','Diesel'],['REST','🅿️ Rest stops'],['ELKS','🫎 Elks Lodges'],['REGULAR_UNLEADED','Regular'],['MIDGRADE','Midgrade'],['PREMIUM','Premium']];
 const isRest = () => fuel.type==='REST' || fuel.type==='ELKS';    // place lists (no prices)
 const placeKind = () => fuel.type==='ELKS' ? 'elks' : fuel.type==='REST' ? 'rest' : 'fuel';
-const LS=(k,d)=>{ try{ const v=localStorage.getItem('peggy.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
-const SS=(k,v)=>{ try{ localStorage.setItem('peggy.fuel.'+k, JSON.stringify(v)); }catch(_){} };
+const LS=(k,d)=>{ try{ const v=localStorage.getItem('partners.fuel.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
+const SS=(k,v)=>{ try{ localStorage.setItem('partners.fuel.'+k, JSON.stringify(v)); }catch(_){} };
 const fuel={ type:LS('type','DIESEL'), mode:'route', miles:LS('miles',10), dest:LS('dest',''), tank:LS('tank',25), res:LS('last',null), busy:false, err:'', at:0, timer:0 };
 const milesBetween=(a,b,c,d)=>{ const R=3958.8, r=x=>x*Math.PI/180, dl=r(c-a), dn=r(d-b), h=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
 const ago = t => { if(!t) return ''; const m=Math.round((Date.now()-Date.parse(t))/60000); return m<60?`${Math.max(1,m)} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`; };
@@ -1209,8 +1209,8 @@ async function findFuel(){
   if(fuel.busy) return; fuel.busy=true; fuel.err=''; if(tab==='fuel') render();
   try{ const pos=await here(); const word=(FUELS.find(f=>f[0]===fuel.type)||[,'diesel'])[1].toLowerCase(), kind=placeKind();
     const d = fuel.mode==='route'
-      ? await peggyApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word, kind})})
-      : await peggyApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609), kind})});
+      ? await partnersApi('fuel-route',{method:'POST',body:JSON.stringify({...pos, dest:fuel.dest, fuelWord:word, kind})})
+      : await partnersApi('fuel',{method:'POST',body:JSON.stringify({...pos, radius:Math.round(fuel.miles*1609), kind})});
     fuel.res={...d, from:pos, mode:fuel.mode, kind, at:Date.now()}; SS('last', fuel.res); }
   catch(e){ fuel.err=e.message; }
   finally{ fuel.busy=false; if(tab==='fuel') render(); }
@@ -1282,7 +1282,7 @@ function fuelRow(x, best, nearest){
 // Elks lodge number from the name Google shows ("Elks Lodge #201", "BPOE 2459", "Lodge No. 122").
 function lodgeNo(name){ const m=String(name||'').match(/(?:#|no\.?\s*|lodge\s+|b\.?p\.?o\.?e\.?\s*)(\d{1,4})\b/i) || String(name||'').match(/\b(\d{2,4})\b/); return m?m[1]:''; }
 const elksCache={};
-function elksRV(n){ return elksCache[n] || (elksCache[n]=peggyApi('elks-rv?lodge='+n).catch(e=>{ delete elksCache[n]; throw e; })); }
+function elksRV(n){ return elksCache[n] || (elksCache[n]=partnersApi('elks-rv?lodge='+n).catch(e=>{ delete elksCache[n]; throw e; })); }
 function restRow(x){
   const st=x.st, r=el('div',{className:'fuelrow'});
   const elk = fuel.type==='ELKS';
@@ -1456,7 +1456,7 @@ async function sayItKindly(){
     const out=el('div');
     const go=el('button',{className:'primary',textContent:'✨ Suggest kinder words'});
     go.onclick=async()=>{ if(!ta.value.trim()) return ta.focus(); go.disabled=true; go.textContent='Thinking…';
-      try{ const d=await peggyApi('rephrase',{method:'POST',body:JSON.stringify({text:ta.value, to:pn})});
+      try{ const d=await partnersApi('rephrase',{method:'POST',body:JSON.stringify({text:ta.value, to:pn})});
         out.replaceChildren(...(d.options||[]).map(o=>{ const b=el('button',{className:'sugg',title:'Copy this'}); b.append(o, el('small',{textContent:'Tap to copy'})); b.onclick=async()=>{ try{ await navigator.clipboard.writeText(o); toast('Copied. Send it however you like.'); }catch(_){ toast('Couldn’t copy'); } }; return b; }),
           ...(d.tip?[el('p',{className:'hint',textContent:'💡 '+d.tip})]:[])); }
       catch(e){ out.replaceChildren(el('p',{className:'hint',textContent:'Couldn’t get suggestions: '+e.message})); }
@@ -1489,21 +1489,21 @@ async function openSettings(){
       const p=partner();
       sh.append(el('p',{textContent:`Signed in as ${me().name} (${me().email}).`+(p?` Sharing with ${p.name}${p.signedIn?'':' (not signed in yet)'}.`:'')}));
     }
-    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), peggyThemePicker());
+    sh.append(el('label',{className:'f',textContent:'Theme color (yours, on every device you sign in on)'}), partnersThemePicker());
     if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings(()=>{ loadMembers().then(render); }));
     if(acct.session){
       sh.append(el('label',{className:'f',textContent:'Calendars to show'}));
       if(!calLoaded) sh.append(el('p',{textContent:'Open the Calendar tab once to load your calendars.'}));
       calendars.forEach(c=>{ const i=el('input',{type:'checkbox',checked:c.show}); i.onchange=()=>{ c.show=i.checked; savePrefs(); loadCalendar(); };
         sh.append(el('label',{className:'checkrow'},i,Object.assign(el('span',{className:'dot'}),{style:`background:${c.color}`}),c.name)); });
-      const tk=el('input',{type:'checkbox',checked:showTasksOnCal}); tk.onchange=()=>{ showTasksOnCal=tk.checked; try{ localStorage.setItem('peggy.calTasks',tk.checked?'1':'0'); }catch(_){} render(); };
+      const tk=el('input',{type:'checkbox',checked:showTasksOnCal}); tk.onchange=()=>{ showTasksOnCal=tk.checked; try{ localStorage.setItem('partners.calTasks',tk.checked?'1':'0'); }catch(_){} render(); };
       sh.append(el('label',{className:'checkrow'},tk,'Show tasks with due dates on the calendar'));
       const st=el('div',{className:'stack'});
       if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
         const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Partners · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
       const im=el('button',{textContent:'Import from Google Tasks',title:'Bring your Google Tasks lists into Partners'}); im.onclick=()=>{ close(); importGoogleTasks(); };
-      const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>peggySignIn('plan.html#'+tab);
-      const out=el('button',{className:'danger',textContent:'Sign out of Partners on this device'}); out.onclick=async()=>{ try{ await peggyApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
+      const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>partnersSignIn('plan.html#'+tab);
+      const out=el('button',{className:'danger',textContent:'Sign out of Partners on this device'}); out.onclick=async()=>{ try{ await partnersApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
       st.append(im,re,out); sh.append(st);
     }
     const c=el('button',{className:'ghost',textContent:'Close',style:'width:100%;margin-top:10px'}); c.onclick=()=>close(); sh.append(c);
@@ -1511,7 +1511,7 @@ async function openSettings(){
 }
 
 /* ================= boot ================= */
-document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({size:30,flutter:true}); render(); });
+document.addEventListener('partnerstheme',()=>{ $('#logo').innerHTML=butterfly({size:30,flutter:true}); render(); });
 (async function boot(){
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
     // A new version just arrived: reload right away if the page was only just opened, otherwise offer it.

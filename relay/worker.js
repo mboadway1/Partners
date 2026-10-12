@@ -1,17 +1,17 @@
-// Peggy relay — a small Cloudflare Worker that Peggy talks to.
+// Partners relay — a small Cloudflare Worker that Partners talks to.
 //
 //  1. Google Photos relay (Google doesn't allow browsers to call it directly):
 //       /picker/<path>   ->  https://photospicker.googleapis.com/<path>
 //       /media?u=<url>   ->  photo bytes from *.googleusercontent.com
-//  2. Peggy's shared space for two people (tasks, link favorites, calendar for the TV):
+//  2. Partners' shared space for two people (tasks, link favorites, calendar for the TV):
 //       /api/...         sign-in, shared data, TV agenda
 //
 // Settings (Cloudflare → the worker → Settings → Variables and Secrets / Bindings):
 //   ALLOWED_ORIGINS       text    https://mboadway1.github.io
 //   ALLOWED_EMAILS        text    the two Gmail addresses allowed in, comma-separated
-//   GOOGLE_CLIENT_ID      text    the Peggy OAuth client ID
-//   GOOGLE_CLIENT_SECRET  secret  the Peggy OAuth client secret
-//   PEGGY_KV              KV namespace binding (stores sign-ins and shared data)
+//   GOOGLE_CLIENT_ID      text    the Partners OAuth client ID
+//   GOOGLE_CLIENT_SECRET  secret  the Partners OAuth client secret
+//   PARTNERS_KV           KV namespace binding (stores sign-ins and shared data)
 
 const DOCS = ['tasks', 'links', 'shared', 'expenses', 'closet', 'flights', 'us'];   // shared = shared photo albums (lists) and the photos in them (items)
 
@@ -23,7 +23,7 @@ export default {
     const cors = {
       'Access-Control-Allow-Origin': okOrigin ? origin : (allowed[0] || ''),
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Peggy-Session',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Partners-Session, X-Peggy-Session',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     };
@@ -68,10 +68,11 @@ async function photos(req, url, cors) {
   return new Response(r.body, { status: r.status, headers });
 }
 
-/* ---------------- Peggy shared space ---------------- */
+/* ---------------- Partners shared space ---------------- */
 async function api(req, env, url, cors) {
-  if (!env.PEGGY_KV) return json({ error: 'The PEGGY_KV storage isn’t connected to this worker yet.' }, 500, cors);
-  const KV = env.PEGGY_KV;
+  // Storage is bound as PARTNERS_KV (the old PEGGY_KV name still works while switching over).
+  const KV = env.PARTNERS_KV || env.PEGGY_KV;
+  if (!KV) return json({ error: 'The PARTNERS_KV storage isn’t connected to this worker yet.' }, 500, cors);
   const path = url.pathname.slice(5);           // after "/api/"
   const emails = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const body = async () => { try { return await req.json(); } catch { return {}; } };
@@ -107,7 +108,7 @@ async function api(req, env, url, cors) {
     return json(t, 200, cors);
   }
   if (path === 'auth/signout' && req.method === 'POST') {
-    await KV.delete('session:' + req.headers.get('X-Peggy-Session'));
+    await KV.delete('session:' + sessionToken(req));
     return json({ ok: true }, 200, cors);
   }
   if (path === 'me' && req.method === 'GET') {
@@ -128,12 +129,14 @@ async function api(req, env, url, cors) {
   }
   // Settings kept in sync between the TV, the Chromebook and both phones. The TV's view-only pass may write these too.
   if (path === 'settings') {
-    const cur = (await KV.get('settings', 'json')) || {};
+    const raw = (await KV.get('settings', 'json')) || {}, cur = {};
+    for (const [k, x] of Object.entries(raw)) { const n = k.replace(/^peggy\./, 'partners.'); if (!cur[n] || cur[n].at < x.at) cur[n] = x; }
     if (req.method === 'GET') return json(cur, 200, cors);
     if (req.method === 'PUT') {
       const { changes } = await body();
-      for (const [k, x] of Object.entries(changes || {})) {
-        if (!/^peggy\.[\w.]{1,60}$/.test(k) || !x || typeof x.at !== 'number') continue;
+      for (let [k, x] of Object.entries(changes || {})) {
+        if (!/^(peggy|partners)\.[\w.]{1,60}$/.test(k) || !x || typeof x.at !== 'number') continue;
+        k = k.replace(/^peggy\./, 'partners.');
         if (x.v != null && String(x.v).length > 4000) continue;
         if (!cur[k] || cur[k].at < x.at) cur[k] = { v: x.v == null ? null : String(x.v), at: x.at };
       }
@@ -194,13 +197,18 @@ async function api(req, env, url, cors) {
     }
   }
 
-  // --- shared album photos, kept in Cloudflare R2 (binding PEGGY_R2) ---
+  // --- shared album photos, kept in Cloudflare R2 (binding PARTNERS_R2) ---
   const pm = path.match(/^photo\/([\w-]{8,64})(?:\/(full))?$/);
   if (pm) {
-    if (!env.PEGGY_R2) return json({ error: 'Shared albums need the PEGGY_R2 photo storage connected to the relay.' }, 500, cors);
+    const R2 = env.PARTNERS_R2 || env.PEGGY_R2, OLD_R2 = env.PARTNERS_R2 && env.PEGGY_R2;
+    if (!R2) return json({ error: 'Shared albums need the PARTNERS_R2 photo storage connected to the relay.' }, 500, cors);
     const key = 'photos/' + pm[1] + '/full';
     if (req.method === 'GET') {
-      const o = await env.PEGGY_R2.get(key);
+      let o = await R2.get(key);
+      if (!o && OLD_R2) {   // not moved yet: copy it from the old bucket into the new one
+        const old = await OLD_R2.get(key);
+        if (old) { const b = await old.arrayBuffer(); await R2.put(key, b, { httpMetadata: old.httpMetadata, customMetadata: old.customMetadata }); o = await R2.get(key); }
+      }
       if (!o) return json({ error: 'Photo not found' }, 404, cors);
       return new Response(o.body, { status: 200, headers: { ...cors, 'Content-Type': (o.httpMetadata && o.httpMetadata.contentType) || 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' } });
     }
@@ -209,10 +217,10 @@ async function api(req, env, url, cors) {
       if (len > 20e6) return json({ error: 'Photo too big' }, 413, cors);
       const buf = await req.arrayBuffer();
       if (!buf.byteLength || buf.byteLength > 20e6) return json({ error: 'Photo missing or too big' }, 400, cors);
-      await env.PEGGY_R2.put(key, buf, { httpMetadata: { contentType: req.headers.get('Content-Type') || 'image/jpeg' }, customMetadata: { by: s.email } });
+      await R2.put(key, buf, { httpMetadata: { contentType: req.headers.get('Content-Type') || 'image/jpeg' }, customMetadata: { by: s.email } });
       return json({ ok: true, size: buf.byteLength }, 200, cors);
     }
-    if (req.method === 'DELETE' && full) { await env.PEGGY_R2.delete(key); return json({ ok: true }, 200, cors); }
+    if (req.method === 'DELETE' && full) { await R2.delete(key); if (OLD_R2) await OLD_R2.delete(key); return json({ ok: true }, 200, cors); }
     return json({ error: 'Not allowed' }, 405, cors);
   }
 
@@ -379,7 +387,7 @@ async function api(req, env, url, cors) {
     const ck = 'elksrv:' + n, hit = await KV.get(ck, 'json');
     if (hit && Date.now() - hit.at < 7 * 864e5) return json(hit, 200, cors);
     const home = 'https://www.elks.org/lodges/home.cfm?lodge=' + n;
-    const get = async u => { try { const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Peggy RV lookup)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(7000) }); return r.ok ? (await r.text()).slice(0, 400000) : ''; } catch { return ''; } };
+    const get = async u => { try { const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Partners RV lookup)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(7000) }); return r.ok ? (await r.text()).slice(0, 400000) : ''; } catch { return ''; } };
     const html = await get(home);
     if (!html) return json({ lodge: n, url: home, found: false, rv: false, summary: '', at: Date.now() }, 200, cors);
     // A link to the lodge's RV page, if it has one.
@@ -457,7 +465,7 @@ async function api(req, env, url, cors) {
     let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return json({ error: 'Bad link' }, 400, cors); }
     if (!/^https?:$/.test(u.protocol)) return json({ error: 'Bad link' }, 400, cors);
     try {
-      const r = await fetch(u.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (Peggy link preview)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(6000) });
+      const r = await fetch(u.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (Partners link preview)', 'Accept': 'text/html' }, redirect: 'follow', signal: AbortSignal.timeout(6000) });
       const text = (await r.text()).slice(0, 200000);
       const pick = re => { const m = text.match(re); return m ? decodeEntities(m[1].trim()).slice(0, 200) : ''; };
       const title = pick(/<meta[^>]+property=["']og:title["'][^>]*content=["']([^"']+)/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
@@ -528,7 +536,9 @@ async function accessFor(env, KV, user) {
   await KV.put('user:' + user.email, JSON.stringify(user));
   return { access_token: t.access_token, expires_in: t.expires_in - 60, scope: user.scope };
 }
-async function sessionOf(req, KV) { const t = req.headers.get('X-Peggy-Session'); if (!t || t.length < 20) return null; return KV.get('session:' + t, 'json'); }
+// The app sends X-Partners-Session; pages that haven't updated yet still send the old header name.
+function sessionToken(req) { return req.headers.get('X-Partners-Session') || req.headers.get('X-Peggy-Session') || ''; }
+async function sessionOf(req, KV) { const t = sessionToken(req); if (!t || t.length < 20) return null; return KV.get('session:' + t, 'json'); }
 async function claude(env, model, content, max_tokens) {
   const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST',
     headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-peggy="words">
+<html lang="en" data-partners="words">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -209,7 +209,7 @@ details summary{cursor:pointer;font-weight:700}
 <script src="account.js"></script>
 <script src="core-butterfly.js"></script>
 <script>
-const PREFIX='peggy-tv-';           // same TV link as Partners' photos
+const PREFIX='partners-tv-';           // same TV link as Partners' photos
 const COLORS=WORDS_COLORS;
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(_){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
@@ -410,11 +410,11 @@ $('reset').onclick=()=>{
 $('toUs').onclick=async()=>{
   const b=$('toUs'), total=speakers.reduce((a,s)=>a+s.words,0);
   if(!total){ b.textContent='Nothing to save yet'; setTimeout(()=>{ b.textContent='💞 Save to Us'; },2000); return; }
-  if(!acct.session){ if(confirm('Sign in to Partners to save this to Us?')) peggySignIn('words.html'); return; }
+  if(!acct.session){ if(confirm('Sign in to Partners to save this to Us?')) partnersSignIn('words.html'); return; }
   const item={id:(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)), kind:'talk', at:new Date().toISOString(), timer:T.len||0,
     speakers:speakers.filter(x=>x.words||x.turns).map(x=>({name:x.name, words:x.words, pct:total?Math.round(x.words/total*100):0, turns:x.turns, interrupts:x.interrupts, interrupted:x.interrupted})), updatedAt:Date.now()};
   b.disabled=true; b.textContent='Saving…';
-  try{ await peggyApi('data/us',{method:'POST',body:JSON.stringify({ops:[{op:'upsert',item}]})}); b.textContent='✓ Saved to Us'; }
+  try{ await partnersApi('data/us',{method:'POST',body:JSON.stringify({ops:[{op:'upsert',item}]})}); b.textContent='✓ Saved to Us'; }
   catch(e){ b.textContent='Couldn’t save'; alert('Couldn’t save to Us: '+e.message); }
   finally{ setTimeout(()=>{ b.disabled=false; b.textContent='💞 Save to Us'; },2500); }
 };
@@ -448,7 +448,7 @@ function connectTv(code){
   code=(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(code.length!==4){setTv('Code is 4 characters',false);return}
   if(typeof Peer==='undefined'){setTv('Offline',false);return}
-  tvCode=code;store.set('peggy.tv',code);$('code').value=code;
+  tvCode=code;store.set('partners.tv',code);$('code').value=code;
   clearTimeout(retry);
   if(conn){try{conn.close()}catch(_){}conn=null}
   const go=()=>{
@@ -480,7 +480,7 @@ $('connect').onclick=()=>connectTv($('code').value);
 $('code').addEventListener('keydown',e=>{if(e.key==='Enter')connectTv($('code').value)});
 
 const q=new URLSearchParams(location.search).get('tv');
-const startCode=(q||store.get('peggy.tv')||'').toUpperCase();
+const startCode=(q||store.get('partners.tv')||'').toUpperCase();
 if(startCode){$('code').value=startCode;window.addEventListener('load',()=>connectTv(startCode))}
 if(q)history.replaceState(null,'',location.pathname);
 
