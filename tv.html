@@ -930,15 +930,20 @@ function musicEl(){
   if(music.el) return music.el;
   const a=el('audio',{id:'musicAudio',preload:'none'}); document.body.append(a);
   a.addEventListener('ended',()=>{ if(musicCfg.mode==='drive') musicNext(); });
-  a.addEventListener('playing',()=>{ music.fails=0; });
+  a.addEventListener('playing',()=>{ music.fails=0; music.status='Playing'; });
+  a.addEventListener('waiting',()=>{ music.status='Loading the song…'; });
   a.addEventListener('error',()=>{ if(!a.getAttribute('src')) return; music.fails++;
+    const codes={1:'stopped',2:'network problem',3:'can’t decode this file',4:'Google wouldn’t send this file or it isn’t a supported format'};
+    music.status='Couldn’t play: '+(codes[a.error&&a.error.code]||'unknown problem');
+    // Google's file API sometimes refuses media for a key; Drive's public download link usually works for shared files.
+    if(musicCfg.mode==='drive' && music.cur && !music.triedAlt){ music.triedAlt=true; a.src=`https://drive.google.com/uc?export=download&id=${music.cur.id}`; music.fails--; return musicPlay(); }
     if(musicCfg.mode==='drive' && music.fails<5) return musicNext();
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
     music.now=''; music.title=music.artist=''; musicBanner(); toast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
   return music.el=a;
 }
-function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100));
-  const p=a.play(); if(p&&p.catch) p.catch(()=>{ music.waiting=true; }); if(drive.clock) tickClock(); }
+function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100)); a.muted=false;
+  const p=a.play(); if(p&&p.catch) p.catch(e=>{ if(e && e.name==='NotAllowedError'){ music.waiting=true; music.status='Waiting for a button press'; toast('Press the center button (or click) to start the music.',5000); } }); if(drive.clock) tickClock(); }
 async function musicStart(){
   const a=musicEl(), mode=musicCfg.mode;
   if(mode==='radio'){ const st=musicCfg.station; if(!st) return; a.src=st.url; music.now='📻 '+st.name; music.title=st.name; music.artist='Internet radio'; musicPlay(); musicBanner(); return; }
@@ -1006,7 +1011,7 @@ function musicPick(){
   try{ localStorage.setItem('partners.music.played',JSON.stringify([...played])); }catch(_){}
   return f;
 }
-function musicTrack(){ const f=musicPick(), a=musicEl(); if(!f){ toast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
+function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false; if(!f){ toast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
   a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); music.title=f.title||f.name; music.artist=f.artist||''; musicPlay(); musicBanner(); }
 // When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
 function musicBanner(){
@@ -1033,7 +1038,7 @@ async function openMusic(){
     const v=await menu('Music',[
       ['📻 Internet radio…','radio'], ['🎵 My songs (Drive Music folder)','drive'],
       ...(mode!=='off'?[[playing?'⏸ Pause':'▶ Play now','toggle'],...(mode==='drive'?[['⏭ Next song','next'],...(music.cur?[[`👎 Never play “${music.cur.name.slice(0,40)}”`,'hide']]:[]),...(musicSkip.list.length?[[`Hidden songs (${musicSkip.list.length})…`,'hidden']]:[])]:[]),['⏹ Music off','off']]:[]),
-      [`Plays: ${musicCfg.when==='always'?'all the time':'during the slideshow'}`,'when'], [`Volume: ${musicCfg.volume}%`,'vol'], ['Done',null,'primary']], now);
+      [`Plays: ${musicCfg.when==='always'?'all the time':'during the slideshow'}`,'when'], [`Volume: ${musicCfg.volume}%`,'vol'], ['Done',null,'primary']], now+(mode!=='off'&&music.status?` · ${music.status}`:'')+(mode!=='off'&&music.el&&music.el.volume===0?' · volume is 0':''));
     if(v==null) return;
     if(v==='radio'){ const g=await menu('Pick a kind of music',[...GENRES.map(([l,t])=>[l,t]),['Back',null]]); if(!g) continue;
       toast('Finding stations…',2000); let list; try{ list=await stationsFor(g); }catch(e){ toast(e.message,5000); continue; }
