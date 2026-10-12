@@ -181,3 +181,10 @@ async function syncPull(){
 setTimeout(()=>{ if (partnersAuth()) syncPull(); }, 800);
 setInterval(()=>{ if (!document.hidden && partnersAuth()) syncPull(); }, 3*60*1000);
 document.addEventListener('visibilitychange', ()=>{ if (!document.hidden && partnersAuth()) syncPull(); });
+
+/* ---- after the rename: move shared-album photos to the new storage once (signed-in phones/Chromebook) ---- */
+setTimeout(async ()=>{ const a=partnersAuth(); if (!a || !a.full || localStorage.getItem('partners.photosMoved')) return;
+  let cursor=null;
+  try{ for (let i=0;i<200;i++){ const r=await (await partnersFetch('move-photos',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ cursor }) })).json();
+      if (r.done){ localStorage.setItem('partners.photosMoved','1'); return; } cursor=r.cursor; } }catch(_){}
+}, 5000);

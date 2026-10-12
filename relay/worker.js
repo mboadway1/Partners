@@ -144,6 +144,19 @@ async function api(req, env, url, cors) {
       return json(cur, 200, cors);
     }
   }
+  // One-time move of shared-album photos from the old bucket to the new one (the app calls this until done).
+  if (path === 'move-photos' && req.method === 'POST' && full) {
+    const NEW = env.PARTNERS_R2, OLD = env.PARTNERS_R2 && env.PEGGY_R2;
+    if (!OLD) return json({ done: true, moved: 0 }, 200, cors);
+    const { cursor } = await body(); let moved = 0;
+    const page = await OLD.list({ cursor: cursor || undefined, limit: 50 });
+    for (const o of page.objects) {
+      if (await NEW.head(o.key)) continue;
+      const g = await OLD.get(o.key); if (!g) continue;
+      await NEW.put(o.key, await g.arrayBuffer(), { httpMetadata: g.httpMetadata, customMetadata: g.customMetadata }); moved++;
+    }
+    return json({ done: !page.truncated, cursor: page.truncated ? page.cursor : null, moved }, 200, cors);
+  }
   // Each partner's own name, color and theme (shown to both of you and on the TV).
   if (path === 'profile' && req.method === 'PUT' && full) {
     const b = await body(), cur = (await KV.get('profile:' + s.email, 'json')) || {};
