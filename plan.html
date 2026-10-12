@@ -545,7 +545,7 @@ const T_DEFAULT='Our Tasks';
 const tget=(k,d)=>{ try{ const v=localStorage.getItem('partners.tasks.'+k); return v==null?d:JSON.parse(v); }catch(_){ return d; } };
 const tset=(k,v)=>{ try{ localStorage.setItem('partners.tasks.'+k, JSON.stringify(v)); }catch(_){} };
 const tOpen=new Set(tget('completedOpen',[]));                       // lists with Completed expanded
-function tLists(){ const L=store.tasks.lists.slice().sort((a,b)=>(a.order??a.createdAt??0)-(b.order??b.createdAt??0)||a.name.localeCompare(b.name));
+function tLists(){ const L=store.tasks.lists.filter(l=>!l.removed).sort((a,b)=>(a.order??a.createdAt??0)-(b.order??b.createdAt??0)||a.name.localeCompare(b.name));
   return [{id:'',name:T_DEFAULT,sort:tget('defaultSort','my')}, ...L]; }
 const tPriv=id=>{ const l=store.tasks.lists.find(x=>x.id===(id||'')); return !!(l&&l.private); };
 const tLabel=L=>(L.private?'🔒 ':'')+L.name;
@@ -582,7 +582,7 @@ function renderTasks(v){
     const who=el('div',{className:'gt-who'});
     [['lists','Everyone'],['mine','Mine'],...(p?[['p2',p.name]]:[])].forEach(([k,l])=>{ const b=el('button',{className:(tview===k||(k==='lists'&&tview==='starred'))?'on':'',textContent:l}); b.onclick=()=>{ tview=k; render(); }; who.append(b); });
     const col=tview==='starred'||tview==='lists' ? (tview==='starred'?tStarredCard():tListCard(tListOf(tcur))) : tAssignedCard();
-    const gb=gNeedScope||gMine().length?el('div',{className:'gt-gphone'},...tGoogleBits().filter(x=>!/Update from/.test(x.textContent))):null;
+    const gb=el('div',{className:'gt-gphone'},...tGoogleBits().filter(x=>!/version/.test(x.textContent)));
     v.replaceChildren(el('div',{className:'gt gt-phone'}, ...(gb?[gb]:[]), ...(tview!=='starred'?[who]:[]), col));
     return;
   }
@@ -608,15 +608,14 @@ function renderTasks(v){
 
 // Google Tasks: bring lists in, sync now, and how it's going.
 function tGoogleBits(){
-  const out=[]; const linked=gMine().length; gCheckScope();
-  if(gNeedScope){ const b=el('button',{className:'gt-gwarn',innerHTML:'<b>Reconnect Google</b><small>so changes here go back to Google Tasks</small>'}); b.onclick=()=>partnersSignIn('plan.html#tasks'); out.push(b); }
-  if(gScopeMsg) out.push(el('div',{className:'gt-gstat'+(gNeedScope?' err':''),textContent:gScopeMsg}));
+  const out=[]; gCheckScope();
+  if(gNeedScope){ const b=el('button',{className:'gt-gwarn',innerHTML:'<b>Reconnect Google</b><small>so Partners and Google Tasks can stay in step</small>'}); b.onclick=()=>partnersSignIn('plan.html#tasks'); out.push(b); }
+  const b=el('button',{className:'gt-nav',title:'Brings in what changed in Google Tasks and sends what changed here',innerHTML:`<span class="ic">${gSyncing?'⏳':'⟳'}</span>`}); b.append(gSyncing?'Syncing with Google…':'Sync with Google Tasks');
+  b.onclick=()=>syncGoogleTasks(true); out.push(b);
+  const ago=gLast?Math.round((Date.now()-gLast)/60000):null;
+  out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gLastErr?`Last try didn’t work: ${gLastErr}`:ago==null?'Not synced yet':ago<1?'Synced just now':`Synced ${ago} min ago`}));
+  if(gScopeMsg && gNeedScope) out.push(el('div',{className:'gt-gstat err',textContent:gScopeMsg}));
   out.push(el('div',{className:'gt-gstat',textContent:'Partners version '+PARTNERS_VER}));
-  if(linked){ const b=el('button',{className:'gt-nav',innerHTML:`<span class="ic">${gSyncing?'⏳':'⟳'}</span>`}); b.append(gSyncing?'Syncing with Google…':'Sync with Google Tasks');
-    b.onclick=()=>syncGoogleTasks(true); out.push(b);
-    const ago=gLast?Math.round((Date.now()-gLast)/60000):null;
-    out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gLastErr?`Last try didn’t work: ${gLastErr}`:ago==null?'Not synced yet':ago<1?'Synced just now':`Synced ${ago} min ago`})); }
-  const g=el('button',{className:'gt-nav',innerHTML:'<span class="ic">⇩</span>'}); g.append('Update from Google Tasks'); g.onclick=()=>importGoogleTasks(); out.push(g);
   return out; }
 // One list, Google Tasks style.
 function tListCard(L){
@@ -762,7 +761,8 @@ async function tListMenu(L,anchor){
   if(v==='clear'){ const ds=tItems().filter(t=>(t.list||'')===L.id&&t.done); if(confirm(`Delete ${ds.length} completed task${ds.length>1?'s':''} for both of you?`)) change('tasks',ds.map(t=>({op:'delete',id:t.id}))); return; }
   if(v==='delete'){ const ts=tItems().filter(t=>(t.list||'')===L.id);
     if(!confirm(`Delete “${L.name}”${ts.length?` and its ${ts.length} task${ts.length>1?'s':''}`:''}? This deletes it for both of you.${gOn(L)?' The list stays in Google Tasks.':''}`)) return;
-    tcur=''; change('tasks',[...ts.map(t=>({op:'delete',id:t.id})),{op:'delete',kind:'list',id:L.id}]); }
+    tcur=''; const lop=L.gtlid?{op:'upsert',kind:'list',item:{...L,removed:true,gsync:false,gdel:[]}}:{op:'delete',kind:'list',id:L.id};   // a Google list stays hidden so Sync doesn't bring it back
+    gApplying=true; try{ change('tasks',[...ts.map(t=>({op:'delete',id:t.id})),lop]); }finally{ gApplying=false; } }
 }
 async function tNewList(){
   const pn=partner()?partner().name:'your partner';
@@ -934,13 +934,13 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='122';
+const PARTNERS_VER='123';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
 const gDue=d=>d?d+'T00:00:00.000Z':null;
 // Lists brought in from Google before sync existed have a Google id but no on/off setting yet: they sync too.
-const gOn=l=>l.gsync===true||(l.gsync===undefined&&!!l.gtlid);
+const gOn=l=>!l.removed&&(l.gsync===true||(l.gsync===undefined&&!!l.gtlid));
 const gMine=()=>store.tasks.lists.filter(l=>gOn(l) && (l.gowner||l.owner||l.createdBy||me().email)===me().email);
 // Can Partners change this person's Google Tasks? (Older sign-ins could only read them.)
 let gScopeChecked=false;
@@ -963,7 +963,7 @@ const gPos=(a,b)=>String(a.position||'').localeCompare(String(b.position||''));
 
 async function syncGoogleTasks(manual){
   if(gSyncing || !acct.session || !me().email) return;
-  const mine=gMine(); if(!mine.length){ if(manual) toast('No lists are kept in step with Google Tasks yet. Use “Update from Google Tasks” first.',5000); return; }
+  const mine=gMine(); if(!mine.length && !manual) return;
   if(!manual && (document.hidden || !navigator.onLine)) return;
   gSyncing=true; gLastErr=''; const t0=Date.now(); if(manual) toast('Syncing with Google Tasks…',60000);
   const T={}, L={}, now=Date.now();                       // changes to Partners tasks (by id) and lists (by id)
@@ -985,6 +985,10 @@ async function syncGoogleTasks(manual){
       else if(l.gname!==gl.title) putL(l,{gname:gl.title});
       active.push({l,tl:gl.id});
     }
+    // Lists made in Google Tasks that aren't in Partners yet come in as lists that are just yours.
+    const known=new Set([...store.tasks.lists.map(x=>x.gtlid),...active.map(a=>a.tl)].filter(Boolean)); const newLists=[];
+    gls.forEach((gl,i)=>{ if(known.has(gl.id)) return; const l={id:uid(),name:gl.title,sort:'my',order:(store.tasks.lists.length?1000:0)+i,private:true,owner:me().email,gtlid:gl.id,gname:gl.title,gsync:true,gowner:me().email};
+      newLists.push(l); active.push({l,tl:gl.id}); pulled++; });
     // 2. Everything in Google for those lists.
     const G={}, byTl={};
     for(const a of active){ byTl[a.tl]=await gFetch(a.tl); byTl[a.tl].forEach(g=>G[g.id]={g,tl:a.tl}); }
@@ -1058,6 +1062,7 @@ async function syncGoogleTasks(manual){
     }
     // 3. Save it all in Partners in one go.
     const ops=[];
+    newLists.forEach(l=>ops.push({op:'upsert',kind:'list',item:l}));
     Object.values(L).forEach(ch=>{ const l=store.tasks.lists.find(x=>x.id===ch.id); if(l) ops.push({op:'upsert',kind:'list',item:{...l,...ch}}); });
     Object.values(T).forEach(ch=>{ if(delT.has(ch.id)) return; const {_new,...c}=ch; const t=items().find(x=>x.id===c.id);
       if(_new) ops.push({op:'upsert',item:c}); else if(t){ if(t.gdirty && (t.updatedAt||0)>t0){ ops.push({op:'upsert',item:{...t,gtid:c.gtid!==undefined?c.gtid:t.gtid,glist:c.glist!==undefined?c.glist:t.glist,gupd:c.gupd!==undefined?c.gupd:t.gupd}}); } else ops.push({op:'upsert',item:{...t,...c}}); } });   // edited while syncing? keep the edit for next time
@@ -2212,7 +2217,7 @@ async function openSettings(){
       const st=el('div',{className:'stack'});
       if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
         const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Partners · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
-      const im=el('button',{textContent:'Import from Google Tasks',title:'Bring your Google Tasks lists into Partners'}); im.onclick=()=>{ close(); importGoogleTasks(); };
+      const im=el('button',{textContent:'⟳ Sync with Google Tasks',title:'Brings in what changed in Google Tasks and sends what changed here'}); im.onclick=()=>{ close(); location.hash='tasks'; syncGoogleTasks(true); };
       const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>partnersSignIn('plan.html#'+tab);
       const out=el('button',{className:'danger',textContent:'Sign out of Partners on this device'}); out.onclick=async()=>{ try{ await partnersApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
       st.append(im,re,out); sh.append(st);
