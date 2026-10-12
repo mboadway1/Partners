@@ -60,6 +60,8 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 
 /* layers */
 .layer{position:absolute;inset:0;background:var(--bg);z-index:10}
+#planLayer iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff}
+#planBack{position:absolute;left:2vw;bottom:3vh;z-index:2;font-size:1.4vw;padding:.9vw 1.8vw;border-radius:5vw;background:var(--accent);color:#fff;box-shadow:0 .3vw 1vw rgba(0,0,0,.4)}
 .stageImg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--photo)}
 .stageImg canvas,.stageImg img{max-width:100%;max-height:100%}
 .vbar{position:absolute;left:0;right:0;bottom:0;padding:3vh 3vw 4vh;display:flex;gap:1.2vw;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.85))}
@@ -202,6 +204,8 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
   <div class="hint" id="vHint">◀ ▶ browse · OK for options</div>
   <div class="vbar hidden" id="vBar"></div>
 </div>
+
+<div id="planLayer" class="layer hidden"><div class="btn f" id="planBack">📺 Back to TV</div></div>
 
 <div id="show" class="layer hidden">
   <div class="slot" id="slotA"></div><div class="slot" id="slotB"></div>
@@ -528,7 +532,15 @@ async function slideMenu(){
 $('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')) slideMenu(); });
 // Peggy's planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
 const PLAN_TABS=[['✅ Tasks','tasks'],['📆 Calendar','calendar'],['💵 Money','money'],['✈️ Flights','flights'],['⛽ Diesel','fuel'],['💞 Us','us'],['🔗 Links','links']];
-function openPlan(tab){ location.href='plan.html#'+tab; }
+// Opened inside the TV screen (not as a new page) so Peggy stays full screen.
+function openPlan(tab){
+  const L=$('#planLayer'); let f=L.querySelector('iframe');
+  if(!f){ f=el('iframe',{title:'Peggy plans'}); L.prepend(f); }
+  f.src='plan.html#'+tab; L.classList.remove('hidden');
+  pushScope(L,{ onclose:()=>{ L.classList.add('hidden'); } });
+  focusEl($('#planBack'));
+}
+$('#planBack').onclick=()=>{ if(topScope().root===$('#planLayer')) popScope(); };
 async function planMenu(){ const v=await menu('Plans',PLAN_TABS.map(([l,k])=>[l,k])); if(v) openPlan(v); }
 function slideKey(k){
   if(k==='left'||k==='rew'){ ssGo(-1); return true; }

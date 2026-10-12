@@ -23,8 +23,9 @@ const peggyRedirect = () => location.origin + location.pathname.replace(/[^/]*$/
 function peggySignIn(returnTo){
   const state = Math.random().toString(36).slice(2)+Date.now().toString(36);
   localStorage.setItem('peggy.authState', state);
-  localStorage.setItem('peggy.authReturn', returnTo || location.pathname.split('/').pop() + location.hash);
-  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+  let framed=false; try{ framed = window.top!==window && window.top.location.origin===location.origin; }catch(_){}
+  localStorage.setItem('peggy.authReturn', framed ? 'tv.html' : (returnTo || location.pathname.split('/').pop() + location.hash));
+  (framed ? window.top : window).location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
     client_id: acct.clientId, redirect_uri: peggyRedirect(), response_type: 'code', scope: PEGGY.scopes.join(' '),
     access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', state });
 }
