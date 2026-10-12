@@ -66,7 +66,7 @@ npx wrangler login        # opens a browser to sign in / create a free Cloudflar
 npx wrangler deploy
 ```
 
-It prints a URL like `https://partners-relay.<your-subdomain>.workers.dev`. Opening it in a browser should say *Partners relay is running.*
+It prints a URL like `https://ezrad-partners-relay.<your-subdomain>.workers.dev`. Opening it in a browser should say *Partners relay is running.*
 
 The relay only forwards to Google Photos hosts, only accepts requests from the origin in `wrangler.toml`, and stores nothing. Free tier: 100,000 requests/day — far more than you'll use.
 
@@ -149,10 +149,10 @@ Partners' relay keeps the shared tasks and links, and keeps each person signed i
 2. [Audience](https://console.cloud.google.com/auth/audience): add your partner's Gmail as a test user, then **Publish app → In production** (Testing-mode sign-ins expire every 7 days). Google shows an “unverified app” notice when you sign in; choose Continue.
 3. [Clients](https://console.cloud.google.com/auth/clients) → Partners → **Add secret**, copy the client secret.
 
-**Cloudflare** (partners-relay worker)
+**Cloudflare** (ezrad-partners-relay worker)
 1. **Storage & databases → Workers KV → Create**, name it `partners`.
-2. partners-relay → **Bindings → Add → KV namespace**: variable name `PARTNERS_KV`, namespace `partners`.
-3. partners-relay → **Settings → Variables and Secrets**: add text `ALLOWED_EMAILS` (both Gmail addresses, comma-separated), text `GOOGLE_CLIENT_ID`, and secret `GOOGLE_CLIENT_SECRET`.
+2. ezrad-partners-relay → **Bindings → Add → KV namespace**: variable name `PARTNERS_KV`, namespace `partners`.
+3. ezrad-partners-relay → **Settings → Variables and Secrets**: add text `ALLOWED_EMAILS` (both Gmail addresses, comma-separated), text `GOOGLE_CLIENT_ID`, and secret `GOOGLE_CLIENT_SECRET`.
 4. **Edit code**: replace it with the new `relay/worker.js`, then **Deploy**.
 
 Then each of you opens **Tasks** in Partners and taps **Sign in with Google**. To bring in Google Tasks: Settings → **Import from Google Tasks**.

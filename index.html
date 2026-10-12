@@ -431,7 +431,7 @@ const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
 const cfg = {
   // Michael's Google OAuth client (not a secret); a value saved in Settings overrides it.
   get clientId(){ return (localStorage.getItem('partners.clientId')||'').trim() || '833687773280-mv05v281evtfpk4sod86ouoeci3s56ud.apps.googleusercontent.com'; },
-  get relay(){ return ((localStorage.getItem('partners.relay')||'').trim() || 'https://partners-relay.mboadway1.workers.dev').replace(/\/+$/,''); },
+  get relay(){ return ((localStorage.getItem('partners.relay')||'').trim() || 'https://ezrad-partners-relay.mboadway1.workers.dev').replace(/\/+$/,''); },
 };
 
 
@@ -1144,7 +1144,7 @@ async function openSettings(note){
     if(acct.session) sh.append(el('h3',{textContent:'💞 Partners',style:'margin-top:14px'}), partnersSettings());
     if(note) sh.append(el('p',{textContent:note}));
     const cid=el('input',{value:cfg.clientId,placeholder:'1234…apps.googleusercontent.com',autocapitalize:'off',autocorrect:'off',spellcheck:false});
-    const rel=el('input',{value:cfg.relay,placeholder:'https://partners-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
+    const rel=el('input',{value:cfg.relay,placeholder:'https://ezrad-partners-relay.yourname.workers.dev',autocapitalize:'off',autocorrect:'off',spellcheck:false});
     sh.append(el('label',{className:'f',textContent:'Google OAuth Client ID'}),cid, el('label',{className:'f',textContent:'Relay URL (Cloudflare Worker)'}),rel);
     const info=el('p'); info.append('Register these in Google Cloud → Credentials:', el('br'),'JavaScript origin: ', el('code',{textContent:location.origin}), el('br'),'Redirect URI: ', el('code',{textContent:redirectUri()}));
     sh.append(info);

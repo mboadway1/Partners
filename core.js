@@ -225,9 +225,9 @@ function looksLikeScreenshot({name, type, make}){ return SHOT_NAME.test(name||''
 const PEER_PREFIX='partners-tv-';
 const CODE_ALPH='ACDEFHJKMNPRTWXY3479';
 
-// The relay was renamed from peggy-relay to partners-relay: move any saved address over (phones, Chromebook and TV).
+// The relay was renamed from peggy-relay to ezrad-partners-relay: move any saved address over (phones, Chromebook and TV).
 (function(){ try{
-  const fix = u => typeof u==='string' ? u.replace('//peggy-relay.', '//partners-relay.') : u;
+  const fix = u => typeof u==='string' ? u.replace('//peggy-relay.', '//ezrad-partners-relay.').replace('//partners-relay.', '//ezrad-partners-relay.') : u;
   const r = localStorage.getItem('partners.relay'); if (r && r!==fix(r)) localStorage.setItem('partners.relay', fix(r));
   const t = JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (t && t.relay && t.relay!==fix(t.relay)){ t.relay=fix(t.relay); localStorage.setItem('partners.tvplan', JSON.stringify(t)); }
 }catch(_){} })();
