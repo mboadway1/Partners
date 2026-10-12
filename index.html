@@ -78,7 +78,7 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .namel{margin-bottom:12px}
 .daterow input,.namel input{font:inherit;font-size:16px;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--inputbg,#fff);color:var(--text);min-width:0;width:100%}
 .thumbs.dup{display:flex;gap:6px;overflow-x:auto}
-.dupc{flex:none;width:76px;display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:800;color:var(--dim);text-align:center}
+.dupc{flex:none;width:76px;background:none;border:0;padding:0;min-height:0;display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:800;color:var(--dim);text-align:center}
 .dupc img{width:76px;height:76px;object-fit:cover;border-radius:8px;opacity:.55}
 .dupc.keep{color:var(--accent)} .dupc.keep img{opacity:1;outline:3px solid var(--accent);outline-offset:-3px}
 .chips.closet button{min-height:32px;padding:4px 10px;font-size:13px;border-radius:999px;background:var(--panel2)}
@@ -581,44 +581,51 @@ async function openTidy(){
   });
 }
 /* ---------- duplicates ---------- */
-// Photos imported before fingerprints existed get one quietly in the background.
+// Photos imported before fingerprints existed get one quietly in the background (plus a sharpness score).
 let hashing=null;
 function fillHashes(){
   if(hashing) return hashing;
-  hashing=(async()=>{ for(const p of photos.filter(p=>!(p.hash&&p.hash.startsWith('v2')))){
-    try{ const img=await loadImage(p.orig||p.blob); p.hash=photoHash(img); await dbPut('photos',p); }catch(_){}
+  hashing=(async()=>{ for(const p of photos.filter(p=>!(p.hash&&p.hash.startsWith('v2')) || p.sharp==null)){
+    try{ const img=await loadImage(p.orig||p.blob); if(!(p.hash&&p.hash.startsWith('v2'))) p.hash=photoHash(img); p.sharp=sharpness(img); await dbPut('photos',p); }catch(_){}
     await sleep(30); } })().finally(()=>{ hashing=null; });
   return hashing;
 }
-// Groups of copies of the same photo. The one to keep is the most "loved": favorite, edited, posted, in albums, then the biggest.
+// Which copy to keep: the most "loved" (favorite, edited, posted, in albums), then the sharpest, then the biggest.
+const keepScore = p => (p.fav?1e9:0)+(edited(p)?5e8:0)+(p.postedAt?2e8:0)+p.albums.length*1e7+(p.sharp||0)*100+(p.size||0)/1e6;
+// Groups of the same photo, and of look-alike shots taken seconds apart. Best one first.
 function duplicateGroups(){
   const l=photos.filter(p=>p.hash).sort((a,b)=>a.created-b.created), used=new Set(), groups=[];
-  for(let i=0;i<l.length;i++){ if(used.has(l[i].id)) continue; const g=[l[i]];
-    for(let j=i+1;j<l.length;j++){ if(used.has(l[j].id)) continue; if(sameShot(l[i],l[j])){ g.push(l[j]); used.add(l[j].id); } }
-    if(g.length>1){ used.add(l[i].id); const score=p=>(p.fav?8:0)+(edited(p)?4:0)+(p.postedAt?2:0)+p.albums.length*.5+(p.size||0)/1e8;
-      g.sort((a,b)=>score(b)-score(a)||a.added-b.added); groups.push(g); } }
+  for(let i=0;i<l.length;i++){ if(used.has(l[i].id)) continue; const g=[l[i]]; let burst=false;
+    for(let j=i+1;j<l.length;j++){ if(used.has(l[j].id)) continue;
+      if(g.some(q=>sameShot(q,l[j]))){ g.push(l[j]); used.add(l[j].id); }
+      else if(g.some(q=>lookAlike(q,l[j]))){ g.push(l[j]); used.add(l[j].id); burst=true; } }
+    if(g.length>1){ used.add(l[i].id); g.sort((a,b)=>keepScore(b)-keepScore(a)||a.added-b.added); g.burst=burst; groups.push(g); } }
   return groups;
 }
 async function openDuplicates(){
   let wait=null;
-  if(photos.some(p=>!(p.hash&&p.hash.startsWith('v2')))){ sheet((sh,close)=>{ sh.append(el('h3',{textContent:'Checking for duplicates…'}), el('p',{textContent:'Looking at each photo once. This only happens the first time.'})); wait=close; }); await fillHashes(); wait&&wait(); }
-  const groups=duplicateGroups(), extra=groups.reduce((n,g)=>n+g.length-1,0);
+  if(photos.some(p=>!(p.hash&&p.hash.startsWith('v2')) || p.sharp==null)){ sheet((sh,close)=>{ sh.append(el('h3',{textContent:'Checking for duplicates…'}), el('p',{textContent:'Looking at each photo once. This only happens the first time.'})); wait=close; }); await fillHashes(); wait&&wait(); }
+  const groups=duplicateGroups();
+  const keep=new Map(groups.map(g=>[g, new Set([g[0].id])]));   // which ones in each row stay
   sheet((sh,close)=>{
-    sh.append(el('h3',{textContent:extra?`${extra} duplicate${extra>1?'s':''} found`:'No duplicates 🦋'}),
-      el('p',{textContent:extra?'Each row is one photo that’s in Peggy more than once. Peggy keeps the starred copy (favorites, edits, albums and “posted” move onto it) and removes the rest. Google Photos and your phone aren’t touched.':'Every photo in Peggy is one of a kind. New imports skip copies automatically.'}));
+    const h=el('h3'), go=el('button',{className:'danger',style:'width:100%;margin-top:10px',title:'Remove the ones marked Remove from Peggy'});
+    const count=()=>groups.reduce((n,g)=>n+g.length-keep.get(g).size,0);
+    const upd=()=>{ const n=count(); h.textContent=groups.length?`${n} duplicate${n===1?'':'s'} found`:'No duplicates 🦋'; go.textContent=`Remove ${n} photo${n===1?'':'s'}`; go.disabled=!n; };
+    sh.append(h, el('p',{textContent:groups.length?'Each row is one photo that’s in Peggy more than once, or a few shots of the same moment. Peggy keeps the best one (★): favorites and edits first, then the sharpest. Tap a photo to keep or remove it. Favorites, albums and “posted” move onto the one kept. Google Photos and your phone aren’t touched.':'Every photo in Peggy is one of a kind. New imports skip copies automatically.'}));
     const box=el('div',{className:'evs'});
-    for(const g of groups){ const row=el('div',{className:'thumbs dup'});
-      g.forEach((p,i)=>{ const w=el('div',{className:'dupc'+(i===0?' keep':'')}, el('img',{src:urlFor(p),alt:''}), el('span',{textContent:i===0?'★ Keep':'Remove'})); row.append(w); });
-      box.append(row); }
-    const go=el('button',{className:'danger',textContent:`Remove ${extra} duplicate${extra>1?'s':''}`,style:'width:100%;margin-top:10px',title:'Keep one copy of each photo and remove the others from Peggy'});
-    go.onclick=async()=>{ for(const g of groups){ const keep=g[0];
-        for(const p of g.slice(1)){ keep.fav=keep.fav||p.fav; keep.postedAt=keep.postedAt||p.postedAt; p.albums.forEach(a=>{ if(!keep.albums.includes(a)) keep.albums.push(a); });
-          await dbDel('photos',p.id); dropURL(p.id); }
-        await dbPut('photos',keep); }
-      const gone=new Set(groups.flatMap(g=>g.slice(1).map(p=>p.id))); photos=photos.filter(p=>!gone.has(p.id)); selected.clear();
-      close(); renderAll(); toast(`Removed ${gone.size} duplicate${gone.size>1?'s':''}`); };
-    const c=el('button',{className:'ghost',textContent:extra?'Cancel':'Close',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
-    sh.append(box); if(extra) sh.append(go); sh.append(c);
+    for(const g of groups){ const row=el('div',{className:'thumbs dup'}), K=keep.get(g);
+      const draw=()=>row.replaceChildren(...g.map(p=>{ const k=K.has(p.id); const w=el('button',{className:'dupc'+(k?' keep':''),title:k?'Tap to remove this one':'Tap to keep this one too'}, el('img',{src:urlFor(p),alt:''}), el('span',{textContent:k?'★ Keep':'Remove'}));
+        w.onclick=()=>{ if(k){ if(K.size>1) K.delete(p.id); else return toast('Keep at least one of each'); } else K.add(p.id); draw(); upd(); }; return w; }));
+      draw(); box.append(el('div',{className:'lab2',textContent:g.burst?`📸 ${g.length} shots of the same moment`:`📄 ${g.length} copies of the same photo`}), row); }
+    go.onclick=async()=>{ const gone=new Set();
+      for(const g of groups){ const K=keep.get(g), kept=g.filter(p=>K.has(p.id)), best=kept[0];
+        for(const p of g){ if(K.has(p.id)) continue; best.fav=best.fav||p.fav; best.postedAt=best.postedAt||p.postedAt; p.albums.forEach(a=>{ if(!best.albums.includes(a)) best.albums.push(a); });
+          await dbDel('photos',p.id); dropURL(p.id); gone.add(p.id); }
+        await dbPut('photos',best); }
+      photos=photos.filter(p=>!gone.has(p.id)); selected.clear();
+      close(); renderAll(); toast(`Removed ${gone.size} photo${gone.size>1?'s':''}`); sharedSoon(300); };
+    const c=el('button',{className:'ghost',textContent:groups.length?'Cancel':'Close',style:'width:100%;margin-top:6px'}); c.onclick=()=>close();
+    upd(); sh.append(box); if(groups.length) sh.append(go); sh.append(c);
   });
 }
 /* ---------- days and events ---------- */
@@ -828,26 +835,41 @@ async function importBlobs(list, prog){
     try{ kinds=await classifyBlobs(list.map((it,i)=>({key:'i'+i, blob:it.blob})), (d,t)=>{ if(bar){ bar.b.style.width=(30*d/t)+'%'; bar.st.textContent=`Sorting ${d} of ${t}…`; } }); }
     catch(e){ console.warn('classify',e); setTimeout(()=>toast('Couldn’t check for maps and item photos ('+e.message+'). Everything was imported.',5000),3500); }
   }
+  // Look at each one: its fingerprint, sharpness and a thumbnail.
+  const cand=[]; let looked=0;
+  const step=()=>{ looked++; const d=looked; prog && prog(d, list.length); if(bar){ bar.b.style.width=((kinds?30:0)+(kinds?70:100)*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; } };
   for(const [idx,it] of list.entries()){
     try{
-      const kd=kinds&&kinds.get('i'+idx); if(kd && kd!=='photo'){ skipped[kd]++; continue; }
+      const kd=kinds&&kinds.get('i'+idx); if(kd && kd!=='photo'){ skipped[kd]++; step(); continue; }
       const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
-      if(it.src==='device' && seen.has(key)){ dup++; continue; } seen.add(key);
+      if(it.src==='device' && seen.has(key)){ dup++; step(); continue; } seen.add(key);
       // iPhone Safari can lose files picked from the photo library once they're saved, so keep a plain copy of the bytes instead.
       if(typeof File!=='undefined' && it.blob instanceof File) it.blob=new Blob([await it.blob.arrayBuffer()],{type:it.blob.type||'image/jpeg'});
-      const img=await loadImage(it.blob), hash=photoHash(img);
-      if(photos.some(q=>q.hash && sameShot({hash,created:it.created}, q))){ dup++; const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; } continue; }
-      const thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
-      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb, size:it.blob.size||0, batch, hash, kind:kd||undefined,
+      const img=await loadImage(it.blob), hash=photoHash(img), sharp=sharpness(img);
+      const me={it, kd, hash, sharp, created:it.created};
+      // Already in Peggy (the same photo, or a look-alike shot of the same moment).
+      if(photos.some(q=>q.hash && (skipBursts()?lookAlike(me,q):sameShot(me,q)))){ dup++; step(); continue; }
+      me.thumb=await toBlob(render(img, DEF, 480), 'image/jpeg', .82);
+      cand.push(me);
+    }catch(err){ console.error(err); fail++; }
+    step();
+  }
+  // Within this import: copies of the same photo, and bursts of the same moment, keep only the sharpest.
+  const keepers=[];
+  for(const c of cand.sort((a,b)=>b.sharp-a.sharp)){
+    if(keepers.some(k=>skipBursts()?lookAlike(c,k):sameShot(c,k))){ dup++; continue; }
+    keepers.push(c); }
+  for(const c of keepers.sort((a,b)=>a.created-b.created)){
+    try{ const it=c.it;
+      const p={id:uid(), src:it.src, gid:it.gid||null, name:it.name||'photo', created:it.created, added:Date.now(), blob:it.blob, thumb:c.thumb, size:it.blob.size||0, batch, hash:c.hash, sharp:c.sharp, kind:c.kd||undefined,
         edits:null, fav:false, albums: albums.some(a=>a.id===view)?[view]:[], postedAt:null};
       await dbPut('photos',p); photos.push(p); added.push(p); n++;
     }catch(err){ console.error(err); fail++; }
-    const d=n+fail+dup; prog && prog(d, list.length); if(bar){ bar.b.style.width=(100*d/list.length)+'%'; bar.st.textContent=`${d} of ${list.length}`; }
   }
   bar && bar.close();
   if(added.length){ try{ localStorage.setItem('peggy.lastBatch', batch); }catch(_){} }
   const sk=kindSummary(skipped);
-  const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} already here`:'')+(sk?` · skipped ${sk}`:'')+(fail?` · ${fail} failed`:'');
+  const msg=`Imported ${n} photo${n===1?'':'s'}`+(dup?` · ${dup} duplicate${dup===1?'':'s'} left out`:'')+(sk?` · skipped ${sk}`:'')+(fail?` · ${fail} failed`:'');
   if(await afterImport(added, msg)) return;
   if(added.length>1 && view==='all'){ view='new'; }
   renderAll(); toast(msg);
@@ -1071,6 +1093,8 @@ async function openSettings(note){
     if(document.body.classList.contains('hasbg')) st.append(bgOff);
     const sk=el('input',{type:'checkbox',checked:skipShots()}); sk.onchange=()=>{ try{ localStorage.setItem('peggy.skipShots', sk.checked?'1':'0'); }catch(_){} toast(sk.checked?'Screenshots will be skipped when importing':'Screenshots will be imported too'); };
     sh.append(el('label',{className:'checkrow',title:'Leave out screenshots, maps, papers and item photos when bringing in photos'},sk,el('span',{textContent:'Skip screenshots, maps, papers and item photos when importing'})));
+    const sb=el('input',{type:'checkbox',checked:skipBursts()}); sb.onchange=()=>{ try{ localStorage.setItem('peggy.skipBursts', sb.checked?'1':'0'); }catch(_){} toast(sb.checked?'Only the sharpest of a few quick shots will be imported':'Every shot will be imported, even near-copies'); };
+    sh.append(el('label',{className:'checkrow',title:'When you took a few shots of the same moment, bring in only the sharpest'},sb,el('span',{textContent:'Only import the sharpest of a few quick shots of the same moment'})));
     const tidy=el('button',{textContent:'🧹 Clean up screenshots, maps & item photos',title:'Find ones already in Peggy and remove them'}); tidy.onclick=()=>{ close(); openTidy(); }; sh.append(tidy);
     const dups=el('button',{textContent:'🔍 Find duplicate photos',title:'Find photos that are in Peggy more than once and remove the extra copies'}); dups.onclick=()=>{ close(); openDuplicates(); };
     st.append(dups,save,out,wipe,c); sh.append(st);

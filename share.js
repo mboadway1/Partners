@@ -46,7 +46,9 @@ async function sharedSync(){
     // Photos
     const server=new Map((doc.items||[]).filter(i=>live.has(i.list)).map(i=>[i.id,i]));
     const here=new Map();
-    for(const p of photos) for(const aid of p.albums) if(live.has(aid)) here.set(aid+':'+sharedPid(p), p);
+    // A photo can be known by more than one shared name when we both brought in the same picture (p.alias).
+    for(const p of photos) for(const aid of p.albums) if(live.has(aid)){
+      const id=[sharedPid(p), ...(p.alias||[])].map(x=>aid+':'+x).find(k=>server.has(k)) || aid+':'+sharedPid(p); here.set(id, p); }
     const ops=[], gets=[], drop=[], up=[];
     for(const [id,it] of server){ if(here.has(id)) continue; if(known.has(id)) ops.push({op:'delete', id}); else gets.push(it); }
     for(const [id,p] of here){ if(server.has(id)) continue; const aid=id.slice(0,id.indexOf(':')); if(known.has(id)) drop.push([p,aid]); else up.push([p,aid,id]); }
@@ -57,11 +59,14 @@ async function sharedSync(){
     // Partner added these
     if(gets.length) toast(`Getting ${gets.length} shared photo${gets.length>1?'s':''}…`, 2500);
     for(const it of gets){
-      let p=photos.find(x=>sharedPid(x)===it.photo);
-      if(!p){ try{ const blob=await sharedBlob(it.photo), img=await loadImage(blob);
-          p={id:uid(), sid:it.photo, src:'shared', by:it.createdBy, name:it.name||'photo', created:it.taken||Date.now(), added:Date.now(), blob,
-             thumb:await toBlob(render(img, DEF, 480),'image/jpeg',.82), size:blob.size, hash:photoHash(img), edits:null, fav:false, albums:[], postedAt:null};
-          photos.push(p); }catch(e){ console.warn('shared get', e); continue; } }
+      let p=photos.find(x=>sharedPid(x)===it.photo || (x.alias||[]).includes(it.photo));
+      if(!p){ try{ const blob=await sharedBlob(it.photo), img=await loadImage(blob), hash=photoHash(img);
+          // Already have this picture (we both imported it)? Use mine instead of keeping a second copy.
+          const mine=photos.find(q=>q.hash && sameShot({hash, created:it.taken}, q));
+          if(mine){ mine.alias=[...new Set([...(mine.alias||[]), it.photo])]; p=mine; }
+          else { p={id:uid(), sid:it.photo, src:'shared', by:it.createdBy, name:it.name||'photo', created:it.taken||Date.now(), added:Date.now(), blob,
+             thumb:await toBlob(render(img, DEF, 480),'image/jpeg',.82), size:blob.size, hash, sharp:sharpness(img), edits:null, fav:false, albums:[], postedAt:null};
+          photos.push(p); } }catch(e){ console.warn('shared get', e); continue; } }
       if(!p.albums.includes(it.list)) p.albums.push(it.list);
       await dbPut('photos',p); changed=true;
     }

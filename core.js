@@ -154,6 +154,31 @@ function sameShot(a, b){
   if(d<=.08) return true;
   return d<=.11 && a.created && b.created && Math.abs(a.created-b.created)<=2000;
 }
+// Look-alike shots: the same scene taken a few seconds apart (a burst, or "one more just in case").
+// Compared on a coarser 8×8 grid with the overall brightness taken out, so a small wobble of the phone doesn't matter.
+// Measured: a 1–3% wobble gives 0.1–0.55; different pictures 0.7 and up.
+const BURST_MS=20000, BURST_D=.5;
+const skipBursts = () => { try{ return localStorage.getItem('peggy.skipBursts')!=='0'; }catch(_){ return true; } };
+function coarse(h){ const v=[]; for(let y=0;y<8;y++) for(let x=0;x<8;x++){ let s=0; for(const [a,b] of [[0,0],[1,0],[0,1],[1,1]]) s+=parseInt(h[2+(y*2+b)*16+x*2+a],16); v.push(s/4); }
+  const m=v.reduce((a,b)=>a+b,0)/64; return v.map(x=>x-m); }
+function coarseDist(a,b){
+  if(!a||!b||a.length!==b.length||!a.startsWith('v2')) return 99;
+  for(let i=258;i<261;i++) if(Math.abs(parseInt(a[i],16)-parseInt(b[i],16))>2) return 99;
+  const A=coarse(a), B=coarse(b); let d=0; for(let i=0;i<64;i++) d+=Math.abs(A[i]-B[i]); return d/64;
+}
+function lookAlike(a,b){
+  if(sameShot(a,b)) return true;
+  return !!(a.created && b.created && Math.abs(a.created-b.created)<=BURST_MS && coarseDist(a.hash,b.hash)<=BURST_D);
+}
+// How sharp a photo is (higher = crisper), to keep the best of a burst. Edge strength on a small grey copy.
+function sharpness(img){
+  const W=img.naturalWidth||img.width, H=img.naturalHeight||img.height, s=320/Math.max(W,H), w=Math.max(8,Math.round(W*s)), h=Math.max(8,Math.round(H*s));
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data, g=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++) g[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;
+  let sum=0, n=0; for(let y=1;y<h-1;y++) for(let X=1;X<w-1;X++){ const i=y*w+X, L=4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w]; sum+=L*L; n++; }
+  return Math.round(sum/Math.max(1,n));
+}
 // Screenshots: named like one, or a PNG with no camera information. Real photos and exports from
 // Lightroom or the camera carry the camera's make.
 const SHOT_NAME=/screen ?shot|screenshot|screen_shot|scrnli|^simulator/i;
