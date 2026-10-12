@@ -120,6 +120,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
 #showInfo{position:absolute;right:3vw;top:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
 #showInfo.on{opacity:1}
+#home>#homeStatus{position:absolute;left:50%;top:13vh;transform:translateX(-50%);z-index:5;background:rgba(0,0,0,.55);color:#fff;padding:.7vw 1.4vw;border-radius:.8vw;font-size:1.3vw;white-space:nowrap}
 
 /* editor */
 #editor{display:flex}
@@ -435,9 +436,9 @@ function renderHome(){
   if(!albums.some(a=>a.id===view) && view!=='all' && view!=='fav') view='all';
   const nav=$('#nav'); nav.replaceChildren();
   const add=(label,fn,cls,n)=>{ const b=el('div',{className:'btn f '+(cls||''),textContent:label}); if(n!=null) b.append(el('span',{className:'n',textContent:n})); b.onclick=fn; nav.append(b); return b; };
-  const list=visible();
-  if(photos.length) add('▶ Slideshow',()=>startSlideshow(list.map(p=>({p})),0),'primary');
-  if(photos.length){
+  // The home screen is the same on every screen: the couples photo (photos saved on this computer live under Library).
+  const list=[], localOnHome=false;
+  if(localOnHome){
     add('All',()=>setView('all'),view==='all'?'on':'',photos.length);
     add('★ Favorites',()=>setView('fav'),view==='fav'?'on':'',photos.filter(p=>p.fav).length);
     for(const a of albums.slice().sort((x,y)=>x.name.localeCompare(y.name)))
@@ -460,11 +461,20 @@ function renderHome(){
     const bd=el('div',{className:'badges'}); if(p.fav) bd.append(el('span',{className:'star',textContent:'★'})); if(edited(p)) bd.append(el('span',{textContent:'✎'}));
     c.append(bd); c.onclick=()=>openViewer(list, i); return c; }));
   const pd=partnersCached(), hasCouple=!!(pd && pd.members && pd.members.length);
-  $('#welcome').classList.toggle('hidden', photos.length>0 || hasCouple);
-  $('#couple').classList.toggle('hidden', photos.length>0 || !hasCouple);
-  if(hasCouple && !photos.length) drawCouple();
-  $('#gridWrap').classList.toggle('hidden', photos.length===0);
+  $('#welcome').classList.toggle('hidden', hasCouple);
+  $('#couple').classList.toggle('hidden', !hasCouple);
+  if(hasCouple) drawCouple();
+  $('#gridWrap').classList.add('hidden');
+  homeStatus();
   if(topScope() && topScope().root===$('#home')){ const same=keepPid && [...grid.children].find(c=>c._pid===keepPid); same ? focusEl(same) : refocus(); }
+}
+// While the Photos slideshow isn't set up on this screen, say why, so it's clear what to do.
+function homeStatus(){
+  let b=$('#homeStatus'); if(!b){ b=el('div',{id:'homeStatus'}); $('#home').append(b); }
+  let msg='';
+  if(!driveReady()) msg = !partnersAuth() ? (REAL_TV ? 'Photos slideshow: click Phone below and connect your phone to set it up' : 'Photos slideshow: click Tasks below and sign in with Google to set it up')
+    : 'Photos slideshow: waiting for your Photos folder. Open Partners on your iPhone once, then click Refresh.';
+  b.textContent=msg; b.classList.toggle('hidden', !msg);
 }
 async function drawCouple(){
   const n=$('#coupleNames'); n.replaceChildren();
