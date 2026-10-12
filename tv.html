@@ -118,7 +118,9 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dClock small{display:block;font-size:.8em;color:#ddd} #dClock .nowplaying{font-size:.8em;margin-top:.8vh;max-width:42vw;margin-left:auto;display:grid;justify-items:end} #dClock .nowplaying b,#dClock .nowplaying span{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #dClock .nowplaying span{font-size:.85em;color:#ddd}
 #dClock .nprow{display:flex;gap:.6vw;margin-top:.6vh} #dClock .npbtn{font:700 .8em var(--body,inherit);color:#fff;background:rgba(0,0,0,.45);border:.15vw solid rgba(255,255,255,.35);border-radius:999px;padding:.4vh 1vw;cursor:pointer;text-shadow:none} #dClock .npbtn:hover,#dClock .npbtn.focus{background:var(--accent);border-color:#fff}
 #nowBanner{position:fixed;left:50%;top:5vh;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.6);color:#fff;border-radius:1.2vw;padding:1.2vh 2vw;text-align:center;font-size:1.8vw;opacity:0;transition:opacity .6s;pointer-events:none;max-width:70vw} #nowBanner.on{opacity:1} #nowBanner small{display:block;font-size:.75em;color:#ddd} html.desk #nowBanner{font-size:1.2vw}
-#home>#homeNow{position:absolute;right:3vw;bottom:13vh;z-index:5;background:rgba(0,0,0,.45);color:#fff;border-radius:.8vw;padding:.6vw 1.2vw;font-size:1.2vw;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#home>#homeNow{position:absolute;right:3vw;bottom:13vh;z-index:5;background:rgba(0,0,0,.55);color:#fff;border-radius:.8vw;padding:.6vw 1.2vw;font-size:1.3vw;max-width:70vw;display:flex;gap:.8vw;align-items:center}
+#homeNow .nptext{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+#homeNow .npbtn{font:700 .9em inherit;color:#fff;background:rgba(255,255,255,.12);border:.15vw solid rgba(255,255,255,.35);border-radius:999px;padding:.3vh .9vw;cursor:pointer;white-space:nowrap} #homeNow .npbtn:hover,#homeNow .npbtn.focus{background:var(--accent)}
 #dClock .dEvents{font-size:.62em;margin-bottom:1vh;display:grid;gap:.4vh;justify-items:end}
 #dClock .dEv{max-width:38vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:.35vw solid var(--accent);padding-right:.8vw}
 #dClock .dEv b{color:#fff;font-weight:800}
@@ -1026,7 +1028,11 @@ function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false; i
 // When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
 function musicBanner(){
   let h=$('#homeNow'); if(!h){ h=el('div',{id:'homeNow'}); $('#home').append(h); }
-  h.textContent=music.title?`♪ ${music.title}${music.artist?' — '+music.artist:''}`:''; h.classList.toggle('hidden',!music.title);
+  h.replaceChildren(); h.classList.toggle('hidden',!music.title);
+  if(music.title){ h.append(el('span',{className:'nptext',textContent:`♪ ${music.title}${music.artist?' — '+music.artist:''}`}));
+    if(musicCfg.mode==='drive' && music.cur){ const nx=el('button',{className:'npbtn f',textContent:'⏭ Next'}); nx.onclick=e=>{ e.stopPropagation(); musicNext(); };
+      const del=el('button',{className:'npbtn f',textContent:'👎 Don’t play again'}); del.onclick=e=>{ e.stopPropagation(); const n=music.cur.title||music.cur.name; musicHide(music.cur); toast(`Removed “${n}”. It won’t play again.`,4000); };
+      h.append(nx,del); } }
   if(drive.clock) tickClock(); if(!music.title) return;
   let b=$('#nowBanner'); if(!b){ b=el('div',{id:'nowBanner'}); document.body.append(b); }
   b.replaceChildren(el('b',{textContent:'♪ '+music.title}), music.artist?el('small',{textContent:music.artist}):''); b.classList.add('on');
