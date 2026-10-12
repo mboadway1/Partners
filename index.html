@@ -628,6 +628,18 @@ async function openDuplicates(){
     upd(); sh.append(box); if(groups.length) sh.append(go); sh.append(c);
   });
 }
+// The same picture brought in twice (same Google Photos item, or same file, time and size): keep one, quietly.
+async function removeDoubles(){
+  const by=new Map(), gone=new Set();
+  for(const p of photos){ const k=p.gid?'g:'+p.gid:(p.name&&p.size?'f:'+p.name+'|'+p.created+'|'+p.size:null); if(!k) continue; (by.get(k)||by.set(k,[]).get(k)).push(p); }
+  for(const g of by.values()){ if(g.length<2) continue;
+    g.sort((a,b)=>keepScore(b)-keepScore(a)||a.added-b.added); const keep=g[0];
+    for(const p of g.slice(1)){ keep.fav=keep.fav||p.fav; keep.postedAt=keep.postedAt||p.postedAt; if(!edited(keep)&&edited(p)) keep.edits=p.edits;
+      p.albums.forEach(a=>{ if(!keep.albums.includes(a)) keep.albums.push(a); }); if(p.sid && p.sid!==keep.sid) keep.alias=[...new Set([...(keep.alias||[]), p.sid])];
+      try{ await dbDel('photos',p.id); }catch(_){} dropURL(p.id); gone.add(p.id); }
+    await dbPut('photos',keep); }
+  if(gone.size){ photos=photos.filter(p=>!gone.has(p.id)); setTimeout(()=>toast(`Removed ${gone.size} double cop${gone.size>1?'ies':'y'} of photos 🦋`, 5000), 800); }
+}
 /* ---------- days and events ---------- */
 const dayKey = t => { const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 function dayLabel(t){ const d=new Date(t), now=new Date(), y=new Date(now); y.setDate(now.getDate()-1);
@@ -821,7 +833,10 @@ async function classifyBlobs(entries, onProgress){
   return out;
 }
 const kindSummary = c => Object.entries(c).filter(([,n])=>n).map(([k,n])=>`${n} ${KIND_NAMES[k][n>1?1:0]}`).join(', ');
-async function importBlobs(list, prog){
+// Imports wait their turn, so two at once can't both bring in the same photos.
+let importQ=Promise.resolve();
+function importBlobs(list, prog){ const r=importQ.then(()=>importBlobsNow(list, prog)); importQ=r.catch(()=>{}); return r; }
+async function importBlobsNow(list, prog){
   askPersist(); let n=0, fail=0, dup=0; const batch=uid(), added=[], skipped={screenshot:0,paper:0,item:0};
   // Skip photos already in Peggy (same file name, same moment taken, same size).
   const seen=new Set(photos.filter(p=>p.src==='device').map(p=>p.name+'|'+p.created+'|'+(p.size||'')));
@@ -841,6 +856,7 @@ async function importBlobs(list, prog){
   for(const [idx,it] of list.entries()){
     try{
       const kd=kinds&&kinds.get('i'+idx); if(kd && kd!=='photo'){ skipped[kd]++; step(); continue; }
+      if(it.gid && photos.some(q=>q.gid===it.gid)){ dup++; step(); continue; }
       const key=it.name+'|'+it.created+'|'+(it.blob.size||'');
       if(it.src==='device' && seen.has(key)){ dup++; step(); continue; } seen.add(key);
       // iPhone Safari can lose files picked from the photo library once they're saved, so keep a plain copy of the bytes instead.
@@ -1017,12 +1033,17 @@ function showWaiting(){
     sh.append(a, status, cancel);
   });
 }
+let polling=false; const pickedDone=new Set();
 async function poll(){
-  clearTimeout(pollT); const s=pending(); if(!s) return;
+  clearTimeout(pollT); if(polling) return; const s=pending(); if(!s) return;
+  polling=true; try{ await pollOnce(s); } finally{ polling=false; }
+}
+async function pollOnce(s){
   if(Date.now()>s.until){ localStorage.removeItem('peggy.pickSession'); waitClose&&waitClose(); return toast('The Google Photos picker timed out. Try Import again.'); }
   try{
     const r=await api('GET','/v1/sessions/'+s.id);
-    if(r.mediaItemsSet){ waitClose&&waitClose(); return downloadPicked(s.id); }
+    // Coming back from Google Photos can trigger two checks at once; only the first one imports.
+    if(r.mediaItemsSet){ if(pickedDone.has(s.id)) return; pickedDone.add(s.id); localStorage.removeItem('peggy.pickSession'); waitClose&&waitClose(); return downloadPicked(s.id); }
   }catch(e){
     if(e.status===401){ if(acct.session && await ensureToken()){ pollT=setTimeout(poll,1000); return; } waitClose&&waitClose(); toast('Google sign-in expired — tap Import to continue.'); localStorage.removeItem('peggy.token'); return; }
     if(e.status===404){ localStorage.removeItem('peggy.pickSession'); waitClose&&waitClose(); return toast('That picker session ended. Tap Import to try again.'); }
@@ -1520,6 +1541,7 @@ addTips(document);
   try{ const bg=await tx('meta','readonly',st=>st.get('background')); if(bg && bg.blob) showBackground(bg.blob); }catch(_){}
   [photos, albums] = await Promise.all([dbAll('photos'), dbAll('albums')]);
   photos.forEach(p=>{ p.albums=p.albums||[]; });
+  await removeDoubles();
   renderAll();
   setTimeout(fillHashes, 2500); setTimeout(sharedSync, 1200);
   const tvParam=new URLSearchParams(location.search).get('tv');
