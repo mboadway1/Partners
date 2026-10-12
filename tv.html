@@ -42,7 +42,7 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 .status i{width:.8vw;height:.8vw;border-radius:50%;background:#666;display:inline-block}
 .status.live i{background:var(--ok)}
 .codechip{font-size:1.3vw;color:var(--dim)} .codechip b{color:var(--text);letter-spacing:.2vw;font-size:1.6vw}
-.navrow{display:flex;gap:1vw;padding:2vh .5vw 2vh;overflow-x:hidden;flex:none}
+.navrow{display:flex;flex-wrap:wrap;gap:1vw;padding:2vh .5vw 2vh;overflow-x:hidden;flex:none}
 .navrow .btn{font-size:1.35vw;padding:.7vw 1.4vw;border-radius:5vw}
 .navrow .btn .n{opacity:.6;margin-left:.4vw}
 #gridWrap{flex:1;overflow:hidden;padding:1vw .5vw 4vh}
@@ -388,7 +388,7 @@ function renderHome(){
   }
   if(driveReady()) add('🖼 Favorites folder',()=>startDrive(),photos.length?'':'primary');
   add('📅 Today',()=>openToday());
-  add('🗂 Plans',planMenu);
+  for(const [label,tab] of PLAN_TABS) add(label,()=>openPlan(tab));
   add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
