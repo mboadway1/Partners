@@ -610,10 +610,8 @@ function renderTasks(v){
 function tGoogleBits(){
   const out=[]; gCheckScope();
   if(gNeedScope){ const b=el('button',{className:'gt-gwarn',innerHTML:'<b>Reconnect Google</b><small>so Partners and Google Tasks can stay in step</small>'}); b.onclick=()=>partnersSignIn('plan.html#tasks'); out.push(b); }
-  const b=el('button',{className:'gt-nav',title:'Brings in what changed in Google Tasks and sends what changed here',innerHTML:`<span class="ic">${gSyncing?'⏳':'⟳'}</span>`}); b.append(gSyncing?'Google syncing…':'Google sync');
-  b.onclick=()=>syncGoogleTasks(true); out.push(b);
-  const ago=gLast?Math.round((Date.now()-gLast)/60000):null;
-  out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gLastErr?`Last try didn’t work: ${gLastErr}`:ago==null?'Not synced yet':ago<1?'Synced just now':`Synced ${ago} min ago`}));
+  const ago=gLast?Math.round((Date.now()-gLast)/60000):null; if(!gMine().length && !gNeedScope) return out;
+  out.push(el('div',{className:'gt-gstat'+(gLastErr?' err':''),textContent:gSyncing?'⏳ Google syncing…':gLastErr?`Google sync didn’t work: ${gLastErr}`:ago==null?'Google sync starts in a moment':ago<1?'✓ Google synced just now':`✓ Google synced ${ago} min ago`}));
   if(gScopeMsg && gNeedScope) out.push(el('div',{className:'gt-gstat err',textContent:gScopeMsg}));
   out.push(el('div',{className:'gt-gstat',textContent:'Partners version '+PARTNERS_VER}));
   return out; }
@@ -934,7 +932,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='127';
+const PARTNERS_VER='128';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
@@ -965,7 +963,7 @@ async function syncGoogleTasks(manual){
   if(gSyncing || !acct.session || !me().email) return;
   const mine=gMine(); if(!mine.length && !manual) return;
   if(!manual && (document.hidden || !navigator.onLine)) return;
-  gSyncing=true; gLastErr=''; const t0=Date.now(); if(manual) toast('Google syncing…',60000);
+  gSyncing=true; gLastErr=''; const t0=Date.now(); if(manual) toast('Bringing in your Google Tasks…',60000);
   const T={}, L={}, now=Date.now();                       // changes to Partners tasks (by id) and lists (by id)
   const putT=(t,ch)=>{ T[t.id]={...(T[t.id]||{}),...ch,id:t.id,gdirty:false}; };
   const putL=(l,ch)=>{ L[l.id]={...(L[l.id]||{}),...ch,id:l.id}; };
@@ -2219,7 +2217,7 @@ async function openSettings(){
       const st=el('div',{className:'stack'});
       if(calLoaded && !(prefs.sharedCalendarId && calendars.some(c=>c.id===prefs.sharedCalendarId))){
         const sc=el('button',{textContent:'＋ Create a shared calendar for the two of you',title:'Makes a Google calendar named “Partners · Shared” and shares it with your partner'}); sc.onclick=()=>{ close(); createSharedCalendar(); }; st.append(sc); }
-      const im=el('button',{textContent:'⟳ Google sync',title:'Brings in what changed in Google Tasks and sends what changed here'}); im.onclick=()=>{ close(); location.hash='tasks'; syncGoogleTasks(true); };
+      const im=el('button',{textContent:'Bring in my Google Tasks lists',title:'After this, Partners and Google Tasks stay in step on their own'}); im.onclick=()=>{ close(); location.hash='tasks'; syncGoogleTasks(true); }; if(gMine().length) im.classList.add('hidden');
       const re=el('button',{textContent:'Sign in to Google again',title:'Use this if calendar or import stops working'}); re.onclick=()=>partnersSignIn('plan.html#'+tab);
       const out=el('button',{className:'danger',textContent:'Sign out of Partners on this device'}); out.onclick=async()=>{ try{ await partnersApi('auth/signout',{method:'POST'}); }catch(_){} acct.clear(); close(); render(); };
       st.append(im,re,out); sh.append(st);
