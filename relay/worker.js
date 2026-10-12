@@ -356,13 +356,23 @@ async function api(req, env, url, cors) {
   }
 
   // --- photos: sort pictures into real photos vs screenshots, maps/papers and item shots ---
-  if (path === 'classify' && req.method === 'POST' && full) {
+  // The TV's view-only pass may use this too (its Favorites folder slideshow skips screenshots and item photos).
+  // The TV sends Google Drive preview links instead of picture data; the relay fetches small copies itself.
+  if (path === 'classify' && req.method === 'POST') {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'Sorting photos needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
     const { images } = await body();
-    const pics = (Array.isArray(images) ? images : []).filter(x => x && typeof x.data === 'string' && x.data.length < 400000 && typeof x.id === 'string').slice(0, 12);
+    const list = (Array.isArray(images) ? images : []).filter(x => x && typeof x.id === 'string').slice(0, 12);
+    for (const x of list) {
+      if (typeof x.data === 'string' || typeof x.url !== 'string') continue;
+      let u; try { u = new URL(x.url); } catch { continue; }
+      if (u.protocol !== 'https:' || !/(^|\.)googleusercontent\.com$/.test(u.hostname)) continue;   // Google's photo previews only
+      try { const r = await fetch(x.url.replace(/=s\d+$/, '') + '=s384');
+        if (r.ok) { const b = new Uint8Array(await r.arrayBuffer()); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000)); x.data = btoa(bin); } } catch { }
+    }
+    const pics = list.filter(x => typeof x.data === 'string' && x.data.length < 400000);
     if (!pics.length) return json({ error: 'No photos sent' }, 400, cors);
     const content = [];
-    pics.forEach((x, i) => { content.push({ type: 'text', text: `Picture ${i + 1} (id ${x.id}):` }); content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: x.data } }); });
+    pics.forEach((x, i) => { content.push({ type: 'text', text: `Picture ${i + 1} (id ${x.id}):` }); content.push({ type: 'image', source: { type: 'base64', media_type: x.data.startsWith('iVBOR') ? 'image/png' : x.data.startsWith('UklGR') ? 'image/webp' : 'image/jpeg', data: x.data } }); });
     content.push({ type: 'text', text: [
       'Sort each picture into exactly one kind:',
       '"photo": a memory worth keeping: people, pets, places, scenery, events, parties, costumes, food or moments, including photos of art or fire at an event.',

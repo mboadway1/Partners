@@ -569,7 +569,7 @@ const driveReady=()=>!!(driveFolderId(settings.driveFolder) && settings.driveKey
 function driveFolderId(link){ link=(link||'').trim(); let m=link.match(/\/folders\/([\w-]{10,})/)||link.match(/[?&]id=([\w-]{10,})/); return m?m[1]:(/^[\w-]{10,}$/.test(link)?link:''); }
 async function driveList(){
   const q=`'${driveFolderId(settings.driveFolder)}' in parents and trashed = false`;
-  const fields='nextPageToken,files(id,mimeType,thumbnailLink,imageMediaMetadata(time,location))';
+  const fields='nextPageToken,files(id,name,mimeType,thumbnailLink,imageMediaMetadata(time,location,cameraMake,cameraModel))';
   const out=[]; let page='';
   do{
     const u=`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent(fields)}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${encodeURIComponent(page)}`:'');
@@ -583,11 +583,39 @@ async function driveList(){
     for(const f of (j.files||[])){
       if(!(f.mimeType||'').startsWith('image/') || !f.thumbnailLink) continue;
       const m=f.imageMediaMetadata||{}, loc=m.location;
-      out.push({id:f.id, thumb:f.thumbnailLink.replace(/=s\d+$/,''), time:m.time||'', lat:loc&&loc.latitude, lon:loc&&loc.longitude});
+      out.push({id:f.id, thumb:f.thumbnailLink.replace(/=s\d+$/,''), time:m.time||'', lat:loc&&loc.latitude, lon:loc&&loc.longitude,
+        shot:looksLikeScreenshot({name:f.name, type:f.mimeType, make:m.cameraMake||m.cameraModel})});
     }
     page=j.nextPageToken||'';
   }while(page);
   return out;
+}
+// Leave out screenshots and item photos (things photographed for reference, not memories).
+// Obvious screenshots are caught here; Claude sorts the rest through Peggy's relay, once per photo.
+const SKIP_KINDS=new Set(['screenshot','item']);
+function driveKinds(){ try{ return JSON.parse(store.get('peggy.tv.kinds','{}')); }catch(_){ return {}; } }
+function driveKeep(items){ const k=driveKinds(); return items.filter(d=>!d.shot && !SKIP_KINDS.has(k[d.id])); }
+let sorting=false;
+async function driveSort(items){
+  if(sorting) return; let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){} if(!plan || !plan.session) return;
+  const known=driveKinds(), todo=items.filter(d=>!d.shot && !(d.id in known)); if(!todo.length) return;
+  sorting=true;
+  try{
+    for(let i=0;i<todo.length;i+=12){
+      const part=todo.slice(i,i+12);
+      const r=await fetch(plan.relay+'/api/classify',{method:'POST',headers:{'X-Peggy-Session':plan.session,'Content-Type':'application/json'},
+        body:JSON.stringify({images:part.map(d=>({id:d.id, url:d.thumb}))})});
+      if(!r.ok) break;   // relay not updated yet or no Claude key: keep showing them rather than hiding everything
+      const j=await r.json(), k=driveKinds(); (j.results||[]).forEach(x=>{ if(x.id) k[x.id]=x.kind; }); store.set('peggy.tv.kinds', JSON.stringify(k));
+      driveDrop();
+    }
+  }catch(_){} finally{ sorting=false; }
+}
+// Take newly sorted-out pictures out of the running slideshow.
+function driveDrop(){
+  if(!ss || !ss.driveMode) return; const k=driveKinds(), cur=ss.items[ss.order[ss.pos]];
+  const keep=ss.order.map(i=>ss.items[i]).filter(x=>!SKIP_KINDS.has(k[x.drive.id]) || x===cur);
+  ss.items=keep; ss.order=keep.map((_,i)=>i); ss.pos=Math.max(0,keep.indexOf(cur));
 }
 // Each photo once, in random order, before any repeats. Survives restarts.
 function driveOrder(items){
@@ -629,7 +657,8 @@ async function startDrive(quiet){
   if(!quiet) toast('Checking your Favorites folder…',2500);
   let items; try{ items=await driveList(); drive.lastErr=''; }catch(e){ drive.lastErr=e.message; if(!quiet) toast(e.message,7000); return; }
   if(!items.length){ if(!quiet) toast('The Favorites folder has no photos yet.',5000); return; }
-  drive.items=items;
+  drive.items=items; driveSort(items); items=driveKeep(items);
+  if(!items.length){ if(!quiet) toast('The Favorites folder only has screenshots or item photos so far.',5000); return; }
   startSlideshow(driveOrder(items).map(d=>({drive:d})), 0, false, true);
   if(ss) ss.driveMode=true;
   $('#dClock').classList.remove('hidden'); tickClock(); drive.clock=setInterval(tickClock,15000);
@@ -639,6 +668,7 @@ async function startDrive(quiet){
 async function driveRefresh(){
   if(!ss || !ss.driveMode) return;
   let items; try{ items=await driveList(); }catch(_){ return; }
+  drive.items=items; driveSort(items); items=driveKeep(items);
   const byId=new Map(items.map(x=>[x.id,x])), curId=ss.items[ss.order[ss.pos]]?.drive?.id;
   const keep=ss.order.map(i=>ss.items[i].drive).filter(d=>byId.has(d.id)).map(d=>byId.get(d.id));
   const have=new Set(keep.map(d=>d.id)), fresh=items.filter(x=>!have.has(x.id));
