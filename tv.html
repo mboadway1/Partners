@@ -369,19 +369,19 @@ document.documentElement.classList.add(REAL_TV?'realtv':'desk');
 if(!REAL_TV){ const fp=$('#fullPrompt div'); if(fp) fp.innerHTML='<b>Click anywhere</b><br>for full screen'; }
 const isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
 // (If the browser keeps refusing, stop swallowing presses.)
-function firstPress(e){ if(IN_APP || isFull() || fullTries>2) return; goFull(); e.preventDefault(); e.stopPropagation(); }
+function firstPress(e){ if(!REAL_TV || IN_APP || isFull() || fullTries>2) return; goFull(); e.preventDefault(); e.stopPropagation(); }
 document.addEventListener('keydown',firstPress,true);
 document.addEventListener('click',firstPress,true);
-document.addEventListener('pointerdown',e=>{ if(!IN_APP && !isFull()) goFull(); },true);
-function fullPrompt(){ const p=$('#fullPrompt'); if(!p) return; p.classList.toggle('hidden', IN_APP || isFull() || fullTries>2); }
+document.addEventListener('pointerdown',e=>{ if(REAL_TV && !IN_APP && !isFull()) goFull(); },true);
+function fullPrompt(){ const p=$('#fullPrompt'); if(!p) return; p.classList.toggle('hidden', !REAL_TV || IN_APP || isFull() || fullTries>2); }
 document.addEventListener('fullscreenchange',fullPrompt); document.addEventListener('webkitfullscreenchange',fullPrompt);
-setTimeout(()=>{ goFull(); setTimeout(fullPrompt,600); },300);
+setTimeout(()=>{ if(REAL_TV) goFull(); setTimeout(fullPrompt,600); },300);
 if(!/; wv\)/.test(navigator.userAgent) && history.pushState){
   try{ history.pushState({peggy:1},''); }catch(_){}
   addEventListener('popstate',()=>{ try{ history.pushState({peggy:1},''); }catch(_){}
     if(!goBack()) toast('Press the Home button on the remote to leave Partners',3000); });
 }
-document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
+document.addEventListener('fullscreenchange',()=>{ if(REAL_TV && !document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
 // Called by the Fire TV app shell. Return true if the page handled it.
 window.peggyBack=()=>goBack();
 window.peggyKey=k=>{ handleKey(k); return true; };
