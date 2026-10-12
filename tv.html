@@ -115,7 +115,9 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dCap,#dClock{position:absolute;bottom:3vh;font-size:1.6vw;color:#fff;text-shadow:0 .1vw .5vw #000,0 0 1vw #000;z-index:3;line-height:1.3}
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
 #dClock{right:3vw;font-variant-numeric:tabular-nums;text-align:right}
-#dClock small{display:block;font-size:.8em;color:#ddd} #dClock small.nowplaying{font-size:.62em;color:#ccc;margin-top:.4vh;max-width:40vw;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dClock small{display:block;font-size:.8em;color:#ddd} #dClock .nowplaying{font-size:.7em;margin-top:.8vh;max-width:42vw;margin-left:auto;display:grid;justify-items:end} #dClock .nowplaying b,#dClock .nowplaying span{max-width:42vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #dClock .nowplaying span{font-size:.85em;color:#ddd}
+#nowBanner{position:fixed;left:50%;top:5vh;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.6);color:#fff;border-radius:1.2vw;padding:1.2vh 2vw;text-align:center;font-size:1.8vw;opacity:0;transition:opacity .6s;pointer-events:none;max-width:70vw} #nowBanner.on{opacity:1} #nowBanner small{display:block;font-size:.75em;color:#ddd} html.desk #nowBanner{font-size:1.2vw}
+#home>#homeNow{position:absolute;right:3vw;bottom:13vh;z-index:5;background:rgba(0,0,0,.45);color:#fff;border-radius:.8vw;padding:.6vw 1.2vw;font-size:1.2vw;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dClock .dEvents{font-size:.62em;margin-bottom:1vh;display:grid;gap:.4vh;justify-items:end}
 #dClock .dEv{max-width:38vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:.35vw solid var(--accent);padding-right:.8vw}
 #dClock .dEv b{color:#fff;font-weight:800}
@@ -819,7 +821,7 @@ function tickClock(){ const c=$('#dClock'); c.replaceChildren();
   else if(slideEv.note){ const box=el('div',{className:'dEvents'}); box.append(el('div',{className:'dEv',textContent:slideEv.note})); c.append(box); }
   c.append(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
   if(wx.line) c.append(el('small',{textContent:wx.line}));
-  if(music.now) c.append(el('small',{className:'nowplaying',textContent:music.now})); }
+  if(music.title) c.append(el('div',{className:'nowplaying'},el('b',{textContent:'♪ '+music.title}),music.artist?el('span',{textContent:music.artist}):null)); }
 /* ---------- local weather (Open-Meteo, no key needed) ----------
    Where the TV is: the browser's location if it shares it, otherwise worked out from the internet connection,
    re-checked every 3 hours so it follows the RV. Weather refreshes every 30 minutes. */
@@ -932,21 +934,21 @@ function musicEl(){
   a.addEventListener('error',()=>{ if(!a.getAttribute('src')) return; music.fails++;
     if(musicCfg.mode==='drive' && music.fails<5) return musicNext();
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
-    music.now=''; toast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
+    music.now=''; music.title=music.artist=''; musicBanner(); toast(musicCfg.mode==='radio'?'That station isn’t playing right now. Pick another one in Music.':'Your songs couldn’t be played. Check the Music folder on your phone.',6000); });
   return music.el=a;
 }
 function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100));
   const p=a.play(); if(p&&p.catch) p.catch(()=>{ music.waiting=true; }); if(drive.clock) tickClock(); }
 async function musicStart(){
   const a=musicEl(), mode=musicCfg.mode;
-  if(mode==='radio'){ const st=musicCfg.station; if(!st) return; a.src=st.url; music.now='📻 '+st.name; musicPlay(); return; }
+  if(mode==='radio'){ const st=musicCfg.station; if(!st) return; a.src=st.url; music.now='📻 '+st.name; music.title=st.name; music.artist='Internet radio'; musicPlay(); musicBanner(); return; }
   if(mode==='drive'){
     const fid=driveFolderId(musicCfg.folder); if(!fid || !settings.driveKey) return;
     // The song list is kept on this screen and re-checked in the background every few hours, so a big
     // library with many folders starts playing right away.
-    if(!music.list.length){ try{ const c=JSON.parse(localStorage.getItem('partners.music.cache')||'null'); if(c && c.folder===fid && c.v===2){ music.list=c.songs.sort(()=>Math.random()-.5); music.listAt=c.at; music.pos=0; } }catch(_){} }
+    if(!music.list.length){ try{ const c=JSON.parse(localStorage.getItem('partners.music.cache')||'null'); if(c && c.folder===fid && c.v===3){ music.list=c.songs.sort(()=>Math.random()-.5); music.listAt=c.at; music.pos=0; } }catch(_){} }
     const rescan=async()=>{ const songs=await musicScan(fid); music.listAt=Date.now();
-      try{ localStorage.setItem('partners.music.cache',JSON.stringify({v:2,folder:fid,at:music.listAt,songs})); }catch(_){}
+      try{ localStorage.setItem('partners.music.cache',JSON.stringify({v:3,folder:fid,at:music.listAt,songs})); }catch(_){}
       const have=new Set(music.list.map(x=>x.id)); const fresh=songs.filter(x=>!have.has(x.id)), keep=new Set(songs.map(x=>x.id));
       music.list=music.list.filter(x=>keep.has(x.id)).concat(fresh.sort(()=>Math.random()-.5)); return songs.length; };
     if(!music.list.length){ toast('Finding your songs…',3000); try{ await rescan(); music.pos=0; music.list.sort(()=>Math.random()-.5); }catch(e){ toast('Your Music folder couldn’t be read: '+e.message,6000); return; } }
@@ -989,7 +991,7 @@ async function musicScan(rootId){
     const norm=t=>String(t||'').toLowerCase().replace(/\((\d+|copy|remaster(ed)?[^)]*|\d{4} remaster[^)]*|live[^)]*)\)|\[[^\]]*\]| copy$| - copy$/g,'').replace(/[^a-z0-9]+/g,'');
     const k1=x.md5&&'m:'+x.md5, k2='t:'+norm(title)+'|'+norm(who);
     if((k1&&seen.has(k1)) || seen.has(k2)) continue; if(k1) seen.add(k1); seen.add(k2);
-    out.push({ id:x.id, name:title+(who?' — '+who:'') }); }
+    out.push({ id:x.id, name:title+(who?' — '+who:''), title, artist:who }); }
   return out;
 }
 // Every song plays once before any repeats (remembered on this screen); songs you hide never play.
@@ -1005,10 +1007,19 @@ function musicPick(){
   return f;
 }
 function musicTrack(){ const f=musicPick(), a=musicEl(); if(!f){ toast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
-  a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); musicPlay(); }
+  a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); music.title=f.title||f.name; music.artist=f.artist||''; musicPlay(); musicBanner(); }
+// When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
+function musicBanner(){
+  let h=$('#homeNow'); if(!h){ h=el('div',{id:'homeNow'}); $('#home').append(h); }
+  h.textContent=music.title?`♪ ${music.title}${music.artist?' — '+music.artist:''}`:''; h.classList.toggle('hidden',!music.title);
+  if(drive.clock) tickClock(); if(!music.title) return;
+  let b=$('#nowBanner'); if(!b){ b=el('div',{id:'nowBanner'}); document.body.append(b); }
+  b.replaceChildren(el('b',{textContent:'♪ '+music.title}), music.artist?el('small',{textContent:music.artist}):''); b.classList.add('on');
+  clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove('on'),7000);
+}
 function musicHide(f){ if(!f) return; const l=musicSkip.list; if(!l.some(x=>x.id===f.id)){ l.push({id:f.id,name:f.name}); musicSkip.list=l; } if(music.cur && music.cur.id===f.id) musicNext(); }
 function musicNext(){ if(!music.list.length) return; musicTrack(); }
-function musicStop(){ if(!music.el) return; music.el.pause(); music.el.removeAttribute('src'); music.el.load(); music.now=''; if(drive.clock) tickClock(); }
+function musicStop(){ if(!music.el) return; music.el.pause(); music.el.removeAttribute('src'); music.el.load(); music.now=''; music.title=music.artist=''; musicBanner(); if(drive.clock) tickClock(); }
 // Browsers only start sound after a button press: if it was blocked, start on the next one.
 document.addEventListener('click',()=>{ if(music.waiting){ music.waiting=false; musicPlay(); } },true);
 document.addEventListener('keydown',()=>{ if(music.waiting){ music.waiting=false; musicPlay(); } },true);
