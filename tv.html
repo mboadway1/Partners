@@ -536,11 +536,11 @@ function startSlideshow(items, start, live, keepOrder){
   else { order=[...order.slice(start), ...order.slice(0,start)]; start=0; }
   ss={items, order, pos:-1, paused:false, timer:null, slot:0, tok:0, live:!!live};
   pushScope(L,{ onkey:slideKey, onclose:()=>stopSlideshow() });
-  awake(true);
+  awake();
   ssGo(1);
 }
 function stopSlideshow(silent){
-  if(!ss) return; clearTimeout(ss.timer); ss=null; awake(false); driveStop();
+  if(!ss) return; clearTimeout(ss.timer); ss=null; driveStop();
   const L=$('#show'); L.classList.add('hidden'); for(const s of ['#slotA','#slotB']){ $(s).replaceChildren(); $(s).classList.remove('on'); }
   $('#showMsg').classList.add('hidden');
   if(!silent) renderHome();
@@ -805,8 +805,21 @@ async function driveRefresh(){
 function driveStop(){ clearInterval(drive.timer); clearInterval(drive.clock); drive.timer=drive.clock=null; $('#dClock').classList.add('hidden'); $('#dCap').classList.add('hidden'); }
 // Keep the TV from going to its screensaver while a slideshow plays.
 let wake=null;
-async function awake(on){ try{ if(on){ if(!wake && navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); } else if(wake){ await wake.release(); wake=null; } }catch(_){ wake=null; } }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && ss){ wake=null; awake(true); } });
+// Partners keeps the TV awake the whole time it's open (not only during slideshows), so the Fire Stick
+// never drops to Ambient or standby: a screen wake lock where the browser offers one, plus a tiny silent
+// looping video, which TV browsers treat as "something is playing".
+async function awake(){ try{ if(!wake && navigator.wakeLock){ wake=await navigator.wakeLock.request('screen'); wake.addEventListener('release',()=>{ wake=null; }); } }catch(_){ wake=null; } keepVideo(); }
+function keepVideo(){
+  let v=$('#keepAwake');
+  if(!v){ v=el('video',{id:'keepAwake',src:'keepawake.mp4',muted:true,loop:true,playsInline:true});
+    v.setAttribute('muted',''); v.setAttribute('playsinline','');
+    v.style.cssText='position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
+    document.body.append(v); }
+  if(v.paused){ const p=v.play(); p && p.catch && p.catch(()=>{}); }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ wake=null; awake(); } });
+awake(); setInterval(awake, 60000);
+document.addEventListener('click',()=>awake(),true); document.addEventListener('keydown',()=>awake(),true);
 
 // Settings rows with ◀ ▶ values also work by pointing and clicking (TV browsers use the arrows for the pointer):
 // click the ◀ end of the value to go down, anywhere else on the row to go up.
