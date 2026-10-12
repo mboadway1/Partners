@@ -13,6 +13,8 @@
   --display:"Fredoka","Nunito",ui-rounded,system-ui,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Nunito",Roboto,"Amazon Ember",system-ui,sans-serif;font-weight:600;overflow:hidden;cursor:none}
+body{transform-origin:50% 50%}
+html{background:#000}
 .hidden{display:none!important}
 .f{transition:transform .12s, box-shadow .12s}
 .focus{outline:none;box-shadow:0 0 0 .3vw #FFD3E4, 0 0 2.4vw rgba(240,106,155,.65)!important;transform:scale(1.05);z-index:2;position:relative}
@@ -239,7 +241,12 @@ const settings = {
   get interval(){ return +store.get('peggy.tv.interval', 8); }, set interval(v){ store.set('peggy.tv.interval', v); },
   get shuffle(){ return store.get('peggy.tv.shuffle','0')==='1'; }, set shuffle(v){ store.set('peggy.tv.shuffle', v?'1':'0'); },
   get motion(){ return store.get('peggy.tv.motion','1')==='1'; }, set motion(v){ store.set('peggy.tv.motion', v?'1':'0'); },
+  // Screen fit: shrinks Peggy so TVs that trim the picture edges (overscan) show all of it.
+  // The Fire TV app is already sized right (100%); in the TV's web browser start at 90%.
+  get fit(){ return +store.get('peggy.tv.fit', /; wv\)/.test(navigator.userAgent) ? 100 : 90); }, set fit(v){ store.set('peggy.tv.fit', v); applyFit(); },
 };
+function applyFit(){ const f=settings.fit; document.body.style.transform = f<100 ? `scale(${f/100})` : ''; }
+applyFit();
 const INTERVALS=[5,8,12,20,30,60];
 
 /* ================= remote-control focus ================= */
@@ -548,6 +555,7 @@ async function openSettings(){
     d.append(row('Slideshow speed',()=>settings.interval+' seconds', x=>{ const i=INTERVALS.indexOf(settings.interval); settings.interval=INTERVALS[clamp((i<0?1:i)+x,0,INTERVALS.length-1)]; }));
     d.append(row('Order',()=>settings.shuffle?'Shuffle':'Newest first', ()=>{ settings.shuffle=!settings.shuffle; }));
     d.append(row('Gentle zoom',()=>settings.motion?'On':'Off', ()=>{ settings.motion=!settings.motion; }));
+    d.append(row('Screen fit',()=>settings.fit+'%', x=>{ settings.fit=clamp(settings.fit+x*2,70,100); }));
     let used=''; try{ const e=await navigator.storage.estimate(); used=`${photos.length} photos · ${(e.usage/1048576).toFixed(0)} MB on this TV`; }catch(_){ used=`${photos.length} photos on this TV`; }
     d.append(el('p',{textContent:used}));
     const wipe=el('div',{className:'btn f danger',textContent:'Delete all photos from the TV'});
