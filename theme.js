@@ -75,7 +75,7 @@ applyPartnersTheme(partnersThemeName());
 
 /* ---------- bottom menu: the "More" button opens Links and Words ---------- */
 (function(){
-  const MORE=[['plan.html#us','💞','Us','Check-ins, appreciations, talking it through, Words'],['plan.html#fuel','⛽','Fuel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites']];
+  const MORE=[['plan.html#us','💞','Us','Share a concern, Taking Turns'],['plan.html#fuel','⛽','Fuel','Cheapest fuel nearby or on the way'],['plan.html#links','🔗','Links','Shared link favorites']];
   function setup(){
     const more=document.querySelector('.bnav a.more'); if(!more) return;
     const st=document.createElement('style');
