@@ -17,8 +17,11 @@
 // Opened on a Fire TV or other TV browser? Go to Partners' TV screen instead of the phone app.
 // (?phone on the address keeps the phone app, for testing.)
 (function(){ try{ var ua=navigator.userAgent||'';
-  var big=window.matchMedia && matchMedia('(min-width: 1000px)').matches && !matchMedia('(pointer: coarse)').matches;   // Chromebook / laptop: same screen as the Fire Stick
-  if(!/[?&](phone|code|error)\b/.test(location.search) && !localStorage.getItem('peggy.authState') && (big || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua)))
+  // Chromebook or computer (not a phone or iPad): same first screen as the Fire Stick.
+  var computer=/CrOS|Windows NT|Linux x86_64/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints||0)<2);
+  var big=computer && Math.max(screen.width, window.innerWidth)>=900;
+  // Stay here only to finish a Google sign-in (?code=) or when asked for the library (?phone).
+  if(!/[?&](phone|code|error|state)\b/.test(location.search) && (big || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua)))
     location.replace('tv.html'); }catch(e){} })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
