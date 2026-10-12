@@ -529,7 +529,8 @@ async function slideMenu(){
   while(scopes.length>1) popScope();   // leave the slideshow
   if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu(); else if(v==='reload') location.reload();
 }
-$('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')) slideMenu(); });
+// Clicking the slideshow goes back to Peggy's home screen (every feature is a button there).
+$('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')){ while(scopes.length>1) popScope(); } });
 // Peggy's planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
 const PLAN_TABS=[['✅ Tasks','tasks'],['📆 Calendar','calendar'],['💵 Money','money'],['✈️ Flights','flights'],['⛽ Diesel','fuel'],['💞 Us','us'],['🔗 Links','links']];
 // Opened inside the TV screen (not as a new page) so Peggy stays full screen.
