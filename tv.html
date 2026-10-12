@@ -328,6 +328,11 @@ function goFull(){
   try{ const p=req.call(d); p && p.catch && p.catch(()=>{}); }catch(_){}
 }
 document.addEventListener('keydown',goFull,true);
+if(!/; wv\)/.test(navigator.userAgent) && history.pushState){
+  try{ history.pushState({peggy:1},''); }catch(_){}
+  addEventListener('popstate',()=>{ try{ history.pushState({peggy:1},''); }catch(_){}
+    if(!goBack()) toast('Press the Home button on the remote to leave Peggy',3000); });
+}
 document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement && ss){ while(scopes.length>1 && topScope().root!==$('#home')) popScope(); } });
 document.addEventListener('click',goFull,true);
 // Called by the Fire TV app shell. Return true if the page handled it.
@@ -510,11 +515,16 @@ function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clear
 // ▼ or Menu during a slideshow: jump to Peggy's other features without leaving full screen.
 async function slideMenu(){
   const wasPaused=ss&&ss.paused; ssPause(true);
-  const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['📅 Today','today'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
-  if(!v || v==='stay'){ if(ss && !wasPaused) ssPause(false); return; }
+  const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
+    ['📅 Today','today'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
+  if(!ss) return;
+  if(v==='next'||v==='prev'){ if(!wasPaused) ssPause(false); ssGo(v==='next'?1:-1); return; }
+  if(v==='pause'){ ssPause(!wasPaused); return; }
+  if(!v || v==='stay'){ if(!wasPaused) ssPause(false); return; }
   while(scopes.length>1) popScope();   // leave the slideshow
   if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings();
 }
+$('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')) slideMenu(); });
 function slideKey(k){
   if(k==='left'||k==='rew'){ ssGo(-1); return true; }
   if(k==='right'||k==='ff'){ ssGo(1); return true; }
