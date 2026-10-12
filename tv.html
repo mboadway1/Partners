@@ -29,6 +29,7 @@ body{transform-origin:50% 50%}
 #fullPrompt{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);cursor:pointer}
 #fullPrompt div{font:600 3.6vw/1.3 var(--display);text-align:center;color:#fff;background:var(--panel);padding:3vw 5vw;border-radius:2vw;box-shadow:0 1vw 4vw rgba(0,0,0,.5)}
 #fullPrompt b{color:var(--accent)}
+html.desk,html.desk body{cursor:auto}
 /* bigger text everywhere on the TV */
 .navrow .btn{font-size:2.1vw!important}
 .status,.codechip,.wx{font-size:1.9vw} .codechip b{font-size:2.2vw}
@@ -101,6 +102,9 @@ button,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--pane
 #dCap{left:3vw;max-width:60vw} #dCap small{display:block;font-size:.8em;color:#ddd}
 #dClock{right:3vw;font-variant-numeric:tabular-nums;text-align:right}
 #dClock small{display:block;font-size:.8em;color:#ddd}
+#dClock .dEvents{font-size:.62em;margin-bottom:1vh;display:grid;gap:.4vh;justify-items:end}
+#dClock .dEv{max-width:38vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:.35vw solid var(--accent);padding-right:.8vw}
+#dClock .dEv b{color:#fff;font-weight:800}
 .wx{font-size:1.3vw;color:var(--dim);white-space:nowrap}
 #showMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:2.2vw;background:rgba(0,0,0,.6);padding:1.5vw 3vw;border-radius:1vw;z-index:3}
 #showInfo{position:absolute;right:3vw;bottom:3vh;font-size:1.2vw;color:#ccc;background:rgba(0,0,0,.4);padding:.4vw .9vw;border-radius:.5vw;z-index:3;opacity:0;transition:opacity .4s}
@@ -283,7 +287,7 @@ const settings = {
   // The Fire TV app is already sized right (100%); in the TV's web browser start at 90%.
   get driveFolder(){ return store.get('peggy.tv.driveFolder',''); }, get driveKey(){ return store.get('peggy.tv.driveKey',''); },
   get driveStart(){ return store.get('peggy.tv.driveStart','1')==='1'; }, set driveStart(v){ store.set('peggy.tv.driveStart', v?'1':'0'); },
-  get fit(){ return +store.get('peggy.tv.fit', /; wv\)/.test(navigator.userAgent) ? 100 : 90); }, set fit(v){ store.set('peggy.tv.fit', v); applyFit(); },
+  get fit(){ return +store.get('peggy.tv.fit', (/; wv\)/.test(navigator.userAgent) || !/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent)) ? 100 : 90); }, set fit(v){ store.set('peggy.tv.fit', v); applyFit(); },
 };
 function applyFit(){ const f=settings.fit; document.body.style.transform = f<100 ? `scale(${f/100})` : ''; }
 applyFit();
@@ -360,6 +364,9 @@ function goFull(){
 // Start in full screen. Browsers only allow it after a button press, so: try right away (some TVs allow it),
 // otherwise show a big prompt, and let the first press only switch to full screen (it doesn't also click anything).
 const IN_APP=/; wv\)/.test(navigator.userAgent);
+const REAL_TV=IN_APP || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent);   // false on a Chromebook or laptop
+document.documentElement.classList.add(REAL_TV?'realtv':'desk');
+if(!REAL_TV){ const fp=$('#fullPrompt div'); if(fp) fp.innerHTML='<b>Click anywhere</b><br>for full screen'; }
 const isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
 // (If the browser keeps refusing, stop swallowing presses.)
 function firstPress(e){ if(IN_APP || isFull() || fullTries>2) return; goFull(); e.preventDefault(); e.stopPropagation(); }
@@ -429,6 +436,7 @@ function renderHome(){
   if(driveReady()) tab('photos','Photos',()=>startDrive());
   tab('today','Today',()=>openToday());
   for(const [label,t] of PLAN_TABS) tab(t, label.replace(/^\S+\s/,''), ()=>openPlan(t));
+  if(!REAL_TV) tab('photos','Library',()=>{ location.href='./?phone'; });   // the full photo library (import, edit, share)
   tab('phone','Phone',showConnect);
   tab('settings','Settings',openSettings);
   tab('refresh','Refresh',()=>location.reload());
@@ -753,7 +761,23 @@ async function driveShown(d){
   if(date) cap.append(el('span',{textContent:date}));
   const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
 }
-function tickClock(){ const c=$('#dClock'); c.replaceChildren(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
+// Today's calendar on the slideshow, above the clock and weather: what's still ahead today (all-day items first).
+const slideEv={list:[], at:0};
+async function loadSlideEvents(){
+  let plan=null; try{ plan=JSON.parse(store.get('peggy.tvplan','null')); }catch(_){} if(!plan||!plan.session) return;
+  const start=new Date(); start.setHours(0,0,0,0);
+  try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Peggy-Session':plan.session}});
+    if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); }catch(_){}
+}
+function todayLines(){
+  const k=ymdL(new Date()), now=Date.now();
+  return slideEv.list.filter(ev=> ev.start.date ? (ev.start.date<=k && ev.end.date>k) : (ymdL(new Date(ev.start.dateTime))===k && Date.parse(ev.end.dateTime||ev.start.dateTime)>now))
+    .sort((a,b)=>(a.start.dateTime||'').localeCompare(b.start.dateTime||''))
+    .slice(0,5).map(ev=>({t: ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'All day', s: ev.summary||'(No title)', c: ev.color||''}));
+}
+function tickClock(){ const c=$('#dClock'); c.replaceChildren();
+  const ls=todayLines(); if(ls.length){ const box=el('div',{className:'dEvents'}); ls.forEach(x=>{ const r=el('div',{className:'dEv'}); r.append(el('b',{textContent:x.t}),' ',x.s); if(x.c) r.style.borderColor=x.c; box.append(r); }); c.append(box); }
+  c.append(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
   if(wx.line) c.append(el('small',{textContent:wx.line})); }
 /* ---------- local weather (Open-Meteo, no key needed) ----------
    Where the TV is: the browser's location if it shares it, otherwise worked out from the internet connection,
@@ -789,6 +813,7 @@ async function startDrive(quiet){
   startSlideshow(driveOrder(items).map(d=>({drive:d})), 0, false, true);
   if(ss) ss.driveMode=true;
   $('#dClock').classList.remove('hidden'); tickClock(); drive.clock=setInterval(tickClock,15000);
+  loadSlideEvents().then(tickClock); drive.evTimer=setInterval(()=>loadSlideEvents().then(tickClock), 10*60*1000);
   drive.timer=setInterval(driveRefresh, 30*60*1000);
 }
 // Every 30 minutes: pick up new photos, drop removed ones, refresh Google's photo links.
@@ -802,7 +827,7 @@ async function driveRefresh(){
   const list=[...keep]; let pos=Math.max(0,keep.findIndex(d=>d.id===curId)); list.splice(pos+1,0,...fresh);
   ss.items=list.map(d=>({drive:d})); ss.order=ss.items.map((_,i)=>i); ss.pos=pos; drive.items=items;
 }
-function driveStop(){ clearInterval(drive.timer); clearInterval(drive.clock); drive.timer=drive.clock=null; $('#dClock').classList.add('hidden'); $('#dCap').classList.add('hidden'); }
+function driveStop(){ clearInterval(drive.timer); clearInterval(drive.clock); clearInterval(drive.evTimer); drive.timer=drive.clock=null; $('#dClock').classList.add('hidden'); $('#dCap').classList.add('hidden'); }
 // Keep the TV from going to its screensaver while a slideshow plays.
 let wake=null;
 // Partners keeps the TV awake the whole time it's open (not only during slideshows), so the Fire Stick

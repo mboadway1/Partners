@@ -98,7 +98,9 @@ html.wide .bnav .tvonly,html.wide .bnav .wideonly{display:flex!important}
 html.wide:not(.tv) .bnav #navTv{display:none!important}
 html.wide:not(.tv) .bnav .notv{display:flex!important}
 html.wide:not(.tv) .bnav .notv.more{display:none!important}
-.bnav .wideonly{display:none}`;
+.bnav .wideonly{display:none}
+html.framed .bnav #navTv,html.wide.framed .bnav #navTv{display:flex!important}
+html.framed .bnav .notv,html.wide.framed:not(.tv) .bnav .notv{display:none!important}`;
   document.head.append(st);
   const ICON={fuel:'<rect x="4" y="3" width="10" height="18" rx="2"/><path d="M4 10h10M14 7l4 3v8a2 2 0 0 1-4 0v-4"/>',
     us:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',

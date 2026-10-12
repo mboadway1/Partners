@@ -17,7 +17,8 @@
 // Opened on a Fire TV or other TV browser? Go to Partners' TV screen instead of the phone app.
 // (?phone on the address keeps the phone app, for testing.)
 (function(){ try{ var ua=navigator.userAgent||'';
-  if(!/[?&](phone|code|error)\b/.test(location.search) && !localStorage.getItem('peggy.authState') && /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua))
+  var big=window.matchMedia && matchMedia('(min-width: 1000px)').matches && !matchMedia('(pointer: coarse)').matches;   // Chromebook / laptop: same screen as the Fire Stick
+  if(!/[?&](phone|code|error)\b/.test(location.search) && !localStorage.getItem('peggy.authState') && (big || /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua)))
     location.replace('tv.html'); }catch(e){} })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -131,6 +132,7 @@ main{padding:4px calc(var(--sr) + 4px) calc(var(--sb) + 100px) calc(var(--sl) + 
 .pthumb.other{opacity:.35}
 .cell{position:relative;aspect-ratio:1;background:var(--panel2);border-radius:10px;overflow:hidden;cursor:pointer}
 .cell img{width:100%;height:100%;object-fit:cover;display:block}
+.grid.fitall{justify-content:center} .grid.fitall .cell img{object-fit:contain} .grid.fitall .cell{background:var(--panel2)}
 .badges{position:absolute;left:5px;bottom:4px;display:flex;gap:4px;font-size:13px;text-shadow:0 1px 3px #000}
 .badges .star{color:var(--star)} .badges .posted{color:var(--ok)}
 .check{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.25);display:none}
@@ -517,6 +519,17 @@ function renderChips(){
   if(view==='costume'){ const c=el('button',{className:'chip',textContent:'🎭 Closet & ideas',title:'Find costumes, see your closet, get ideas'}); c.onclick=()=>openCostumes(); box.append(c); }
   const evb=el('button',{className:'chip',textContent:'📅 Events',title:'Photos grouped by event, like a weekend away, ready to select, album or post'}); evb.onclick=()=>openEvents(); box.append(evb);
 }
+// Big screens: size the photos so every one fits on the screen at once, as large as possible, uncropped.
+function fitGrid(){
+  const g=$('#grid'); g.style.gridTemplateColumns=''; g.classList.remove('fitall');
+  if(!document.documentElement.classList.contains('wide')) return;
+  const cells=[...g.children].filter(c=>c.classList.contains('cell')), n=cells.length; if(!n || cells.length!==g.children.length) return;   // skip when grouped by day
+  const nav=document.querySelector('.bnav'), W=g.clientWidth, H=(nav?nav.getBoundingClientRect().top:innerHeight)-g.getBoundingClientRect().top-8;
+  let best=0, cols=1; for(let c=1;c<=n;c++){ const rows=Math.ceil(n/c), size=Math.min((W-(c-1)*4)/c, (H-(rows-1)*4)/rows); if(size>best){ best=size; cols=c; } }
+  if(best<150) return;   // too many to fit: keep the normal scrolling grid
+  g.classList.add('fitall'); g.style.gridTemplateColumns=`repeat(${cols}, ${Math.floor(best)}px)`;
+}
+addEventListener('resize',()=>fitGrid());
 function renderGrid(){
   const grid=$('#grid'), list=visible();
   grid.classList.toggle('selecting', selecting);
@@ -715,7 +728,7 @@ function updateSelbar(){
   $('#sTv').classList.toggle('hidden', !tv.code);
   $('#sAll').textContent = n && n===visible().length ? 'Select none' : 'Select all';
 }
-function renderAll(fromSync){ renderChips(); renderGrid(); updateSelbar(); if(!fromSync && albums.some(a=>a.shared)) sharedSoon(); }
+function renderAll(fromSync){ renderChips(); renderGrid(); requestAnimationFrame(fitGrid); updateSelbar(); if(!fromSync && albums.some(a=>a.shared)) sharedSoon(); }
 
 /* ---------- sheets ---------- */
 function sheet(build){ return new Promise(resolve=>{
