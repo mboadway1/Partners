@@ -146,7 +146,7 @@ async function api(req, env, url, cors) {
   }
   // One-time move of shared-album photos from the old bucket to the new one (the app calls this until done).
   if (path === 'move-photos' && req.method === 'POST' && full) {
-    const NEW = env.PARTNERS_R2, OLD = env.PARTNERS_R2 && env.PEGGY_R2;
+    const NEW = env.PARTNERS_R2, OLD = env.PARTNERS_R2 && (env.OLD_PHOTOS || env.PEGGY_R2);
     if (!OLD) return json({ done: true, moved: 0 }, 200, cors);
     const { cursor } = await body(); let moved = 0;
     const page = await OLD.list({ cursor: cursor || undefined, limit: 50 });
@@ -213,7 +213,7 @@ async function api(req, env, url, cors) {
   // --- shared album photos, kept in Cloudflare R2 (binding PARTNERS_R2) ---
   const pm = path.match(/^photo\/([\w-]{8,64})(?:\/(full))?$/);
   if (pm) {
-    const R2 = env.PARTNERS_R2 || env.PEGGY_R2, OLD_R2 = env.PARTNERS_R2 && env.PEGGY_R2;
+    const R2 = env.PARTNERS_R2 || env.PEGGY_R2, OLD_R2 = env.PARTNERS_R2 && (env.OLD_PHOTOS || env.PEGGY_R2);
     if (!R2) return json({ error: 'Shared albums need the PARTNERS_R2 photo storage connected to the relay.' }, 500, cors);
     const key = 'photos/' + pm[1] + '/full';
     if (req.method === 'GET') {
