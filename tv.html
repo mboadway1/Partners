@@ -970,11 +970,18 @@ async function musicStart(){
     // The song list is kept on this screen and re-checked in the background every few hours, so a big
     // library with many folders starts playing right away.
     if(!music.list.length){ try{ const c=JSON.parse(localStorage.getItem('partners.music.cache')||'null'); if(c && c.folder===fid && c.v===4){ music.list=c.songs.sort(()=>Math.random()-.5); music.listAt=c.at; music.pos=0; } }catch(_){} }
-    const rescan=async()=>{ const songs=await musicScan(fid); music.listAt=Date.now();
+    const rescan=async(onFound)=>{ const songs=await musicScan(fid,onFound); music.listAt=Date.now();
       try{ localStorage.setItem('partners.music.cache',JSON.stringify({v:4,folder:fid,at:music.listAt,songs})); }catch(_){}
       const have=new Set(music.list.map(x=>x.id)); const fresh=songs.filter(x=>!have.has(x.id)), keep=new Set(songs.map(x=>x.id));
       music.list=music.list.filter(x=>keep.has(x.id)).concat(fresh.sort(()=>Math.random()-.5)); return songs.length; };
-    if(!music.list.length){ musicToast('Finding your songs…',3000); try{ await rescan(); music.pos=0; music.list.sort(()=>Math.random()-.5); }catch(e){ musicToast('Your Music folder couldn’t be read: '+e.message,6000); return; } }
+    if(!music.list.length){
+      // First time on this screen: start with the first songs found and keep adding the rest as they come in.
+      musicToast('Finding your songs…',3000); let started=false;
+      const onFound=fresh=>{ music.list.push(...fresh); if(!started){ started=true; musicTrack(); } else if(drive.clock) tickClock(); };
+      try{ const n=await rescan(onFound); if(started) musicToast(`Found ${n.toLocaleString()} songs ✓`,3000); }
+      catch(e){ musicToast('Your Music folder couldn’t be read: '+e.message,6000); return; }
+      if(started) return;
+    }
     else if(Date.now()-music.listAt>4*3600e3) rescan().catch(()=>{});
     if(!music.list.length){ musicStatus('No songs found in the Music folder'); musicToast('No songs found in your Music folder (or its folders). Partners plays MP3, M4A, AAC, WAV and OGG files.',7000); return; }
     musicTrack();
@@ -982,39 +989,42 @@ async function musicStart(){
 }
 // Songs can be in folders inside folders (Music → Artist → Album → song), so look through every level.
 const AUDIO_EXT=/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
-async function musicScan(rootId){
-  const names=new Map(), parentOf=new Map(), songs=[]; let level=[rootId], depth=0, folders=0; music.blocked=0;
-  // One page of results for some folders. If Google refuses (a folder that isn't shared), retry them one by one and skip the refused ones.
-  const listIn=async ids=>{ const q=`(${ids.map(x=>`'${x}' in parents`).join(' or ')}) and trashed = false`, out=[]; let page='';
-    do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,parents,md5Checksum,size)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
+// Faster: folders are read 40 at a time with up to 6 requests at once, and songs are handed over as they're
+// found (onFound), so the first song can start within a second or two while the rest of the library loads.
+async function musicScan(rootId, onFound){
+  const names=new Map(), parentOf=new Map(), out=[], seen=new Set(); let level=[rootId], depth=0, folders=0; music.blocked=0;
+  const listIn=async ids=>{ const q=`(${ids.map(x=>`'${x}' in parents`).join(' or ')}) and trashed = false`, got=[]; let page='';
+    do{ const r=await fetch(`${DRIVE_API}files?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('nextPageToken,files(id,name,mimeType,parents,md5Checksum)')}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true&key=${encodeURIComponent(settings.driveKey)}`+(page?`&pageToken=${page}`:''));
       const j=await r.json(); if(!r.ok){ const e=new Error((j.error&&j.error.message)||'Drive error'); e.status=r.status; throw e; }
-      out.push(...(j.files||[])); page=j.nextPageToken||''; }while(page);
-    return out; };
-  while(level.length && depth<12 && folders<6000 && songs.length<25000){
-    const next=[];
-    for(let i=0;i<level.length;i+=30){
-      const ids=level.slice(i,i+30); let files;
+      got.push(...(j.files||[])); page=j.nextPageToken||''; }while(page);
+    return got; };
+  const norm=t=>String(t||'').toLowerCase().replace(/\((\d+|copy|remaster(ed)?[^)]*|\d{4} remaster[^)]*|live[^)]*)\)|\[[^\]]*\]| copy$| - copy$/g,'').replace(/[^a-z0-9]+/g,'');
+  const addSongs=list=>{ const fresh=[];
+    for(const x of list){ const album=x.parent!==rootId?names.get(x.parent):'', up=parentOf.get(x.parent), artist=up&&up!==rootId&&names.get(up)||'';
+      const title=x.name.replace(/\.[a-z0-9]{2,4}$/i,'').replace(/^\d{1,3}(-\d{1,3})?[ .\-_]+/,'').replace(/_$/,'?').replace(/_/g,' ').replace(/\s+/g,' ').trim();   // Drive file names turn ? and : into _
+      const who=artist&&!/music$/i.test(artist)?artist:album&&!/music$/i.test(album)?album:'';
+      // Duplicates (the same file, or the same song title by the same artist) are played only once.
+      const k1=x.md5&&'m:'+x.md5, k2='t:'+norm(title)+'|'+norm(who);
+      if((k1&&seen.has(k1)) || seen.has(k2)) continue; if(k1) seen.add(k1); seen.add(k2);
+      fresh.push({ id:x.id, name:title+(who?' — '+who:''), title, artist:who }); }
+    out.push(...fresh); if(fresh.length && onFound) onFound(fresh); };
+  while(level.length && depth<12 && folders<6000 && out.length<25000){
+    const next=[], groups=[]; for(let i=0;i<level.length;i+=40) groups.push(level.slice(i,i+40));
+    const runGroup=async ids=>{ let files;
       try{ files=await listIn(ids); }
       catch(e){
         if(depth===0) throw new Error(/permission|not found/i.test(e.message)?'Google won’t let Partners read it. On your phone, check the Music folder link, and in Drive share that folder as “Anyone with the link”.':e.message);
         files=[]; for(const id of ids){ try{ files.push(...await listIn([id])); }catch(_){ music.blocked++; } }
       }
+      const songs=[];
       for(const f of files){ const par=(f.parents||[])[0]||''; parentOf.set(f.id,par); names.set(f.id,f.name);
         if(f.mimeType==='application/vnd.google-apps.folder'){ next.push(f.id); folders++; }
         else if(/^audio\//.test(f.mimeType||'') || AUDIO_EXT.test(f.name||'')) songs.push({id:f.id,name:f.name,parent:par,md5:f.md5Checksum||''}); }
-    }
+      addSongs(songs); };
+    for(let i=0;i<groups.length;i+=6) await Promise.all(groups.slice(i,i+6).map(runGroup));
     level=next; depth++;
   }
   if(music.blocked) musicToast(`${music.blocked} folder${music.blocked===1?'':'s'} in Music aren’t shared, so their songs are skipped. In Drive, share them as “Anyone with the link”.`,8000);
-  // Duplicates (the same file, or the same song title by the same artist) are played only once.
-  const seen=new Set(), out=[];
-  for(const x of songs){ const album=x.parent!==rootId?names.get(x.parent):'', up=parentOf.get(x.parent), artist=up&&up!==rootId&&names.get(up)||'';
-    const title=x.name.replace(/\.[a-z0-9]{2,4}$/i,'').replace(/^\d{1,3}(-\d{1,3})?[ .\-_]+/,'').replace(/_$/,'?').replace(/_/g,' ').replace(/\s+/g,' ').trim();   // Drive file names turn ? and : into _
-    const who=artist&&!/music$/i.test(artist)?artist:album&&!/music$/i.test(album)?album:'';
-    const norm=t=>String(t||'').toLowerCase().replace(/\((\d+|copy|remaster(ed)?[^)]*|\d{4} remaster[^)]*|live[^)]*)\)|\[[^\]]*\]| copy$| - copy$/g,'').replace(/[^a-z0-9]+/g,'');
-    const k1=x.md5&&'m:'+x.md5, k2='t:'+norm(title)+'|'+norm(who);
-    if((k1&&seen.has(k1)) || seen.has(k2)) continue; if(k1) seen.add(k1); seen.add(k2);
-    out.push({ id:x.id, name:title+(who?' — '+who:''), title, artist:who }); }
   return out;
 }
 // Every song plays once before any repeats (remembered on this screen); songs you hide never play.
