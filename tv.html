@@ -385,6 +385,7 @@ function renderHome(){
   }
   if(driveReady()) add('🖼 Favorites folder',()=>startDrive(),photos.length?'':'primary');
   add('📅 Today',()=>openToday());
+  add('🗂 Plans',planMenu);
   add('🎙 Words',()=>openWords());
   add('📱 Connect phone',showConnect);
   add('⚙ Settings',openSettings);
@@ -516,15 +517,19 @@ function ssPause(v){ if(!ss) return; ss.paused = v==null ? !ss.paused : v; clear
 async function slideMenu(){
   const wasPaused=ss&&ss.paused; ssPause(true);
   const v=await menu('Peggy',[['▶ Keep watching','stay','primary'],['⏭ Next photo','next'],['⏮ Previous photo','prev'],[wasPaused?'▶ Play':'⏸ Pause','pause'],
-    ['📅 Today','today'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
+    ['📅 Today','today'],['🗂 Plans…','plans'],['🎙 Words','words'],['🏠 Home','home'],['⚙ Settings','settings']]);
   if(!ss) return;
   if(v==='next'||v==='prev'){ if(!wasPaused) ssPause(false); ssGo(v==='next'?1:-1); return; }
   if(v==='pause'){ ssPause(!wasPaused); return; }
   if(!v || v==='stay'){ if(!wasPaused) ssPause(false); return; }
   while(scopes.length>1) popScope();   // leave the slideshow
-  if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings();
+  if(v==='today') openToday(); else if(v==='words') openWords(); else if(v==='settings') openSettings(); else if(v==='plans') planMenu();
 }
 $('#show').addEventListener('click',e=>{ if(ss && e.target.closest('#show') && !e.target.closest('.scrim')) slideMenu(); });
+// Peggy's planner (tasks, calendar, money, flights, diesel, us, links) is a full page; open it right here.
+const PLAN_TABS=[['✅ Tasks','tasks'],['📆 Calendar','calendar'],['💵 Money','money'],['✈️ Flights','flights'],['⛽ Diesel','fuel'],['💞 Us','us'],['🔗 Links','links']];
+function openPlan(tab){ location.href='plan.html#'+tab; }
+async function planMenu(){ const v=await menu('Plans',PLAN_TABS.map(([l,k])=>[l,k])); if(v) openPlan(v); }
 function slideKey(k){
   if(k==='left'||k==='rew'){ ssGo(-1); return true; }
   if(k==='right'||k==='ff'){ ssGo(1); return true; }

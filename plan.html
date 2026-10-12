@@ -1480,5 +1480,12 @@ document.addEventListener('peggytheme',()=>{ $('#logo').innerHTML=butterfly({siz
   }
 })();
 </script>
+<script>
+// On a TV's web browser: a button back to Peggy's TV screen.
+(function(){ if(!/AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(navigator.userAgent||'')) return;
+  var a=document.createElement('a'); a.href='tv.html'; a.textContent='📺 Back to TV';
+  a.style.cssText='position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);z-index:50;background:var(--accent,#e0558f);color:#fff;font-weight:800;padding:12px 18px;border-radius:999px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.3)';
+  document.body.appendChild(a); })();
+</script>
 </body>
 </html>

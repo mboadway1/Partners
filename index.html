@@ -17,7 +17,7 @@
 // Opened on a Fire TV or other TV browser? Go to Peggy's TV screen instead of the phone app.
 // (?phone on the address keeps the phone app, for testing.)
 (function(){ try{ var ua=navigator.userAgent||'';
-  if(!/[?&]phone\b/.test(location.search) && /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua))
+  if(!/[?&](phone|code|error)\b/.test(location.search) && !localStorage.getItem('peggy.authState') && /AFT[A-Z0-9]|Fire ?TV|Vega|SMART-?TV|SmartTV|\bTV\b|GoogleTV|Android TV|BRAVIA|Tizen|Web0S/i.test(ua))
     location.replace('tv.html'); }catch(e){} })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
