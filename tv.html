@@ -773,21 +773,25 @@ async function driveShown(d){
   const place=await drivePlace(d); if(ss && ss.items[ss.order[ss.pos]].drive===d && place){ cap.prepend(el('span',{textContent:place}), el('br')); cap.classList.remove('hidden'); }
 }
 // Today's calendar on the slideshow, above the clock and weather: what's still ahead today (all-day items first).
-const slideEv={list:[], at:0};
+const slideEv={list:[], at:0, note:''};
 async function loadSlideEvents(){
-  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){} if(!plan||!plan.session) return;
+  let plan=null; try{ plan=JSON.parse(store.get('partners.tvplan','null')); }catch(_){}
+  if(!plan||!plan.session){ slideEv.list=[]; slideEv.note='📅 Connect your phone to this screen to see today’s events'; return; }
   const start=new Date(); start.setHours(0,0,0,0);
   try{ const r=await fetch(plan.relay+'/api/agenda?days=1&from='+encodeURIComponent(start.toISOString()),{headers:{'X-Partners-Session':plan.session}});
-    if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); }catch(_){}
+    // An old pass (e.g. from before the relay moved) no longer works: forget it and ask for a fresh one.
+    if(r.status===401||r.status===403){ store.set('partners.tvplan',''); slideEv.list=[]; slideEv.note='📅 Connect your phone to this screen again to see today’s events'; return; }
+    if(!r.ok) return; const d=await r.json(); slideEv.list=d.events||[]; slideEv.at=Date.now(); slideEv.note=''; }catch(_){}
 }
 function todayLines(){
   const k=ymdL(new Date()), now=Date.now();
   return slideEv.list.filter(ev=> ev.start.date ? (ev.start.date<=k && ev.end.date>k) : (ymdL(new Date(ev.start.dateTime))===k && Date.parse(ev.end.dateTime||ev.start.dateTime)>now))
     .sort((a,b)=>(a.start.dateTime||'').localeCompare(b.start.dateTime||''))
-    .slice(0,5).map(ev=>({t: ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'All day', s: ev.summary||'(No title)', c: ev.color||''}));
+    .slice(0,5).map(ev=>({t: ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : 'All day', s: ev.title||ev.summary||'(No title)', c: ev.color||''}));
 }
 function tickClock(){ const c=$('#dClock'); c.replaceChildren();
   const ls=todayLines(); if(ls.length){ const box=el('div',{className:'dEvents'}); ls.forEach(x=>{ const r=el('div',{className:'dEv'}); r.append(el('b',{textContent:x.t}),' ',x.s); if(x.c) r.style.borderColor=x.c; box.append(r); }); c.append(box); }
+  else if(slideEv.note){ const box=el('div',{className:'dEvents'}); box.append(el('div',{className:'dEv',textContent:slideEv.note})); c.append(box); }
   c.append(new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}));
   if(wx.line) c.append(el('small',{textContent:wx.line})); }
 /* ---------- local weather (Open-Meteo, no key needed) ----------

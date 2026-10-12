@@ -33,7 +33,23 @@ async function partnersLoad(){
   const mine = (d.members||[]).find(m=>m.email===partnersMyEmail());
   if (mine && mine.theme && typeof setPartnersTheme==='function' && typeof partnersThemeName==='function' && mine.theme!==partnersThemeName()){ partnersSyncing=true; setPartnersTheme(mine.theme); partnersSyncing=false; }
   document.dispatchEvent(new CustomEvent('partners', { detail:d }));
+  partnersEnsureCalendars();
   return d;
+}
+// The TV shows each partner's chosen calendars. If the relay doesn't have my choices yet (e.g. a new relay),
+// send them now from Google, so today's events appear on the TV without opening the Calendar tab first.
+async function partnersEnsureCalendars(){
+  const a=partnersAuth(); if (!a || !a.full || typeof gapi!=='function') return;
+  try{ if (Date.now()-(+localStorage.getItem('partners.calPrefsAt')||0) < 6*3600e3) return; }catch(_){}
+  try{
+    const prefs = await (await partnersFetch('prefs')).json();
+    if (!(prefs.calendars||[]).length){
+      const d = await gapi('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250');
+      prefs.calendars = (d.items||[]).filter(c=>!c.hidden).map(c=>({ id:c.id, name:c.summaryOverride||c.summary, color:c.backgroundColor||'#D1386E', show: !!c.primary || !!c.selected }));
+      if (prefs.calendars.length) await partnersFetch('prefs', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(prefs) });
+    }
+    localStorage.setItem('partners.calPrefsAt', String(Date.now()));
+  }catch(_){}
 }
 let partnersSyncing=false;
 async function partnersSaveProfile(fields){
