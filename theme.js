@@ -131,7 +131,7 @@ html.framed .bnav .notv,html.wide.framed:not(.tv) .bnav .notv{display:none!impor
 (function(){
   const NAV={photos:'photos',tasks:'tasks',calendar:'calendar',money:'money',flights:'flights',fuel:'fuel',us:'us',links:'links',mail:'mail'};
   const auth=()=>{ try{ const s=localStorage.getItem('partners.session'); if(!s) return null;
-      const relay=((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,'');
+      const relay=((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,'');
       return {s,relay}; }catch(_){ return null; } };
   const call=async(path,body)=>{ const a=auth(); if(!a) throw new Error('Not signed in');
     const r=await fetch(a.relay+'/api/'+path,{method:body?'POST':'GET',headers:{'X-Partners-Session':a.s,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});

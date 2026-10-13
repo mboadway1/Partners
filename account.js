@@ -3,7 +3,7 @@
 'use strict';
 const PARTNERS = {
   clientId: '68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com',
-  relay: (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev'),
+  relay: (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev'),
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/tasks',
@@ -20,7 +20,7 @@ const acct = {
 const partnersRedirect = () => location.origin + location.pathname.replace(/[^/]*$/,'');   // the Partners folder, e.g. …/Partners/
 
 // On ezRAD.com, sign-in uses ezRAD.com's Google project (one for every app): ask the server which one.
-const PARTNERS_ON_EZRAD = /(^|\.)ezrad\.com$/.test(location.hostname);
+const PARTNERS_ON_EZRAD = /(^|\.)ezrad\.com$|\.pages\.dev$/.test(location.hostname);   // ezrad.com, or Cloudflare's free address before go-live
 async function partnersGoogleClient(){
   if (!PARTNERS_ON_EZRAD) return acct.clientId;
   try{ const c=localStorage.getItem('partners.clientId'); if (c) return c;

@@ -806,7 +806,7 @@ async function driveShown(d){
 // or this computer's own Partners sign-in (Chromebook), so a signed-in Chromebook never needs the phone.
 function tvPass(){
   try{ const p=JSON.parse(store.get('partners.tvplan','null')); if(p && p.session) return p; }catch(_){}
-  try{ const s=localStorage.getItem('partners.session'); if(s) return { session:s, relay:((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''), own:true }; }catch(_){}
+  try{ const s=localStorage.getItem('partners.session'); if(s) return { session:s, relay:((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''), own:true }; }catch(_){}
   return null;
 }
 (function(){ let t; const wake=()=>{ document.documentElement.classList.remove('still'); clearTimeout(t); t=setTimeout(()=>document.documentElement.classList.add('still'),3000); };

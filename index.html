@@ -434,7 +434,7 @@ const SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
 const cfg = {
   // Michael's Google OAuth client (not a secret); a value saved in Settings overrides it.
   get clientId(){ return (localStorage.getItem('partners.clientId')||'').trim() || '68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com'; },
-  get relay(){ return ((localStorage.getItem('partners.relay')||'').trim() || (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''); },
+  get relay(){ return ((localStorage.getItem('partners.relay')||'').trim() || (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''); },
 };
 
 
