@@ -19,14 +19,24 @@ const acct = {
 };
 const partnersRedirect = () => location.origin + location.pathname.replace(/[^/]*$/,'');   // the Partners folder, e.g. …/Partners/
 
+// On ezRAD.com, sign-in uses ezRAD.com's Google project (one for every app): ask the server which one.
+const PARTNERS_ON_EZRAD = /(^|\.)ezrad\.com$/.test(location.hostname);
+async function partnersGoogleClient(){
+  if (!PARTNERS_ON_EZRAD) return acct.clientId;
+  try{ const c=localStorage.getItem('partners.clientId'); if (c) return c;
+    const d = await (await fetch(acct.relay + '/api/config')).json(); if (d.googleClientId){ localStorage.setItem('partners.clientId', d.googleClientId); return d.googleClientId; } }catch(_){}
+  return acct.clientId;
+}
+if (PARTNERS_ON_EZRAD) partnersGoogleClient();
 // Send the person to Google; they come back to Partners' main page, which finishes and returns them to `returnTo`.
-function partnersSignIn(returnTo){
+async function partnersSignIn(returnTo){
+  const clientId = await partnersGoogleClient();
   const state = Math.random().toString(36).slice(2)+Date.now().toString(36);
   localStorage.setItem('partners.authState', state);
   let framed=false; try{ framed = window.top!==window && window.top.location.origin===location.origin; }catch(_){}
   localStorage.setItem('partners.authReturn', framed ? 'tv.html' : (returnTo || location.pathname.split('/').pop() + location.hash));
   (framed ? window.top : window).location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-    client_id: acct.clientId, redirect_uri: partnersRedirect(), response_type: 'code', scope: PARTNERS.scopes.join(' '),
+    client_id: clientId, redirect_uri: partnersRedirect(), response_type: 'code', scope: PARTNERS.scopes.join(' '),
     access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', state });
 }
 // Called on page load. Returns the page to go back to after a successful sign-in, or null.

@@ -93,6 +93,8 @@ async function api(req, env, url, cors) {
   const emails = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const body = async () => { try { return await req.json(); } catch { return {}; } };
 
+  if (path === 'config' && req.method === 'GET') return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', msClientId: env.MS_CLIENT_ID || '' }, 200, cors);
+
   // --- sign-in with Google: exchange Google's one-time code for tokens, kept here so nobody has to sign in again ---
   // The two home members sign in as before. Anyone else gets (or reuses) their own Partners account; someone
   // already signed in with email and password connects Google to that account instead (for Calendar and Photos).
@@ -116,11 +118,11 @@ async function api(req, env, url, cors) {
         await KV.put('acct:' + gmail, JSON.stringify(a)); }
       else if (invite && !a.couple) { const j = await joinCouple(KV, a, invite); if (j.error) return json(j, 400, cors); await KV.put('acct:' + gmail, JSON.stringify(a)); }
     }
-    const user = (await KV.get('user:' + email, 'json')) || { email };
+    const user = (await getUser(env, KV, email)) || { email };
     Object.assign(user, { name: user.name && email !== gmail ? user.name : (claims.given_name || claims.name || email.split('@')[0]), fullName: claims.name || '', picture: claims.picture || '',
       google: gmail, access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000, scope: t.scope });
     if (t.refresh_token) user.refresh = t.refresh_token;
-    await KV.put('user:' + email, JSON.stringify(user));
+    await putUser(env, KV, email, (user));
     if (!session) { session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() })); }
     return json({ session, me: publicUser(user), access_token: t.access_token, expires_in: t.expires_in - 60, scope: t.scope }, 200, cors);
   }
@@ -136,7 +138,7 @@ async function api(req, env, url, cors) {
     if (j && j.error) return json(j, 400, cors);
     if (!j) a.couple = (await newCouple(KV, email)).id;
     await KV.put('acct:' + email, JSON.stringify(a));
-    await KV.put('user:' + email, JSON.stringify({ email, name: a.name }));
+    await putUser(env, KV, email, ({ email, name: a.name }));
     const session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
     return json({ session, me: publicUser({ email, name: a.name }) }, 200, cors);
   }
@@ -148,7 +150,7 @@ async function api(req, env, url, cors) {
     const ok = a && a.pw && await pwCheck(String(b.password || ''), a.pw);
     if (!ok) { await KV.put(rl, String(tries + 1), { expirationTtl: 900 });
       return json({ error: a && !a.pw ? 'This account uses Google. Tap “Continue with Google”.' : 'That email and password don’t match.' }, 401, cors); }
-    const u = (await KV.get('user:' + email, 'json')) || { email, name: a.name };
+    const u = (await getUser(env, KV, email)) || { email, name: a.name };
     const session = token(); await KV.put('session:' + session, JSON.stringify({ email, ro: false, created: Date.now() }));
     return json({ session, me: publicUser(u) }, 200, cors);
   }
@@ -221,7 +223,7 @@ async function api(req, env, url, cors) {
 
   if (path === 'auth/token' && req.method === 'GET') {
     if (!full) return json({ error: 'Read-only' }, 403, cors);
-    const user = await KV.get('user:' + s.email, 'json');
+    const user = await getUser(env, KV, s.email);
     const t = await accessFor(env, KV, user);
     // Not a Partners sign-in problem (that's 401): this account just has no working Google connection.
     if (!t) return json({ error: user && user.google ? 'Google sign-in expired. Connect Google again in Settings → Account.' : 'Connect your Google account first (Settings → Account → Connect Google).', google: true }, 412, cors);
@@ -232,13 +234,13 @@ async function api(req, env, url, cors) {
     return json({ ok: true }, 200, cors);
   }
   if (path === 'me' && req.method === 'GET') {
-    const user = await KV.get('user:' + s.email, 'json');
+    const user = await getUser(env, KV, s.email);
     return json({ me: publicUser(user || { email: s.email }), readOnly: !full, couple: coupleView(cp, s.email) }, 200, cors);
   }
   if (path === 'members' && req.method === 'GET') {
     const list = [];
     for (const e of cp.members) {
-      const u = await KV.get('user:' + e, 'json'), pr = (await KV.get('profile:' + e, 'json')) || {};
+      const u = await getUser(env, KV, e), pr = (await KV.get('profile:' + e, 'json')) || {};
       const m = publicUser(u || { email: e });
       if (pr.name) m.name = pr.name;          // the name each partner chose in Settings
       m.color = pr.color || ''; m.theme = pr.theme || '';
@@ -346,7 +348,7 @@ async function api(req, env, url, cors) {
     const { images, tone, about, draft } = await body();
     const pics = (Array.isArray(images) ? images : []).filter(x => typeof x === 'string' && x.length < 1500000).slice(0, 4);
     if (!pics.length) return json({ error: 'No photos sent' }, 400, cors);
-    const user = await KV.get('user:' + s.email, 'json');
+    const user = await getUser(env, KV, s.email);
     const TONES = { warm: 'warm and friendly', funny: 'light and playful, gently funny', short: 'very short (a few words) and sweet', heartfelt: 'heartfelt and sincere', excited: 'upbeat and excited' };
     const ask = [
       `Write 3 different Facebook captions for ${pics.length > 1 ? 'these ' + pics.length + ' photos, posted together' : 'this photo'}.`,
@@ -482,7 +484,7 @@ async function api(req, env, url, cors) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'This needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
     const { text, to } = await body();
     if (!text || typeof text !== 'string') return json({ error: 'Write what you want to say first' }, 400, cors);
-    const user = await KV.get('user:' + s.email, 'json');
+    const user = await getUser(env, KV, s.email);
     const ask = [
       `${(user && user.name) || 'Someone'} wants to raise something with their partner${to ? ' ' + String(to).slice(0, 40) : ''}. Below is what they wrote, possibly in the heat of the moment.`,
       'Rewrite it as 3 short alternatives they could actually say or text. Use a gentle start-up: describe the situation without blame or "you always/never", say how they feel ("I feel…"), and ask for something specific and positive ("Could we…"). Keep their real concern and meaning; don’t water it down to nothing, and don’t add things they didn’t say. Warm, natural, first person, no therapy jargon.',
@@ -500,7 +502,7 @@ async function api(req, env, url, cors) {
   if (path === 'concern-ai' && req.method === 'POST' && full) {
     if (!env.ANTHROPIC_API_KEY) return json({ error: 'This needs an ANTHROPIC_API_KEY secret in the relay’s settings.' }, 500, cors);
     const b = await body(), mode = String(b.mode || ''), cut = (v, n) => String(v || '').slice(0, n);
-    const user = await KV.get('user:' + s.email, 'json'), me = (user && user.name) || 'Someone', other = cut(b.partner, 40) || 'their partner';
+    const user = await getUser(env, KV, s.email), me = (user && user.name) || 'Someone', other = cut(b.partner, 40) || 'their partner';
     const feelings = Array.isArray(b.feelingKeys) ? b.feelingKeys.slice(0, 20).map(x => cut(x, 20)) : [];
     const c = b.concern || {}, thread = [
       c.about && `What happened: ${cut(c.about, 1500)}`, c.feelings && c.feelings.length && `Feelings: ${c.feelings.map(x => cut(x, 30)).join(', ')}`,
@@ -631,7 +633,7 @@ async function api(req, env, url, cors) {
     const to = new Date(from.getTime() + days * 86400000);
     const seen = new Set(), events = [], problems = [];
     for (const e of cp.members) {
-      const user = await KV.get('user:' + e, 'json'); if (!user || !user.refresh) continue;
+      const user = await getUser(env, KV, e); if (!user || !user.refresh) continue;
       const prefs = (await KV.get('prefs:' + e, 'json')) || {};
       const cals = (prefs.calendars || []).filter(c => c.show !== false);
       const hid = new Set((prefs.hiddenNames || []).map(n => String(n).toLowerCase()));   // events this person chose to hide by name
@@ -698,9 +700,9 @@ async function accessFor(env, KV, user) {
   if (user.access && user.exp > Date.now() + 30000) return { access_token: user.access, expires_in: Math.floor((user.exp - Date.now()) / 1000), scope: user.scope };
   if (!user.refresh) return null;
   const t = await googleToken(env, { refresh_token: user.refresh, grant_type: 'refresh_token' });
-  if (t.error) { if (t.error === 'invalid_grant') { delete user.refresh; await KV.put('user:' + user.email, JSON.stringify(user)); } return null; }
+  if (t.error) { if (t.error === 'invalid_grant') { delete user.refresh; await putUser(env, KV, user.email, (user)); } return null; }
   user.access = t.access_token; user.exp = Date.now() + (t.expires_in - 60) * 1000; if (t.scope) user.scope = t.scope;
-  await KV.put('user:' + user.email, JSON.stringify(user));
+  await putUser(env, KV, user.email, (user));
   return { access_token: t.access_token, expires_in: t.expires_in - 60, scope: user.scope };
 }
 // The app sends X-Partners-Session; pages that haven't updated yet still send the old header name.
@@ -715,6 +717,20 @@ async function claude(env, model, content, max_tokens) {
   return { text: (d.content || []).filter(c => c.type === 'text').map(c => c.text).join('') };
 }
 function jsonFrom(text, dflt) { try { const m = String(text).match(/[\[{][\s\S]*[\]}]/); return JSON.parse(m ? m[0] : text); } catch { return dflt; } }
+// Google sign-in tokens. The same storage can serve two Google projects at once (the old Partners relay and ezRAD.com):
+// with GOOGLE_SLOT set, this relay keeps its Google tokens in their own record so neither overwrites the other's.
+const G_FIELDS = ['refresh', 'access', 'exp', 'scope', 'google'];
+async function getUser(env, KV, email) {
+  const u = await KV.get('user:' + email, 'json'); if (!u || !env.GOOGLE_SLOT) return u;
+  const g = (await KV.get(`gtok:${env.GOOGLE_SLOT}:${email}`, 'json')) || {}, v = { ...u };
+  G_FIELDS.forEach(k => { if (g[k] !== undefined) v[k] = g[k]; else delete v[k]; }); return v;
+}
+async function putUser(env, KV, email, u) {
+  if (!env.GOOGLE_SLOT) return KV.put('user:' + email, JSON.stringify(u));
+  const g = {}, rest = { ...u }; G_FIELDS.forEach(k => { if (u[k] !== undefined) g[k] = u[k]; delete rest[k]; });
+  const old = (await KV.get('user:' + email, 'json')) || {}; G_FIELDS.forEach(k => { if (old[k] !== undefined) rest[k] = old[k]; });
+  await KV.put(`gtok:${env.GOOGLE_SLOT}:${email}`, JSON.stringify(g)); return KV.put('user:' + email, JSON.stringify(rest));
+}
 function publicUser(u) { return { email: u.email, name: u.name || u.email.split('@')[0], picture: u.picture || '', signedIn: !!u.refresh }; }
 function token() { const b = new Uint8Array(24); crypto.getRandomValues(b); return [...b].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function decodeJwt(j) { try { const p = j.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); return JSON.parse(decodeURIComponent(escape(atob(p + '==='.slice((p.length + 3) % 4))))); } catch { return {}; } }
@@ -869,7 +885,7 @@ async function imapFolders(cmd) {   // special folders by their flags (RFC 6154)
 }
 
 async function mailApi(req, env, KV, s, path, body, cors) {
-  const key = 'mail:accts:' + s.email, metaKey = 'mail:meta:' + s.email;
+  const slot = env.GOOGLE_SLOT ? env.GOOGLE_SLOT + ':' : '', key = 'mail:accts:' + slot + s.email, metaKey = 'mail:meta:' + slot + s.email;
   const accts = async () => (await KV.get(key, 'json')) || [];
   const save = list => KV.put(key, JSON.stringify(list));
   const pub = a => ({ id: a.id, kind: a.kind, address: a.address, color: a.color, provider: a.provider || '', added: a.added });
@@ -880,7 +896,7 @@ async function mailApi(req, env, KV, s, path, body, cors) {
   if (path === 'mail/accounts' && req.method === 'GET')
     return json({ accounts: (await accts()).map(pub), googleClientId: env.GOOGLE_CLIENT_ID || '', msClientId: env.MS_CLIENT_ID || '', ai: !!env.ANTHROPIC_API_KEY }, 200, cors);
   const dm = path.match(/^mail\/accounts\/([\w-]+)$/);
-  if (dm && req.method === 'DELETE') { await save((await accts()).filter(a => a.id !== dm[1])); await KV.delete('mail:tok:' + dm[1]); return json({ ok: true }, 200, cors); }
+  if (dm && req.method === 'DELETE') { await save((await accts()).filter(a => a.id !== dm[1])); await KV.delete('mail:tok:' + slot + dm[1]); return json({ ok: true }, 200, cors); }
 
   if (path === 'mail/connect/google' && req.method === 'POST') {
     const { code, redirect_uri } = await body();
@@ -891,7 +907,7 @@ async function mailApi(req, env, KV, s, path, body, cors) {
     const address = (decodeJwt(t.id_token).email || '').toLowerCase();
     if (!address) return json({ error: 'Google didn’t share the email address.' }, 400, cors);
     const a = await add({ id: token().slice(0, 12), kind: 'gmail', provider: 'Gmail', address, sec: await seal(env, { refresh: t.refresh_token }), added: Date.now() });
-    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    await KV.put('mail:tok:' + slot + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
     return json({ account: a }, 200, cors);
   }
   if (path === 'mail/connect/microsoft' && req.method === 'POST') {
@@ -902,7 +918,7 @@ async function mailApi(req, env, KV, s, path, body, cors) {
     const me = await (await fetch('https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName', { headers: { Authorization: 'Bearer ' + t.access_token } })).json().catch(() => ({}));
     const address = String(me.mail || me.userPrincipalName || decodeJwt(t.id_token).email || '').toLowerCase();
     const a = await add({ id: token().slice(0, 12), kind: 'ms', provider: 'Outlook', address, sec: await seal(env, { refresh: t.refresh_token }), added: Date.now() });
-    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    await KV.put('mail:tok:' + slot + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
     return json({ account: a }, 200, cors);
   }
   if (path === 'mail/connect/imap' && req.method === 'POST') {
@@ -918,12 +934,12 @@ async function mailApi(req, env, KV, s, path, body, cors) {
   const tm = path.match(/^mail\/token\/([\w-]+)$/);
   if (tm && req.method === 'GET') {
     const list = await accts(), a = list.find(x => x.id === tm[1]); if (!a || a.kind === 'imap') return json({ error: 'No such account' }, 404, cors);
-    const c = await KV.get('mail:tok:' + a.id, 'json'); if (c && c.exp > Date.now() + 60000) return json({ access_token: c.access, expires_in: Math.floor((c.exp - Date.now()) / 1000) }, 200, cors);
+    const c = await KV.get('mail:tok:' + slot + a.id, 'json'); if (c && c.exp > Date.now() + 60000) return json({ access_token: c.access, expires_in: Math.floor((c.exp - Date.now()) / 1000) }, 200, cors);
     const sec = await unseal(env, a.sec);
     const t = a.kind === 'gmail' ? await googleToken(env, { refresh_token: sec.refresh, grant_type: 'refresh_token' }) : await msToken(env, { refresh_token: sec.refresh, grant_type: 'refresh_token' });
     if (t.error) return json({ error: `${a.address} needs to be connected again (${t.error}).`, reconnect: true }, 409, cors);
     if (t.refresh_token && t.refresh_token !== sec.refresh) { a.sec = await seal(env, { refresh: t.refresh_token }); await save(list); }   // Microsoft hands out a new one each time
-    await KV.put('mail:tok:' + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
+    await KV.put('mail:tok:' + slot + a.id, JSON.stringify({ access: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 }), { expirationTtl: 3600 });
     return json({ access_token: t.access_token, expires_in: t.expires_in - 60 }, 200, cors);
   }
 
