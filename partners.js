@@ -7,7 +7,7 @@ function partnersAuth(){
   try{ if (typeof acct!=='undefined' && acct.session) return { relay:acct.relay, session:acct.session, full:true }; }catch(_){}
   try{ const p=JSON.parse(localStorage.getItem('partners.tvplan')||'null'); if (p && p.session) return { relay:p.relay, session:p.session, full:false }; }catch(_){}
   // A computer showing the TV screen uses its own sign-in.
-  try{ const s=localStorage.getItem('partners.session'); if (s) return { relay:((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''), session:s, full:false }; }catch(_){}
+  try{ const s=localStorage.getItem('partners.session'); if (s) return { relay:((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-com.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,''), session:s, full:false }; }catch(_){}
   return null;
 }
 async function partnersFetch(path, opts={}){

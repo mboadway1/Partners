@@ -3,7 +3,7 @@
 'use strict';
 const PARTNERS = {
   clientId: '68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com',
-  relay: (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-api.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev'),
+  relay: (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':/\.pages\.dev$/.test(location.hostname)?'https://ezrad-com.mboadway1.workers.dev/partners':'https://ezrad-partners-relay.mboadway1.workers.dev'),
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/tasks',
