@@ -956,14 +956,19 @@ function musicEl(){
   if(music.el) return music.el;
   const a=el('audio',{id:'musicAudio',preload:'none'}); document.body.append(a);
   a.addEventListener('ended',()=>{ if(musicCfg.mode==='drive') musicNext(); });
-  a.addEventListener('playing',()=>{ music.fails=0; musicStatus('Playing'); });
+  a.addEventListener('playing',()=>{ music.fails=0; music.streak=[]; musicStatus('Playing'); });
   a.addEventListener('waiting',()=>{ musicStatus('Loading the song…'); });
   a.addEventListener('error',()=>{ if(!a.getAttribute('src')) return; music.fails++;
     const codes={1:'stopped',2:'network problem',3:'can’t decode this file',4:'Google wouldn’t send this file or it isn’t a supported format'};
     musicStatus('Couldn’t play: '+(codes[a.error&&a.error.code]||'unknown problem'));
     // Google's file API sometimes refuses media for a key; Drive's public download link usually works for shared files.
     if(musicCfg.mode==='drive' && music.cur && !music.triedAlt){ music.triedAlt=true; a.src=`https://drive.google.com/uc?export=download&id=${music.cur.id}`; music.fails--; return musicPlay(); }
-    if(musicCfg.mode==='drive' && music.fails<5) return musicNext();
+    // A song that won't play is skipped straight away and never picked again (it joins the hidden songs, marked “couldn’t play”).
+    // If five fail in a row it's probably the connection or Google, not the songs, so those five are let back in and it retries later.
+    if(musicCfg.mode==='drive' && music.cur){ const f=music.cur, l=musicSkip.list;
+      if(!l.some(x=>x.id===f.id)){ l.push({id:f.id,name:f.name,broken:1}); musicSkip.list=l; } (music.streak=music.streak||[]).push(f.id);
+      if(music.fails<5) return musicNext();
+      const back=new Set(music.streak); musicSkip.list=musicSkip.list.filter(x=>!(x.broken && back.has(x.id))); music.streak=[]; }
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
     const why=(codes[a.error&&a.error.code]||'unknown problem');
     music.now=''; music.title=music.artist=''; musicBanner(); musicToast(musicCfg.mode==='radio'?'That station isn’t playing right now. Trying again in a minute.':`Songs aren’t playing right now (${why}). Trying again in a minute.`,6000);
@@ -1052,7 +1057,10 @@ function musicPick(){
   try{ localStorage.setItem('partners.music.played',JSON.stringify([...played])); }catch(_){}
   return f;
 }
-function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false; if(!f){ musicToast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
+function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false;
+  if(!f && music.streak && music.streak.length){ const back=new Set(music.streak); musicSkip.list=musicSkip.list.filter(x=>!(x.broken && back.has(x.id))); music.streak=[];
+    musicToast('Songs aren’t playing right now. Trying again in a minute.',6000); clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode==='drive'){ music.fails=0; musicNext(); } },60000); return; }
+  if(!f){ musicToast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
   a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); music.title=f.title||f.name; music.artist=f.artist||''; musicPlay(); musicBanner(); }
 // When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
 function musicBanner(){
@@ -1095,7 +1103,7 @@ async function openMusic(){
     if(v==='toggle'){ if(playing) music.el.pause(); else if(music.el && music.el.getAttribute('src')) musicPlay(); else musicStart(); continue; }
     if(v==='next'){ musicNext(); continue; }
     if(v==='hide'){ const n=music.cur&&music.cur.name; musicHide(music.cur); musicToast(`Hidden: ${n}. It won’t play again.`,4000); continue; }
-    if(v==='hidden'){ const h=musicSkip.list, pick=await menu('Hidden songs',[...h.slice(-30).reverse().map(x=>['↩ Play again: '+x.name.slice(0,50),x.id]),['Back',null]],'Choose one to bring it back.');
+    if(v==='hidden'){ const h=musicSkip.list, pick=await menu('Hidden songs',[...h.slice(-30).reverse().map(x=>['↩ Play again: '+x.name.slice(0,50)+(x.broken?' (couldn’t play)':''),x.id]),['Back',null]],'Choose one to bring it back.');
       if(pick){ musicSkip.list=h.filter(x=>x.id!==pick); musicToast('It’s back in the mix.',3000); } continue; }
     if(v==='off'){ musicCfg.mode='off'; musicStop(); continue; }
     if(v==='when'){ musicCfg.when=musicCfg.when==='always'?'slideshow':'always'; if(musicCfg.when==='slideshow' && !drive.clock) musicStop(); else if(musicCfg.when==='always' && mode!=='off' && !playing) musicStart(); continue; }

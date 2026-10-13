@@ -947,7 +947,7 @@ async function importGoogleTasks(){
    new tasks, edits, done/undone, deletes, subtasks, order and moves between lists. It runs on the phone or computer
    of the person who linked the list (it uses their Google sign-in), every few minutes while Partners is open. */
 const G_TL='https://tasks.googleapis.com/tasks/v1';
-const PARTNERS_VER='133';
+const PARTNERS_VER='134';
 let gSyncing=false, gNeedScope=false, gApplying=false, gKickT=null, gLastErr='';
 let gLast=+tget('gsyncAt',0)||0;
 const gDirty=t=>!!t.gdirty;   // changed in Partners since the last sync
