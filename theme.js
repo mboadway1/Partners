@@ -125,3 +125,64 @@ html.framed .bnav .notv,html.wide.framed:not(.tv) .bnav .notv{display:none!impor
       a.innerHTML=`<svg class="ic" viewBox="0 0 24 24">${ICON[k]}</svg>${l}`; nav.insertBefore(a, more); } };
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', add); else add();
 })();
+
+/* ---------- Pay per feature (when Partners runs on ezRAD.com): show only the features this couple can use ----------
+   The relay answers /api/features with { perFeature, keys, list, trial }. On the old relay (404) nothing changes. */
+(function(){
+  const NAV={photos:'photos',tasks:'tasks',calendar:'calendar',money:'money',flights:'flights',fuel:'fuel',us:'us',links:'links',mail:'mail'};
+  const auth=()=>{ try{ const s=localStorage.getItem('partners.session'); if(!s) return null;
+      const relay=((localStorage.getItem('partners.relay')||'').trim()||(/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev')).replace(/\/+$/,'');
+      return {s,relay}; }catch(_){ return null; } };
+  const call=async(path,body)=>{ const a=auth(); if(!a) throw new Error('Not signed in');
+    const r=await fetch(a.relay+'/api/'+path,{method:body?'POST':'GET',headers:{'X-Partners-Session':a.s,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+    const d=await r.json().catch(()=>({})); if(!r.ok){ const e=new Error(d.error||('Error '+r.status)); e.status=r.status; throw e; } return d; };
+  const cached=()=>{ try{ return JSON.parse(localStorage.getItem('partners.features')||'null'); }catch(_){ return null; } };
+  window.partnersHas=k=>{ const f=cached(); return !f||!f.perFeature||(f.keys||[]).includes(k); };
+  function apply(f){
+    if(!f||!f.perFeature) return; const keys=new Set(f.keys||[]);
+    document.querySelectorAll('.bnav a[data-k], .moremenu a').forEach(a=>{ const k=a.dataset.k||((a.getAttribute('href')||'').split('#')[1]||''); if(NAV[k]){ if(keys.has(NAV[k])) a.style.removeProperty('display'); else a.style.setProperty('display','none','important'); } });
+    const extra=(f.list||[]).filter(x=>!keys.has(x.key)&&x.forSale);
+    const nav=document.querySelector('.bnav'), more=nav&&nav.querySelector('.more'), menu=document.querySelector('.moremenu');
+    let b=document.querySelector('.bnav .ezmore'); if(b) b.remove(); let m=document.querySelector('.moremenu .ezmore'); if(m) m.remove();
+    if(!extra.length||!nav) return;
+    b=document.createElement('a'); b.href='#features'; b.className='ezmore wideonly'; b.title='Add features';
+    b.innerHTML='<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>More features'; b.onclick=e=>{ e.preventDefault(); shop(); };
+    if(more) nav.insertBefore(b,more); else nav.append(b);
+    if(menu){ m=document.createElement('a'); m.href='#features'; m.className='ezmore'; m.innerHTML='<span style="font-size:20px">＋</span><span>More features<small>Add what you’d like to use</small></span>'; m.onclick=e=>{ e.preventDefault(); menu.hidden=true; shop(); }; menu.append(m); }
+  }
+  async function refresh(force){ const c=cached(); if(c) apply(c);
+    if(!auth() || (!force && c && Date.now()-(c.at||0)<5*60e3)) return;
+    try{ const f=await call('features'); f.at=Date.now(); localStorage.setItem('partners.features',JSON.stringify(f)); apply(f); }
+    catch(e){ if(e.status===404){ localStorage.setItem('partners.features',JSON.stringify({perFeature:false,at:Date.now()})); } } }
+  window.partnersFeaturesRefresh=refresh;
+  async function shop(){
+    let f; try{ f=await call('features'); }catch(e){ return alert(e.message); }
+    const fmt=c=>'$'+(c/100).toFixed(2), h=(t,s)=>{ const e=document.createElement(t); if(s) e.style.cssText=s; return e; };
+    const wrap=h('div','position:fixed;inset:0;z-index:9999;'); wrap.className='ezshop-open'; wrap.style.cssText+=('background:rgba(40,16,40,.45);display:flex;align-items:flex-end;justify-content:center');
+    const box=h('div','background:var(--panel);color:var(--text);width:100%;max-width:540px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 20px)');
+    const t=h('h3','margin:0 0 4px;font:600 21px var(--display,inherit)'); t.textContent='Partners features'; box.append(t);
+    const sub=h('p','margin:0 0 12px;color:var(--dim);font-size:14px'); sub.textContent=f.trial?'You can use everything during your free trial. Pick what to keep.':'Pay only for what you use. Add or remove any time.'; box.append(sub);
+    const paid=new Set(f.paid||[]), given=new Set(f.given||[]); let iv='month'; const ivRow=h('div','display:flex;gap:6px;margin-bottom:10px');
+    if(!paid.size) ['month','year'].forEach(k=>{ const b=h('button','flex:1;border-radius:999px;min-height:40px'); b.textContent=k==='month'?'Monthly':'Yearly'; b.dataset.k=k; b.onclick=()=>{ iv=k; draw(); }; ivRow.append(b); });
+    box.append(ivRow); const list=h('div'); box.append(list); const pick=new Set();
+    const go=h('button','width:100%;margin-top:12px'); go.className='primary'; const cl=h('button','width:100%;margin-top:6px'); cl.className='ghost'; cl.textContent='Close'; cl.onclick=()=>wrap.remove();
+    const draw=()=>{ ivRow.querySelectorAll('button').forEach(b=>{ const on=b.dataset.k===iv; b.style.background=on?'var(--accent)':'var(--panel2)'; b.style.color=on?'#fff':'inherit'; });
+      list.replaceChildren(); let tot=0;
+      (f.list||[]).filter(x=>x.forSale||x.free||paid.has(x.key)||given.has(x.key)).forEach(x=>{
+        const owned=paid.has(x.key)||given.has(x.key)||x.free, row=h('label','display:flex;gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line)');
+        const cb=h('input','width:22px;height:22px;accent-color:var(--accent);flex:none'); cb.type='checkbox'; cb.checked=owned||pick.has(x.key); cb.disabled=x.free||given.has(x.key);
+        cb.onchange=async()=>{ if(owned){ if(!cb.checked && confirm(`Stop paying for ${x.name}? You keep it until the end of what you’ve paid for.`)){ try{ await call('billing/features',{remove:[x.key]}); wrap.remove(); refresh(true); }catch(e){ alert(e.message); cb.checked=true; } } else cb.checked=true; return; }
+          cb.checked?pick.add(x.key):pick.delete(x.key); draw(); };
+        const tx=h('span','flex:1;min-width:0'); const nb=h('b'); nb.textContent=(x.icon?x.icon+' ':'')+x.name; const ds=h('small','display:block;color:var(--dim);font-size:13px'); ds.textContent=x.description||''; tx.append(nb,ds);
+        const pr=h('span','font-weight:800;white-space:nowrap'); pr.textContent=x.free?'Free':given.has(x.key)?'Included':paid.has(x.key)?'✓ Yours':(iv==='year'?fmt(x.yearCents)+'/yr':fmt(x.monthCents)+'/mo');
+        if(pick.has(x.key)) tot+=iv==='year'?x.yearCents:x.monthCents; row.append(cb,tx,pr); list.append(row); });
+      go.textContent=pick.size?`Add ${pick.size} for ${fmt(tot)}/${iv==='year'?'yr':'mo'}`:'Tick the features you want'; go.disabled=!pick.size; };
+    go.onclick=async()=>{ go.disabled=true; go.textContent='One moment…';
+      try{ const d=await call('billing/features',{add:[...pick],interval:iv,success_url:location.href,cancel_url:location.href}); if(d.url){ location.href=d.url; return; } wrap.remove(); refresh(true); }
+      catch(e){ alert(e.message); draw(); } };
+    box.append(go,cl); wrap.append(box); wrap.addEventListener('click',e=>{ if(e.target===wrap) wrap.remove(); }); document.body.append(wrap); draw(); }
+  window.partnersShop=shop;
+  const start=()=>setTimeout(()=>refresh(false),50);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refresh(false); });
+})();

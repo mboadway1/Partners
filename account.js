@@ -3,7 +3,7 @@
 'use strict';
 const PARTNERS = {
   clientId: '68594475798-uselqr3ae7tkirld3vv0sam5hgbjameu.apps.googleusercontent.com',
-  relay: 'https://ezrad-partners-relay.mboadway1.workers.dev',
+  relay: (/(^|\.)ezrad\.com$/.test(location.hostname)?'https://api.ezrad.com/partners':'https://ezrad-partners-relay.mboadway1.workers.dev'),
   scopes: ['openid', 'email', 'profile',
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/tasks',
@@ -66,7 +66,9 @@ async function partnersApi(path, opts={}){
   const d = await r.json().catch(()=>({}));
   if (!r.ok){ const e=new Error(d.error || ('Error '+r.status)); e.status=r.status; e.reauth=!!d.reauth; if (e.status===401) acct.clear();
     // Free trial over and no plan yet: show the plans.
-    if (e.status===402 && !/account\.html$/.test(location.pathname) && window.top===window) location.href='account.html?ended=1';
+    // A feature this couple doesn't have (Partners on ezRAD.com): offer it. Trial over with nothing at all: show the plans.
+    if (e.status===402 && d.feature){ e.feature=d.feature; }   // a feature this couple doesn't have: the page offers it
+    else if (e.status===402 && !/account\.html$/.test(location.pathname) && window.top===window) location.href='account.html?ended=1';
     throw e; }
   return d;
 }

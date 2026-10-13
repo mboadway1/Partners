@@ -531,6 +531,10 @@ function render(){
   const v=$('#view');
   if(!acct.session){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden'); return renderSignIn(v); }
   $('#addBtn').classList.remove('hidden');
+  // Partners on ezRAD.com: a section this couple hasn't added yet offers it instead.
+  if(typeof partnersHas==='function' && !partnersHas(tab)){ $('#chips').replaceChildren(); $('#addBtn').classList.add('hidden');
+    const b=el('button',{className:'primary',textContent:`Add ${SECT[tab]}`}); b.onclick=()=>partnersShop();
+    return v.replaceChildren(el('div',{className:'empty'},el('h3',{textContent:`${SECT[tab]} isn’t part of your plan yet`}),el('p',{textContent:'Pay only for the features you use. Add it any time.'}),b)); }
   if(tab==='tasks') renderTasks(v); else if(tab==='calendar') renderCalendar(v); else if(tab==='money') renderMoney(v); else if(tab==='flights') renderFlights(v); else if(tab==='fuel') renderFuel(v); else if(tab==='us') renderUs(v); else if(tab==='mail'){ if(typeof renderMail==='function') renderMail(v); else v.replaceChildren(el('p',{className:'spin',textContent:'Opening Mail…'})); } else renderLinks(v);
 }
 function renderSignIn(v){

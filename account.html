@@ -32,6 +32,7 @@ button:disabled{opacity:.6}
 .plan{position:relative;text-align:center;border:2px solid var(--line);border-radius:16px;padding:16px 10px;background:var(--panel)}
 .plan.best{border-color:var(--accent)} .plan .amt{font:600 30px var(--display)} .plan .per{color:var(--dim);font-weight:800;font-size:13px}
 .plan button{width:100%;margin-top:10px}
+.fhave{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0} .fhave .pill{background:var(--panel2);border-radius:999px;padding:4px 10px;font-weight:800;font-size:14px}
 .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-weight:800;font-size:11px;padding:3px 10px;border-radius:999px;white-space:nowrap}
 .code{font:600 30px var(--display);letter-spacing:.18em;text-align:center;background:var(--panel2);border-radius:14px;padding:10px}
 .copyrow{display:flex;gap:8px;margin-top:8px} .copyrow button{flex:1}
@@ -85,6 +86,23 @@ function planChoices(note){
   box.append(plans, el('p',{className:'muted',textContent:'One plan covers both of you on every device. Payments are handled securely by Stripe. Cancel anytime.'}));
   return box;
 }
+// Partners on ezRAD.com: pay per feature instead of one plan.
+async function renderFeatures(c){
+  let f; try{ f=await partnersApi('features'); }catch(_){ return false; } if(!f||!f.perFeature) return false;
+  try{ localStorage.setItem('partners.features',JSON.stringify({...f,at:Date.now()})); }catch(_){}
+  $('planCard').querySelector('h2').textContent='Your features';
+  const box=$('plan'), have=(f.list||[]).filter(x=>(f.keys||[]).includes(x.key)), left=Math.max(0,Math.ceil(((f.trialEnds||0)-Date.now())/864e5));
+  const lines=[];
+  if(c.id==='home'||f.all&&!f.trial) lines.push(el('p',{innerHTML:'<b>Everything is included</b> for you.'}));
+  else if(f.trial) lines.push(el('p',{innerHTML:`<b>Free trial</b>: ${left} day${left===1?'':'s'} left. You can use every feature until then; pick the ones to keep.`}));
+  else if(!have.length) lines.push(el('p',{innerHTML:'<b>Your free trial has ended.</b> Pick the features you want to keep using. Everything you added is still here.'}));
+  if(have.length && !f.trial && !(c.id==='home')) lines.push(el('div',{className:'fhave'},...have.map(x=>el('span',{className:'pill',textContent:`${x.icon||''} ${x.name}`}))));
+  const pick=el('button',{className:'primary',textContent:f.trial||!have.length?'Choose features':'Add or remove features',style:'width:100%;margin-top:10px'}); pick.onclick=()=>partnersShop();
+  if(c.id!=='home') lines.push(pick);
+  if((f.paid||[]).length){ const m=el('button',{textContent:'Billing, receipts and card',style:'width:100%;margin-top:8px'}); m.onclick=()=>portal(m); lines.push(m); }
+  lines.push(el('p',{className:'muted',textContent:'Pay only for the features you use; one subscription covers both of you on every device. Payments are handled securely by Stripe.'}));
+  box.replaceChildren(...lines); return true;
+}
 function renderPlan(c){
   const p=c.plan, box=$('plan'), left=Math.max(0,Math.ceil((p.trialEnds-Date.now())/864e5));
   const manage=()=>{ const b=el('button',{textContent:'Manage subscription, card or invoices'}); b.onclick=()=>portal(b); return b; };
@@ -131,7 +149,7 @@ function renderMe(me){
 let tries=0;
 async function load(){
   try{ const [d,m]=await Promise.all([partnersApi('me'), partnersApi('members')]);
-    renderPlan(d.couple); renderCouple(d.couple, m.members||[]); renderGoogle(d.me); renderMe(d.me);
+    if(!await renderFeatures(d.couple)) renderPlan(d.couple); renderCouple(d.couple, m.members||[]); renderGoogle(d.me); renderMe(d.me);
     // Just paid: Stripe tells the relay within a few seconds.
     if(q.get('paid') && !['active','trialing'].includes(d.couple.plan.status) && tries++<10) setTimeout(load,3000);
     else if(q.get('paid') && d.couple.plan.hasBilling && tries++<10 && d.couple.plan.status==='trialing' && !d.couple.plan.interval) setTimeout(load,3000);

@@ -172,6 +172,11 @@ async function api(req, env, url, cors) {
     if (j.error) return json(j, 400, cors);
     await KV.put('acct:' + s.email, JSON.stringify(a)); return json(coupleView(j.couple, s.email), 200, cors);
   }
+  // --- Partners on ezRAD.com: pay per feature (ezRAD.com keeps the subscriptions; env.EZRAD is its bridge) ---
+  const EZ = env.EZRAD || null, ent = EZ ? await EZ.entitlements(cp) : null;
+  if (path === 'features' && req.method === 'GET') { if (!EZ) return json({ error: 'Not found' }, 404, cors); return json(await EZ.features(cp), 200, cors); }
+  if (EZ && path === 'billing/features' && req.method === 'POST' && full) { const r = await EZ.buy(cp, s.email, await body()); return json(r, r.error ? (r.status || 400) : 200, cors); }
+  if (EZ && path === 'billing/portal' && req.method === 'POST' && full) { const r = await EZ.portal(cp, (env.APP_URL || '') + 'account.html'); return json(r, r.error ? (r.status || 400) : 200, cors); }
   // --- subscription (Stripe) ---
   if (path === 'billing/checkout' && req.method === 'POST' && full) {
     if (home) return json({ error: 'Your account is free.' }, 400, cors);
@@ -198,8 +203,12 @@ async function api(req, env, url, cors) {
     return json({ url: r.url }, 200, cors);
   }
   // Trial over and no subscription: only account and billing work until a plan is chosen.
-  const OPEN = ['me', 'members', 'couple', 'auth/signout', 'auth/token', 'settings', 'profile', 'prefs', 'couple-photo'];
-  if (!canUse(cp) && !OPEN.includes(path)) return json({ error: 'Your free trial has ended. Choose a plan to keep using Partners.', paywall: true }, 402, cors);
+  const OPEN = ['me', 'members', 'couple', 'auth/signout', 'auth/token', 'settings', 'profile', 'prefs', 'couple-photo', 'features'];
+  if (ent && ent.perFeature) {
+    if (!OPEN.includes(path) && !ent.keys.length) return json({ error: 'Your free trial has ended. Choose the features you want to keep using Partners.', paywall: true }, 402, cors);
+    const need = featureFor(path);
+    if (need && !ent.keys.includes(need)) return json({ error: 'That feature isn’t part of your plan.', paywall: true, feature: need }, 402, cors);
+  } else if (!canUse(cp) && !OPEN.includes(path)) return json({ error: 'Your free trial has ended. Choose a plan to keep using Partners.', paywall: true }, 402, cors);
   // A fair-use limit on Claude for subscribers, so costs stay predictable.
   if (!home && ['caption', 'rephrase', 'concern-ai', 'classify', 'mail/ai'].includes(path)) {
     const dk = `ai:${cp.id}:${new Date().toISOString().slice(0, 10)}`, n = +(await KV.get(dk) || 0);
@@ -739,6 +748,15 @@ async function joinCouple(KV, a, code) {
   }
   a.couple = c.id; await KV.delete('inv:' + code);
   return { couple: c };
+}
+// Which paid feature each relay call belongs to (Partners on ezRAD.com sells features one by one).
+function featureFor(path) {
+  const m = { 'data/tasks': 'tasks', 'data/links': 'links', linkinfo: 'links', 'data/expenses': 'money', 'receipt-scan': 'money', 'data/flights': 'flights', 'flight-parse': 'flights',
+    'data/us': 'us', 'concern-ai': 'us', rephrase: 'us', 'data/shared': 'photos', caption: 'photos', classify: 'photos', agenda: 'calendar', fuel: 'fuel', 'fuel-route': 'fuel', 'elks-rv': 'fuel' };
+  if (m[path]) return m[path];
+  if (path.startsWith('photo/')) return 'photos';
+  if (path.startsWith('mail/')) return 'mail';
+  return '';
 }
 function canUse(c) {
   const p = c.plan || {};
