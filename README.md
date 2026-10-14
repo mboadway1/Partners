@@ -1,3 +1,5 @@
+**Partners has moved to ezRAD.com: https://ezrad.pages.dev/app/partners/** (code in mboadway1/ezRAD.com, under console/app/partners). This old copy only forwards there; add `?stay=1` to an old address to open the old copy instead.
+
 # Partners
 
 Organize and edit photos from Google Photos, post them to Facebook from an iPhone or iPad, and enjoy them on the TV with Partners for Fire TV.

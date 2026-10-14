@@ -22,7 +22,7 @@ import android.webkit.WebViewClient;
  */
 public class MainActivity extends Activity {
 
-    private static final String TV_URL = "https://mboadway1.github.io/Partners/tv.html";
+    private static final String TV_URL = "https://ezrad.pages.dev/app/partners/tv.html";   // Partners lives on ezRAD.com now
 
     private WebView web;
     private final Handler handler = new Handler(Looper.getMainLooper());
