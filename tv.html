@@ -963,16 +963,14 @@ function musicEl(){
     musicStatus('Couldn’t play: '+(codes[a.error&&a.error.code]||'unknown problem'));
     // Google's file API sometimes refuses media for a key; Drive's public download link usually works for shared files.
     if(musicCfg.mode==='drive' && music.cur && !music.triedAlt){ music.triedAlt=true; a.src=`https://drive.google.com/uc?export=download&id=${music.cur.id}`; music.fails--; return musicPlay(); }
-    // A song that won't play is skipped straight away and never picked again (it joins the hidden songs, marked “couldn’t play”).
-    // If five fail in a row it's probably the connection or Google, not the songs, so those five are let back in and it retries later.
+    // A song that won't play is skipped quietly and never tried again: it joins the hidden songs, marked “couldn’t play”
+    // (unhide it in Music if you want it back). No message on the TV.
     if(musicCfg.mode==='drive' && music.cur){ const f=music.cur, l=musicSkip.list;
-      if(!l.some(x=>x.id===f.id)){ l.push({id:f.id,name:f.name,broken:1}); musicSkip.list=l; } (music.streak=music.streak||[]).push(f.id);
-      if(music.fails<5) return musicNext();
-      const back=new Set(music.streak); musicSkip.list=musicSkip.list.filter(x=>!(x.broken && back.has(x.id))); music.streak=[]; }
+      if(!l.some(x=>x.id===f.id)){ l.push({id:f.id,name:f.name,broken:1}); musicSkip.list=l; }
+      music.now=''; music.title=music.artist=''; musicBanner(); clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode==='drive') musicNext(); },800); return; }
     if(musicCfg.mode==='radio' && music.fails<3) return setTimeout(()=>{ if(musicCfg.mode==='radio') musicPlay(); },4000);
-    const why=(codes[a.error&&a.error.code]||'unknown problem');
-    music.now=''; music.title=music.artist=''; musicBanner(); musicToast(musicCfg.mode==='radio'?'That station isn’t playing right now. Trying again in a minute.':`Songs aren’t playing right now (${why}). Trying again in a minute.`,6000);
-    clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode!=='off'){ music.fails=0; music.triedAlt=false; musicCfg.mode==='drive'?musicNext():musicPlay(); } },60000); });
+    music.now=''; music.title=music.artist=''; musicBanner();   // a station that won't play: tried again quietly in a minute
+    clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode==='radio'){ music.fails=0; musicPlay(); } },60000); });
   return music.el=a;
 }
 function musicPlay(){ const a=musicEl(); a.volume=Math.max(0,Math.min(1,musicCfg.volume/100)); a.muted=false;
@@ -1058,9 +1056,7 @@ function musicPick(){
   return f;
 }
 function musicTrack(){ const f=musicPick(), a=musicEl(); music.triedAlt=false;
-  if(!f && music.streak && music.streak.length){ const back=new Set(music.streak); musicSkip.list=musicSkip.list.filter(x=>!(x.broken && back.has(x.id))); music.streak=[];
-    musicToast('Songs aren’t playing right now. Trying again in a minute.',6000); clearTimeout(music.retryT); music.retryT=setTimeout(()=>{ if(musicCfg.mode==='drive'){ music.fails=0; musicNext(); } },60000); return; }
-  if(!f){ musicToast('Every song is hidden. Unhide some in Music.',5000); return; } music.cur=f;
+  if(!f){ music.now=''; musicBanner(); musicStatus(musicSkip.list.some(x=>x.broken)?'No songs left that play (the rest couldn’t play and were skipped)':'Every song is hidden'); return; } music.cur=f;   // quietly: no message on the TV
   a.src=`${DRIVE_API}files/${f.id}?alt=media&key=${encodeURIComponent(settings.driveKey)}`; music.now='♪ '+f.name.slice(0,70); music.title=f.title||f.name; music.artist=f.artist||''; musicPlay(); musicBanner(); }
 // When a song starts: its name and artist appear big for a few seconds, then stay small under the clock.
 function musicBanner(){
