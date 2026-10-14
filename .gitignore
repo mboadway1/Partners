@@ -1,9 +1,0 @@
-.DS_Store
-node_modules/
-relay/.wrangler/
-.gradle/
-build/
-app/build/
-local.properties
-*.iml
-.idea/
